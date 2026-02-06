@@ -35,7 +35,7 @@ docker compose -f docker-compose.prod.yml up --build -d
 )
 ```
 
-If your server can only reach package registries through a local proxy (for example, on the host at `127.0.0.1:1087`), run:
+If your server can only reach package registries through a local proxy (for example, on the host at `0.0.0.0:1087`), run:
 
 ```bash
 (
@@ -49,7 +49,7 @@ docker compose -f docker-compose.prod.yml up --build -d
 
 Notes:
 - `host.docker.internal` points from container to host (mapped with `host-gateway` in compose).
-- Your host proxy can still listen on `127.0.0.1:1087`; containers use `host.docker.internal:1087`.
+- Your host proxy must listen on `0.0.0.0:1087`; containers use `host.docker.internal:1087`.
 - Frontend invite/share/meta links use `REACT_APP_CLIENT_ORIGIN` (or browser origin fallback)
 - Frontend API/websocket targets use `REACT_APP_SERVER_ADDRESS*`
 - Backend CORS allow-list uses `CORS_ALLOWED_ORIGINS` (comma-separated, `*` supported)
