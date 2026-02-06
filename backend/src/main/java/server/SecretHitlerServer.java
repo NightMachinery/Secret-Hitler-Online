@@ -122,15 +122,29 @@ public class SecretHitlerServer {
         // Only initialize Javalin communication after the database has been queried.
         Javalin serverApp = Javalin.create(config -> {
             config.plugins.enableCors(cors -> {
-                if (ApplicationConfig.DEBUG) {
-                    cors.add(it -> {
+                cors.add(it -> {
+                    if (ApplicationConfig.DEBUG) {
                         it.anyHost();
-                    });
-                } else {
-                    cors.add(it -> {
-                        it.allowHost("https://secret-hitler.online");
-                    });
-                }
+                        return;
+                    }
+                    String allowedOrigins = System.getenv("CORS_ALLOWED_ORIGINS");
+                    if (allowedOrigins != null && !allowedOrigins.isBlank()) {
+                        String trimmed = allowedOrigins.trim();
+                        if ("*".equals(trimmed)) {
+                            it.anyHost();
+                            return;
+                        }
+                        for (String origin : allowedOrigins.split(",")) {
+                            String normalized = origin.trim();
+                            if (!normalized.isEmpty()) {
+                                it.allowHost(normalized);
+                            }
+                        }
+                    } else {
+                        logger.warn("CORS_ALLOWED_ORIGINS is not set. Allowing requests from any origin.");
+                        it.anyHost();
+                    }
+                });
             });
         }).start(getHerokuAssignedPort());
 

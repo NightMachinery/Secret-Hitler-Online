@@ -1,9 +1,13 @@
 import React from "react";
 import { Helmet } from "react-helmet";
+import { CLIENT_ORIGIN } from "../constants";
 
 export default function HelmetMetaData(props) {
-	let location = "/";
-	let currentUrl = "http://www.secret-hitler.online" + location; // location.pathname
+	let pathname = "/";
+	if (typeof window !== "undefined") {
+		pathname = window.location.pathname || "/";
+	}
+	let currentUrl = CLIENT_ORIGIN ? CLIENT_ORIGIN + pathname : pathname;
 	let quote = props.quote !== undefined ? props.quote : "";
 	let title = props.title !== undefined ? props.title : "Secret Hitler Online";
 	let image =

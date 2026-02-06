@@ -10,6 +10,7 @@ import portraits, {
   defaultPortrait,
 } from "../assets";
 import { portraitsAltText } from "../assets";
+import { CLIENT_ORIGIN } from "../constants";
 
 import ButtonPrompt from "./ButtonPrompt";
 import { SendWSCommand, WSCommandType } from "../types";
@@ -173,7 +174,7 @@ class IconSelection extends Component<IconSelectionProps, IconSelectionState> {
                 game, so this would be a big help.
               </p>
               <TwitterShareButton
-                url={"https://secret-hitler.online!"}
+                url={CLIENT_ORIGIN}
                 options={{
                   text: "I'm playing #SecretHitlerOnline at",
                   size: "large",
@@ -204,7 +205,7 @@ class IconSelection extends Component<IconSelectionProps, IconSelectionState> {
                 Secret Hitler Online! Thank you! 💖)
               </p>
               <TwitterShareButton
-                url={"https://secret-hitler.online!"}
+                url={CLIENT_ORIGIN}
                 options={{
                   text: "I'm playing #SecretHitlerOnline at",
                   size: "large",

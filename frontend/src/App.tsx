@@ -16,6 +16,7 @@ import {
   NEW_LOBBY,
   CHECK_LOGIN,
   SERVER_ADDRESS,
+  CLIENT_ORIGIN,
   WEBSOCKET,
   PARAM_USERNAMES,
   LOBBY_CODE_LENGTH,
@@ -909,7 +910,11 @@ class App extends Component<{}, AppState> {
             <textarea
               id="linkText"
               readOnly={true}
-              value={"https://secret-hitler.online/?lobby=" + this.state.lobby}
+              value={
+                (CLIENT_ORIGIN || SERVER_ADDRESS_HTTP) +
+                "/?lobby=" +
+                this.state.lobby
+              }
             />
             <button onClick={this.onClickCopy}>COPY</button>
           </div>

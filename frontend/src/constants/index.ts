@@ -8,13 +8,36 @@ export enum PAGE {
   GAME = "game",
 }
 
+const stripProtocol = (value: string) =>
+  value.replace(/^https?:\/\//, "").replace(/\/+$/, "");
+const stripTrailingSlash = (value: string) => value.replace(/\/+$/, "");
+const browserHost = typeof window !== "undefined" ? window.location.host : "";
+const browserOrigin =
+  typeof window !== "undefined" ? window.location.origin : "";
+const browserProtocol =
+  typeof window !== "undefined" ? window.location.protocol : "https:";
+
 export const DEBUG = process.env.REACT_APP_DEBUG !== undefined;
-export const SERVER_ADDRESS =
-  process.env.REACT_APP_SERVER_ADDRESS || "secret-hitler-online.fly.dev";
+const envServerAddress = process.env.REACT_APP_SERVER_ADDRESS || "";
+const fallbackServerAddress = browserHost || "";
+export const SERVER_ADDRESS = stripProtocol(
+  envServerAddress || fallbackServerAddress
+);
+const httpPrefix = browserProtocol === "https:" ? "https://" : "http://";
 export const SERVER_ADDRESS_HTTP =
-  process.env.REACT_APP_SERVER_ADDRESS_HTTP || "https://" + SERVER_ADDRESS;
+  stripTrailingSlash(process.env.REACT_APP_SERVER_ADDRESS_HTTP || "") ||
+  (SERVER_ADDRESS
+    ? httpPrefix + SERVER_ADDRESS
+    : typeof window !== "undefined"
+      ? browserOrigin
+      : "");
 export const WEBSOCKET_HEADER =
-  process.env.REACT_APP_WEBSOCKET_HEADER || "wss://";
+  process.env.REACT_APP_WEBSOCKET_HEADER ||
+  (browserProtocol === "https:" ? "wss://" : "ws://");
+const envClientOrigin = process.env.REACT_APP_CLIENT_ORIGIN || "";
+export const CLIENT_ORIGIN =
+  stripTrailingSlash(envClientOrigin || "") ||
+  (typeof window !== "undefined" ? browserOrigin : SERVER_ADDRESS_HTTP);
 
 export const CHECK_LOGIN = "/check-login";
 export const NEW_LOBBY = "/new-lobby";
