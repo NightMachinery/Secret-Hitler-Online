@@ -69,7 +69,7 @@ services:
       NPM_CONFIG_FETCH_RETRIES: "${NPM_CONFIG_FETCH_RETRIES:-5}"
       NPM_CONFIG_FETCH_RETRY_MINTIMEOUT: "${NPM_CONFIG_FETCH_RETRY_MINTIMEOUT:-20000}"
       NPM_CONFIG_FETCH_RETRY_MAXTIMEOUT: "${NPM_CONFIG_FETCH_RETRY_MAXTIMEOUT:-120000}"
-    command: bash -lc "npm ci && npm run build && npx --yes serve -s build -l ${FRONTEND_PORT:-6666}"
+    command: bash -lc "npm ci --verbose && npm run build && npx --yes serve -s build -l ${FRONTEND_PORT:-6666}"
     depends_on:
       - backend
     ports:
