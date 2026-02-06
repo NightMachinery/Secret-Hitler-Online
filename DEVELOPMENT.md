@@ -19,16 +19,16 @@ Use `docker-compose.prod.yml` when running a public instance.
 - Start the production stack:
   - `docker compose -f docker-compose.prod.yml up --build -d`
 - Default public frontend URL in that file:
-  - `http://example.com:6666`
+  - `http://example.com:6010`
 - Default backend URL in that file:
   - `http://example.com:4040`
 
-If you want to host this behind `http://1.2.3.4:6666`, run:
+If you want to host this behind `http://1.2.3.4:6010`, run:
 
 ```bash
 (
-export REACT_APP_CLIENT_ORIGIN=http://1.2.3.4:6666
-export CORS_ALLOWED_ORIGINS=http://1.2.3.4:6666
+export REACT_APP_CLIENT_ORIGIN=http://1.2.3.4:6010
+export CORS_ALLOWED_ORIGINS=http://1.2.3.4:6010
 export REACT_APP_SERVER_ADDRESS=1.2.3.4:4040
 export REACT_APP_SERVER_ADDRESS_HTTP=http://1.2.3.4:4040
 docker compose -f docker-compose.prod.yml up --build -d
@@ -50,12 +50,14 @@ docker compose -f docker-compose.prod.yml up --build -d
 Notes:
 - `host.docker.internal` points from container to host (mapped with `host-gateway` in compose).
 - Your host proxy must listen on `0.0.0.0:1087`; containers use `host.docker.internal:1087`.
+- If `ufw` is enabled, allow Docker bridge subnets to reach the proxy port:
+  - `sudo ufw allow from 172.16.0.0/12 to any port 1087 proto tcp`
 - Frontend invite/share/meta links use `REACT_APP_CLIENT_ORIGIN` (or browser origin fallback)
 - Frontend API/websocket targets use `REACT_APP_SERVER_ADDRESS*`
 - Backend CORS allow-list uses `CORS_ALLOWED_ORIGINS` (comma-separated, `*` supported)
 
 Make sure your firewall allows inbound traffic to:
-- `6666` for the frontend
+- `6010` for the frontend
 - `4040` for backend HTTP + websocket traffic
 
 ### Following container logs
