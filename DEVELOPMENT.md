@@ -58,6 +58,32 @@ Make sure your firewall allows inbound traffic to:
 - `6666` for the frontend
 - `4040` for backend HTTP + websocket traffic
 
+### Following container logs
+
+Development compose (`docker-compose.yml`):
+
+```bash
+# all services
+docker compose logs -f
+
+# specific services
+docker compose logs -f frontend
+docker compose logs -f backend
+docker compose logs -f db
+```
+
+Production compose (`docker-compose.prod.yml`):
+
+```bash
+# all services
+docker compose -f docker-compose.prod.yml logs -f
+
+# specific services
+docker compose -f docker-compose.prod.yml logs -f frontend
+docker compose -f docker-compose.prod.yml logs -f backend
+docker compose -f docker-compose.prod.yml logs -f db
+```
+
 ---
 
 Your setup will vary depending on if you're only making changes to the frontend, or if you're making changes to the frontend and the backend at once.
