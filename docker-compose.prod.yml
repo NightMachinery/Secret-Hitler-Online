@@ -23,10 +23,19 @@ services:
     volumes:
       - ./backend:/app/backend
       - gradle-cache:/home/gradle/.gradle
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
     environment:
       DATABASE_URL: "${DATABASE_URL:-postgres://secret:secret@db:5432/secrethitler}"
       PORT: "${BACKEND_PORT:-4040}"
       CORS_ALLOWED_ORIGINS: "${CORS_ALLOWED_ORIGINS:-http://example.com:6666}"
+      HTTP_PROXY: "${HTTP_PROXY:-}"
+      HTTPS_PROXY: "${HTTPS_PROXY:-}"
+      NO_PROXY: "${NO_PROXY:-localhost,127.0.0.1,db,backend,frontend,host.docker.internal}"
+      http_proxy: "${HTTP_PROXY:-}"
+      https_proxy: "${HTTPS_PROXY:-}"
+      no_proxy: "${NO_PROXY:-localhost,127.0.0.1,db,backend,frontend,host.docker.internal}"
+      GRADLE_OPTS: "${GRADLE_OPTS:-}"
     command: ["bash", "-lc", "./gradlew run"]
     depends_on:
       db:
@@ -41,11 +50,25 @@ services:
     working_dir: /app/frontend
     volumes:
       - ./frontend:/app/frontend
+      - npm-cache:/root/.npm
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
     environment:
       REACT_APP_SERVER_ADDRESS: "${REACT_APP_SERVER_ADDRESS:-example.com:4040}"
       REACT_APP_SERVER_ADDRESS_HTTP: "${REACT_APP_SERVER_ADDRESS_HTTP:-http://example.com:4040}"
       REACT_APP_WEBSOCKET_HEADER: "${REACT_APP_WEBSOCKET_HEADER:-ws://}"
       REACT_APP_CLIENT_ORIGIN: "${REACT_APP_CLIENT_ORIGIN:-http://example.com:6666}"
+      HTTP_PROXY: "${HTTP_PROXY:-}"
+      HTTPS_PROXY: "${HTTPS_PROXY:-}"
+      NO_PROXY: "${NO_PROXY:-localhost,127.0.0.1,db,backend,frontend,host.docker.internal}"
+      http_proxy: "${HTTP_PROXY:-}"
+      https_proxy: "${HTTPS_PROXY:-}"
+      no_proxy: "${NO_PROXY:-localhost,127.0.0.1,db,backend,frontend,host.docker.internal}"
+      NPM_CONFIG_PROXY: "${HTTP_PROXY:-}"
+      NPM_CONFIG_HTTPS_PROXY: "${HTTPS_PROXY:-}"
+      NPM_CONFIG_FETCH_RETRIES: "${NPM_CONFIG_FETCH_RETRIES:-5}"
+      NPM_CONFIG_FETCH_RETRY_MINTIMEOUT: "${NPM_CONFIG_FETCH_RETRY_MINTIMEOUT:-20000}"
+      NPM_CONFIG_FETCH_RETRY_MAXTIMEOUT: "${NPM_CONFIG_FETCH_RETRY_MAXTIMEOUT:-120000}"
     command: bash -lc "npm ci && npm run build && npx --yes serve -s build -l ${FRONTEND_PORT:-6666}"
     depends_on:
       - backend
@@ -54,4 +77,5 @@ services:
 
 volumes:
   gradle-cache: {}
+  npm-cache: {}
   postgres-data: {}

@@ -26,20 +26,37 @@ Use `docker-compose.prod.yml` when running a public instance.
 If you want to host this behind `http://1.2.3.4:6666`, run:
 
 ```bash
+(
 export REACT_APP_CLIENT_ORIGIN=http://1.2.3.4:6666
 export CORS_ALLOWED_ORIGINS=http://1.2.3.4:6666
 export REACT_APP_SERVER_ADDRESS=1.2.3.4:4040
 export REACT_APP_SERVER_ADDRESS_HTTP=http://1.2.3.4:4040
 docker compose -f docker-compose.prod.yml up --build -d
+)
 ```
+
+If your server can only reach package registries through a local proxy (for example, on the host at `127.0.0.1:1087`), run:
+
+```bash
+(
+export HTTP_PROXY=http://host.docker.internal:1087
+export HTTPS_PROXY=http://host.docker.internal:1087
+export NO_PROXY=localhost,127.0.0.1,db,backend,frontend,host.docker.internal
+export GRADLE_OPTS="-Dhttp.proxyHost=host.docker.internal -Dhttp.proxyPort=1087 -Dhttps.proxyHost=host.docker.internal -Dhttps.proxyPort=1087"
+docker compose -f docker-compose.prod.yml up --build -d
+)
+```
+
+Notes:
+- `host.docker.internal` points from container to host (mapped with `host-gateway` in compose).
+- Your host proxy can still listen on `127.0.0.1:1087`; containers use `host.docker.internal:1087`.
+- Frontend invite/share/meta links use `REACT_APP_CLIENT_ORIGIN` (or browser origin fallback)
+- Frontend API/websocket targets use `REACT_APP_SERVER_ADDRESS*`
+- Backend CORS allow-list uses `CORS_ALLOWED_ORIGINS` (comma-separated, `*` supported)
 
 Make sure your firewall allows inbound traffic to:
 - `6666` for the frontend
 - `4040` for backend HTTP + websocket traffic
-
-- Frontend invite/share/meta links use `REACT_APP_CLIENT_ORIGIN` (or browser origin fallback)
-- Frontend API/websocket targets use `REACT_APP_SERVER_ADDRESS*`
-- Backend CORS allow-list uses `CORS_ALLOWED_ORIGINS` (comma-separated, `*` supported)
 
 ---
 
