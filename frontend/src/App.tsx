@@ -225,6 +225,23 @@ class App extends Component<{}, AppState> {
   allAnimationsFinished: boolean = true;
   gameOver: boolean = false;
 
+  updateBrowserLobbyURL(lobby: string) {
+    if (typeof window === "undefined") {
+      return;
+    }
+    const normalizedLobby = lobby.toUpperCase().substr(0, LOBBY_CODE_LENGTH);
+    const currentUrl = new URL(window.location.href);
+    if (currentUrl.searchParams.get("lobby") === normalizedLobby) {
+      return;
+    }
+    currentUrl.searchParams.set("lobby", normalizedLobby);
+    const query = currentUrl.searchParams.toString();
+    const nextPath = query
+      ? `${currentUrl.pathname}?${query}${currentUrl.hash}`
+      : `${currentUrl.pathname}${currentUrl.hash}`;
+    window.history.replaceState({}, "", nextPath);
+  }
+
   // noinspection DuplicatedCode
   constructor(props: any) {
     super(props);
@@ -345,6 +362,7 @@ class App extends Component<{}, AppState> {
     let ws = new WebSocket(url);
     if (ws.OPEN) {
       console.log("Websocket opened successfully to " + url);
+      this.updateBrowserLobbyURL(lobby);
       this.websocket = ws;
       this.reconnectOnConnectionClosed = true;
       // Only move the player to the lobby page if they were logging in.

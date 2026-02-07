@@ -98,7 +98,7 @@ public class Lobby implements Serializable {
     /* Used to reassign users to previously chosen images if they disconnect */
     final private ConcurrentHashMap<String, String> usernameToPreferredIcon;
 
-    public static long LOBBY_TIMEOUT_DURATION_IN_MIN = 10;
+    public static long LOBBY_TIMEOUT_DURATION_IN_MIN = 72 * 60;
     public static float PLAYER_TIMEOUT_IN_SEC = 3;
     public static float CPU_ACTION_DELAY_IN_SEC = 4;
     private long timeout;
