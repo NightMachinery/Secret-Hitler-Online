@@ -76,6 +76,7 @@ import PeekPrompt from "./custom-alert/PeekPrompt";
 import InvestigationAlert from "./custom-alert/InvestigationAlert";
 import Deck from "./board/Deck";
 import PlayerPolicyStatus from "./util/PlayerPolicyStatus";
+import HistoryPanel from "./util/HistoryPanel";
 
 import VictoryFascistHeader from "./assets/victory-fascist-header.png";
 import VictoryLiberalHeader from "./assets/victory-liberal-header.png";
@@ -88,6 +89,8 @@ import Cookies from "js-cookie";
 import AnnouncementBox from "./util/AnnouncementBox";
 import {
   GameState,
+  HistoryConfig,
+  HistoryRoundsToShow,
   LobbyState,
   Role,
   ServerRequestPayload,
@@ -97,6 +100,12 @@ import {
 
 const EVENT_BAR_FADE_OUT_DURATION = 500;
 const CUSTOM_ALERT_FADE_DURATION = 1000;
+const DEFAULT_HISTORY_CONFIG: HistoryConfig = {
+  showHistory: true,
+  showPublicActions: true,
+  showVoteBreakdown: true,
+  roundsToShow: HistoryRoundsToShow.ALL,
+};
 
 const DEFAULT_GAME_STATE: GameState = {
   liberalPolicies: 0,
@@ -120,6 +129,8 @@ const DEFAULT_GAME_STATE: GameState = {
   targetUser: "",
   lastPolicy: "",
   peek: [],
+  history: [],
+  historyConfig: DEFAULT_HISTORY_CONFIG,
   icon: {},
 };
 
@@ -142,6 +153,10 @@ type AppState = {
   joinError: string;
   createLobbyName: string;
   createLobbyError: string;
+  createLobbyShowHistory: boolean;
+  createLobbyShowPublicActions: boolean;
+  createLobbyShowVoteBreakdown: boolean;
+  createLobbyRoundsToShow: HistoryRoundsToShow;
   name: string;
   lobby: string;
   lobbyFromURL: boolean;
@@ -173,6 +188,10 @@ const defaultAppState: AppState = {
   joinError: "",
   createLobbyName: "",
   createLobbyError: "",
+  createLobbyShowHistory: true,
+  createLobbyShowPublicActions: true,
+  createLobbyShowVoteBreakdown: true,
+  createLobbyRoundsToShow: HistoryRoundsToShow.ALL,
   name: "P1",
   lobby: "AAAAAA",
   lobbyFromURL: false,
@@ -254,8 +273,19 @@ class App extends Component<{}, AppState> {
    * Attempts to request the server to create a new lobby and returns the response.
    * @return {Promise<Response>}
    */
-  async tryCreateLobby() {
-    return fetch(SERVER_ADDRESS_HTTP + NEW_LOBBY);
+  async tryCreateLobby(historyConfig: HistoryConfig) {
+    const params = new URLSearchParams();
+    params.set("history-show", historyConfig.showHistory ? "true" : "false");
+    params.set(
+      "history-show-presidential-actions",
+      historyConfig.showPublicActions ? "true" : "false"
+    );
+    params.set(
+      "history-show-vote-breakdown",
+      historyConfig.showVoteBreakdown ? "true" : "false"
+    );
+    params.set("history-rounds-to-show", historyConfig.roundsToShow);
+    return fetch(SERVER_ADDRESS_HTTP + NEW_LOBBY + "?" + params.toString());
   }
 
   /**
@@ -438,6 +468,12 @@ class App extends Component<{}, AppState> {
         break;
 
       case PACKET_GAME_STATE:
+        if (!Array.isArray(message.history)) {
+          message.history = [];
+        }
+        if (!message.historyConfig) {
+          message.historyConfig = { ...DEFAULT_HISTORY_CONFIG };
+        }
         if (message !== this.state.gameState) {
           this.onGameStateChanged(message);
         }
@@ -540,6 +576,36 @@ class App extends Component<{}, AppState> {
     });
   };
 
+  updateCreateLobbyShowHistory = (event: React.ChangeEvent<HTMLInputElement>) => {
+    this.setState({
+      createLobbyShowHistory: event.target.checked,
+    });
+  };
+
+  updateCreateLobbyShowPublicActions = (
+    event: React.ChangeEvent<HTMLInputElement>
+  ) => {
+    this.setState({
+      createLobbyShowPublicActions: event.target.checked,
+    });
+  };
+
+  updateCreateLobbyShowVoteBreakdown = (
+    event: React.ChangeEvent<HTMLInputElement>
+  ) => {
+    this.setState({
+      createLobbyShowVoteBreakdown: event.target.checked,
+    });
+  };
+
+  updateCreateLobbyRoundsToShow = (
+    event: React.ChangeEvent<HTMLSelectElement>
+  ) => {
+    this.setState({
+      createLobbyRoundsToShow: event.target.value as HistoryRoundsToShow,
+    });
+  };
+
   shouldJoinButtonBeEnabled() {
     return (
       this.state.joinLobby.length === LOBBY_CODE_LENGTH &&
@@ -630,7 +696,12 @@ class App extends Component<{}, AppState> {
    */
   onClickCreateLobby = () => {
     this.setState({ createLobbyError: "Connecting..." });
-    this.tryCreateLobby()
+    this.tryCreateLobby({
+      showHistory: this.state.createLobbyShowHistory,
+      showPublicActions: this.state.createLobbyShowPublicActions,
+      showVoteBreakdown: this.state.createLobbyShowVoteBreakdown,
+      roundsToShow: this.state.createLobbyRoundsToShow,
+    })
       .then((response) => {
         if (response.ok) {
           response.text().then((lobbyCode) => {
@@ -726,6 +797,79 @@ class App extends Component<{}, AppState> {
             value={this.state.createLobbyName}
             maxLength={12}
           />
+          <div
+            style={{
+              margin: "10px auto",
+              textAlign: "left",
+              width: "min(90vw, 520px)",
+            }}
+          >
+            <p style={{ margin: "6px 0", fontSize: "calc(8px + 1vmin)" }}>
+              History settings (locked after lobby creation):
+            </p>
+            <label
+              style={{ display: "block", margin: "4px 0", cursor: "pointer" }}
+            >
+              <input
+                type="checkbox"
+                checked={this.state.createLobbyShowHistory}
+                onChange={this.updateCreateLobbyShowHistory}
+                style={{
+                  width: "16px",
+                  minWidth: "16px",
+                  marginRight: "8px",
+                  verticalAlign: "middle",
+                }}
+              />
+              Show history panel
+            </label>
+            <label
+              style={{ display: "block", margin: "4px 0", cursor: "pointer" }}
+            >
+              <input
+                type="checkbox"
+                checked={this.state.createLobbyShowPublicActions}
+                onChange={this.updateCreateLobbyShowPublicActions}
+                disabled={!this.state.createLobbyShowHistory}
+                style={{
+                  width: "16px",
+                  minWidth: "16px",
+                  marginRight: "8px",
+                  verticalAlign: "middle",
+                }}
+              />
+              Show presidential power actions
+            </label>
+            <label
+              style={{ display: "block", margin: "4px 0", cursor: "pointer" }}
+            >
+              <input
+                type="checkbox"
+                checked={this.state.createLobbyShowVoteBreakdown}
+                onChange={this.updateCreateLobbyShowVoteBreakdown}
+                disabled={!this.state.createLobbyShowHistory}
+                style={{
+                  width: "16px",
+                  minWidth: "16px",
+                  marginRight: "8px",
+                  verticalAlign: "middle",
+                }}
+              />
+              Show who voted yes/no
+            </label>
+            <div style={{ marginTop: "8px" }}>
+              <label style={{ marginRight: "8px" }}>Rounds to show:</label>
+              <select
+                value={this.state.createLobbyRoundsToShow}
+                onChange={this.updateCreateLobbyRoundsToShow}
+                disabled={!this.state.createLobbyShowHistory}
+              >
+                <option value={HistoryRoundsToShow.ALL}>All rounds</option>
+                <option value={HistoryRoundsToShow.LAST_1}>Last round</option>
+                <option value={HistoryRoundsToShow.LAST_3}>Last 3 rounds</option>
+              </select>
+            </div>
+          </div>
           <p id={"errormessage"}>{this.state.createLobbyError}</p>
           <button
             onClick={this.onClickCreateLobby}
@@ -1785,6 +1929,15 @@ class App extends Component<{}, AppState> {
             />
           </div>
         </div>
+
+        {this.state.gameState.historyConfig.showHistory && (
+          <HistoryPanel
+            history={this.state.gameState.history || []}
+            playerOrder={this.state.gameState.playerOrder}
+            showVoteBreakdown={this.state.gameState.historyConfig.showVoteBreakdown}
+            showPublicActions={this.state.gameState.historyConfig.showPublicActions}
+          />
+        )}
 
         <div style={{ textAlign: "center" }}>
           <div id="snackbar">{this.state.snackbarMessage}</div>

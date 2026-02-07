@@ -27,6 +27,61 @@ import java.util.stream.Collectors;
  */
 public class Lobby implements Serializable {
 
+    public static class HistoryDisplayConfig implements Serializable {
+        public enum RoundsToShow {
+            ALL,
+            LAST_1,
+            LAST_3;
+
+            public static RoundsToShow fromString(String value) {
+                if (value == null) {
+                    return ALL;
+                }
+                String normalized = value.trim().toUpperCase();
+                if (normalized.equals("LAST_1") || normalized.equals("LAST1") || normalized.equals("1")) {
+                    return LAST_1;
+                } else if (normalized.equals("LAST_3") || normalized.equals("LAST3") || normalized.equals("3")) {
+                    return LAST_3;
+                } else {
+                    return ALL;
+                }
+            }
+        }
+
+        private final boolean showHistory;
+        private final boolean showPublicActions;
+        private final boolean showVoteBreakdown;
+        private final RoundsToShow roundsToShow;
+
+        public HistoryDisplayConfig(boolean showHistory, boolean showPublicActions, boolean showVoteBreakdown,
+                RoundsToShow roundsToShow) {
+            this.showHistory = showHistory;
+            this.showPublicActions = showPublicActions;
+            this.showVoteBreakdown = showVoteBreakdown;
+            this.roundsToShow = roundsToShow == null ? RoundsToShow.ALL : roundsToShow;
+        }
+
+        public static HistoryDisplayConfig defaultConfig() {
+            return new HistoryDisplayConfig(true, true, true, RoundsToShow.ALL);
+        }
+
+        public boolean shouldShowHistory() {
+            return showHistory;
+        }
+
+        public boolean shouldShowPublicActions() {
+            return showPublicActions;
+        }
+
+        public boolean shouldShowVoteBreakdown() {
+            return showVoteBreakdown;
+        }
+
+        public RoundsToShow getRoundsToShow() {
+            return roundsToShow;
+        }
+    }
+
     private SecretHitlerGame game;
 
     // These two marked transient because they track currently active/connected
@@ -38,6 +93,7 @@ public class Lobby implements Serializable {
     final private ConcurrentHashMap<String, String> usernameToIcon;
 
     private Set<CpuPlayer> cpuPlayers;
+    private HistoryDisplayConfig historyDisplayConfig;
 
     /* Used to reassign users to previously chosen images if they disconnect */
     final private ConcurrentHashMap<String, String> usernameToPreferredIcon;
@@ -59,13 +115,25 @@ public class Lobby implements Serializable {
      * Constructs a new Lobby.
      */
     public Lobby() {
+        this(HistoryDisplayConfig.defaultConfig());
+    }
+
+    public Lobby(HistoryDisplayConfig historyDisplayConfig) {
         userToUsername = new ConcurrentHashMap<WsContext, String>();
         activeUsernames = new ConcurrentLinkedQueue<>();
         usersInGame = new ConcurrentSkipListSet<>();
         usernameToIcon = new ConcurrentHashMap<>();
         usernameToPreferredIcon = new ConcurrentHashMap<>();
         cpuPlayers = new ConcurrentSkipListSet<>();
+        this.historyDisplayConfig = historyDisplayConfig == null ? HistoryDisplayConfig.defaultConfig() : historyDisplayConfig;
         resetTimeout();
+    }
+
+    public HistoryDisplayConfig getHistoryDisplayConfig() {
+        if (historyDisplayConfig == null) {
+            return HistoryDisplayConfig.defaultConfig();
+        }
+        return historyDisplayConfig;
     }
 
     /**
@@ -386,7 +454,7 @@ public class Lobby implements Serializable {
     synchronized public void updateUser(WsContext ctx, String userName) {
         JSONObject message;
         if (isInGame()) {
-            message = GameToJSONConverter.convert(game, userName); // sends the game state
+            message = GameToJSONConverter.convert(game, userName, getHistoryDisplayConfig()); // sends the game state
             message.put(SecretHitlerServer.PARAM_PACKET_TYPE, SecretHitlerServer.PACKET_GAME_STATE);
         } else {
             message = new JSONObject();
@@ -416,6 +484,9 @@ public class Lobby implements Serializable {
         activeUsernames = new ConcurrentLinkedQueue<>();
         userTimeoutTimer = new Timer();
         cpuTickTimer = new Timer();
+        if (historyDisplayConfig == null) {
+            historyDisplayConfig = HistoryDisplayConfig.defaultConfig();
+        }
     }
 
     /**

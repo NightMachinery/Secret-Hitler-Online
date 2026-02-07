@@ -46,6 +46,130 @@ public class SecretHitlerGame implements Serializable {
     public static final int PRESIDENT_DRAW_SIZE = 3;
     public static final int CHANCELLOR_DRAW_SIZE = 2;
 
+    public enum RoundHistoryResult {
+        VOTE_FAILED,
+        LIBERAL,
+        FASCIST
+    }
+
+    public enum PublicActionType {
+        PEEK_USED,
+        INVESTIGATED,
+        EXECUTED,
+        SPECIAL_ELECTION
+    }
+
+    public static class PublicAction implements Serializable {
+        private PublicActionType type;
+        private String president;
+        private String target;
+        private Boolean hitlerExecuted;
+
+        public PublicAction(PublicActionType type, String president, String target, Boolean hitlerExecuted) {
+            this.type = type;
+            this.president = president;
+            this.target = target;
+            this.hitlerExecuted = hitlerExecuted;
+        }
+
+        public PublicAction(PublicAction other) {
+            this(other.type, other.president, other.target, other.hitlerExecuted);
+        }
+
+        public PublicActionType getType() {
+            return type;
+        }
+
+        public String getPresident() {
+            return president;
+        }
+
+        public String getTarget() {
+            return target;
+        }
+
+        public Boolean getHitlerExecuted() {
+            return hitlerExecuted;
+        }
+    }
+
+    public static class RoundHistoryEntry implements Serializable {
+        private int round;
+        private String president;
+        private String chancellor;
+        private Map<String, Boolean> votes;
+        private boolean votePassed;
+        private RoundHistoryResult result;
+        private List<PublicAction> publicActions;
+
+        public RoundHistoryEntry(int round, String president, String chancellor, Map<String, Boolean> votes) {
+            this.round = round;
+            this.president = president;
+            this.chancellor = chancellor;
+            this.votes = new LinkedHashMap<>(votes);
+            this.votePassed = false;
+            this.result = null;
+            this.publicActions = new ArrayList<>();
+        }
+
+        public RoundHistoryEntry(RoundHistoryEntry other) {
+            this.round = other.round;
+            this.president = other.president;
+            this.chancellor = other.chancellor;
+            this.votes = new LinkedHashMap<>(other.votes);
+            this.votePassed = other.votePassed;
+            this.result = other.result;
+            this.publicActions = new ArrayList<>();
+            for (PublicAction action : other.publicActions) {
+                this.publicActions.add(new PublicAction(action));
+            }
+        }
+
+        public int getRound() {
+            return round;
+        }
+
+        public String getPresident() {
+            return president;
+        }
+
+        public String getChancellor() {
+            return chancellor;
+        }
+
+        public Map<String, Boolean> getVotes() {
+            return new LinkedHashMap<>(votes);
+        }
+
+        public boolean didVotePass() {
+            return votePassed;
+        }
+
+        public RoundHistoryResult getResult() {
+            return result;
+        }
+
+        public List<PublicAction> getPublicActions() {
+            List<PublicAction> out = new ArrayList<>();
+            for (PublicAction action : publicActions) {
+                out.add(new PublicAction(action));
+            }
+            return out;
+        }
+
+        private void setVotePassed(boolean votePassed) {
+            this.votePassed = votePassed;
+        }
+
+        private void setResult(RoundHistoryResult result) {
+            this.result = result;
+        }
+
+        private void addPublicAction(PublicAction action) {
+            this.publicActions.add(action);
+        }
+    }
+
     // </editor-fold>
 
     /////////////////// Private Fields
@@ -91,6 +215,8 @@ public class SecretHitlerGame implements Serializable {
     private boolean didVetoOccurThisTurn = false;
 
     private HashMap<String, Boolean> voteMap;
+    private List<RoundHistoryEntry> history;
+    private RoundHistoryEntry currentRoundHistory;
 
     // </editor-fold>
 
@@ -153,6 +279,15 @@ public class SecretHitlerGame implements Serializable {
         return didVetoOccurThisTurn;
     }
 
+    public List<RoundHistoryEntry> getHistory() {
+        ensureHistoryInitialized();
+        List<RoundHistoryEntry> out = new ArrayList<>();
+        for (RoundHistoryEntry entry : history) {
+            out.add(new RoundHistoryEntry(entry));
+        }
+        return out;
+    }
+
     // </editor-fold>
 
     /////////////////// Constructor
@@ -189,6 +324,8 @@ public class SecretHitlerGame implements Serializable {
         random = new Random();
         electionTracker = 0;
         voteMap = new HashMap<>();
+        history = new ArrayList<>();
+        currentRoundHistory = null;
 
         resetDeck();
         assignRoles();
@@ -511,16 +648,20 @@ public class SecretHitlerGame implements Serializable {
         }
 
         if (allPlayersHaveVoted) {
+            beginRoundHistory(getOrderedVotes());
             if (((float) totalYesVotes / (float) totalVotes) > VOTING_CUTOFF) { // vote passed successfully
+                currentRoundHistory.setVotePassed(true);
                 lastChancellor = currentChancellor;
                 lastPresident = currentPresident;
                 if (getPlayer(currentChancellor).isHitler() && board.fascistsCanWinByElection()) {
+                    finalizeCurrentRoundHistory(RoundHistoryResult.FASCIST);
                     this.lastState = this.state;
                     state = GameState.FASCIST_VICTORY_ELECTION; // Fascists won by electing Hitler: game ends.
                 } else {
                     startLegislativeSession();
                 }
             } else { // vote failed
+                currentRoundHistory.setVotePassed(false);
                 advanceElectionTracker();
             }
         }
@@ -558,7 +699,44 @@ public class SecretHitlerGame implements Serializable {
 
             onEnactPolicy(newPolicy.getType());
         } else {
+            finalizeCurrentRoundHistory(RoundHistoryResult.VOTE_FAILED);
             concludePresidentialActions();
+        }
+    }
+
+    private Map<String, Boolean> getOrderedVotes() {
+        LinkedHashMap<String, Boolean> out = new LinkedHashMap<>();
+        for (Player player : playerList) {
+            String playerName = player.getUsername();
+            if (player.isAlive() && voteMap.containsKey(playerName)) {
+                out.put(playerName, voteMap.get(playerName));
+            }
+        }
+        return out;
+    }
+
+    private void beginRoundHistory(Map<String, Boolean> votes) {
+        ensureHistoryInitialized();
+        currentRoundHistory = new RoundHistoryEntry(round, currentPresident, currentChancellor, votes);
+        history.add(currentRoundHistory);
+    }
+
+    private void finalizeCurrentRoundHistory(RoundHistoryResult result) {
+        if (currentRoundHistory != null) {
+            currentRoundHistory.setResult(result);
+        }
+    }
+
+    private void addPublicHistoryAction(PublicActionType type, String target, Boolean hitlerExecuted) {
+        ensureHistoryInitialized();
+        if (currentRoundHistory != null) {
+            currentRoundHistory.addPublicAction(new PublicAction(type, currentPresident, target, hitlerExecuted));
+        }
+    }
+
+    private void ensureHistoryInitialized() {
+        if (history == null) {
+            history = new ArrayList<>();
         }
     }
 
@@ -618,6 +796,7 @@ public class SecretHitlerGame implements Serializable {
         this.lastState = this.state;
         this.state = GameState.CHANCELLOR_NOMINATION;
         this.round++;
+        currentRoundHistory = null;
     }
 
     /**
@@ -830,6 +1009,9 @@ public class SecretHitlerGame implements Serializable {
     private void onEnactPolicy(Policy.Type policyType) {
         electionTracker = 0;
         lastEnactedPolicy = policyType;
+        finalizeCurrentRoundHistory(policyType == Policy.Type.FASCIST
+                ? RoundHistoryResult.FASCIST
+                : RoundHistoryResult.LIBERAL);
 
         if (draw.getSize() < MIN_DRAW_DECK_SIZE) {
             shuffleDiscardIntoDraw();
@@ -898,6 +1080,7 @@ public class SecretHitlerGame implements Serializable {
      * @effects Advances the state to {@code POST_LEGISLATIVE}.
      */
     public void endPeek() {
+        addPublicHistoryAction(PublicActionType.PEEK_USED, null, null);
         concludePresidentialActions();
     }
 
@@ -927,6 +1110,7 @@ public class SecretHitlerGame implements Serializable {
 
         target = username;
         getPlayer(username).investigate(); // sets a flag that this player has been investigated.
+        addPublicHistoryAction(PublicActionType.INVESTIGATED, username, null);
         concludePresidentialActions();
 
         if (getPlayer(username).isFascist()) {
@@ -965,7 +1149,9 @@ public class SecretHitlerGame implements Serializable {
         }
 
         playerToKill.kill();
-        if (playerToKill.isHitler()) { // game ends and liberals win.
+        boolean hitlerExecuted = playerToKill.isHitler();
+        addPublicHistoryAction(PublicActionType.EXECUTED, username, hitlerExecuted);
+        if (hitlerExecuted) { // game ends and liberals win.
             this.lastState = this.state;
             state = GameState.LIBERAL_VICTORY_EXECUTION;
         } else {
@@ -1004,6 +1190,7 @@ public class SecretHitlerGame implements Serializable {
         }
 
         electedPresident = username;
+        addPublicHistoryAction(PublicActionType.SPECIAL_ELECTION, username, null);
         concludePresidentialActions();
     }
 

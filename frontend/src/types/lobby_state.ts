@@ -24,6 +24,49 @@ export type PlayerState = {
   investigated: boolean;
 };
 
+export const enum RoundHistoryResult {
+  VOTE_FAILED = "VOTE_FAILED",
+  LIBERAL = "LIBERAL",
+  FASCIST = "FASCIST",
+}
+
+export const enum PublicHistoryActionType {
+  PEEK_USED = "PEEK_USED",
+  INVESTIGATED = "INVESTIGATED",
+  EXECUTED = "EXECUTED",
+  SPECIAL_ELECTION = "SPECIAL_ELECTION",
+}
+
+export type PublicHistoryAction = {
+  type: PublicHistoryActionType;
+  president: string;
+  target: string | null;
+  hitlerExecuted: boolean | null;
+};
+
+export type RoundHistoryEntry = {
+  round: number;
+  president: string;
+  chancellor: string;
+  votes: Record<string, boolean>;
+  votePassed: boolean;
+  result: RoundHistoryResult | null;
+  publicActions: PublicHistoryAction[];
+};
+
+export const enum HistoryRoundsToShow {
+  ALL = "ALL",
+  LAST_1 = "LAST_1",
+  LAST_3 = "LAST_3",
+}
+
+export type HistoryConfig = {
+  showHistory: boolean;
+  showPublicActions: boolean;
+  showVoteBreakdown: boolean;
+  roundsToShow: HistoryRoundsToShow;
+};
+
 export type GameState = {
   state: LobbyState;
   lastState: LobbyState;
@@ -51,6 +94,8 @@ export type GameState = {
   lastPolicy: string;
   vetoOccurred: boolean;
   peek?: PolicyType[];
+  history: RoundHistoryEntry[];
+  historyConfig: HistoryConfig;
 
   usernames?: string[];
   /** Maps from usernames to icon keys */

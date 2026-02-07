@@ -47,4 +47,28 @@ public class testSecretHitlerGame {
         game.nominateChancellor("2");
         assertEquals(game.getState(), GameState.CHANCELLOR_VOTING);
     }
+
+    @Test
+    public void testHistoryTracksFailedVoteRound() {
+        SecretHitlerGame game = new SecretHitlerGame(makePlayers(6));
+        game.nominateChancellor("2");
+
+        for (Player player : game.getPlayerList()) {
+            if (player.isAlive()) {
+                game.registerVote(player.getUsername(), false);
+            }
+        }
+
+        assertEquals(GameState.POST_LEGISLATIVE, game.getState());
+        assertEquals(1, game.getHistory().size());
+
+        SecretHitlerGame.RoundHistoryEntry entry = game.getHistory().get(0);
+        assertEquals(1, entry.getRound());
+        assertEquals("0", entry.getPresident());
+        assertEquals("2", entry.getChancellor());
+        assertFalse(entry.didVotePass());
+        assertEquals(SecretHitlerGame.RoundHistoryResult.VOTE_FAILED, entry.getResult());
+        assertTrue(entry.getPublicActions().isEmpty());
+        assertEquals(6, entry.getVotes().size());
+    }
 }

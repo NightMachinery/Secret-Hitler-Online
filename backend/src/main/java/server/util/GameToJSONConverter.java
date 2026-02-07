@@ -5,9 +5,11 @@ import game.SecretHitlerGame;
 import game.datastructures.Identity;
 import game.datastructures.Player;
 import game.datastructures.Policy;
+import org.json.JSONArray;
 import org.json.JSONObject;
 
 import java.util.List;
+import java.util.Map;
 
 /**
  * Converts a SecretHitlerGame to a JSONObject that represents the game state.
@@ -58,10 +60,13 @@ public class GameToJSONConverter {
      *         - {@code veto-occurred}: Set to true if a veto has already taken
      *         place on this legislative session.
      */
-    public static JSONObject convert(SecretHitlerGame game, String userName) {
+    public static JSONObject convert(SecretHitlerGame game, String userName, Lobby.HistoryDisplayConfig historyConfig) {
         if (game == null) {
             throw new NullPointerException();
         }
+        Lobby.HistoryDisplayConfig effectiveHistoryConfig = historyConfig == null
+                ? Lobby.HistoryDisplayConfig.defaultConfig()
+                : historyConfig;
 
         JSONObject out = new JSONObject();
         JSONObject playerData = new JSONObject();
@@ -114,6 +119,8 @@ public class GameToJSONConverter {
         out.put("liberalPolicies", game.getNumLiberalPolicies());
         out.put("userVotes", game.getVotes());
         out.put("vetoOccurred", game.didVetoOccurThisTurn());
+        out.put("history", convertHistory(game.getHistory(), effectiveHistoryConfig));
+        out.put("historyConfig", convertHistoryConfig(effectiveHistoryConfig));
 
         if (game.getState() == GameState.LEGISLATIVE_PRESIDENT) {
             out.put("presidentChoices", convertPolicyListToStringArray(game.getPresidentLegislativeChoices()));
@@ -140,6 +147,71 @@ public class GameToJSONConverter {
         String[] out = new String[list.size()];
         for (int i = 0; i < list.size(); i++) {
             out[i] = list.get(i).getType().toString();
+        }
+        return out;
+    }
+
+    private static JSONObject convertHistoryConfig(Lobby.HistoryDisplayConfig historyConfig) {
+        JSONObject out = new JSONObject();
+        out.put("showHistory", historyConfig.shouldShowHistory());
+        out.put("showPublicActions", historyConfig.shouldShowPublicActions());
+        out.put("showVoteBreakdown", historyConfig.shouldShowVoteBreakdown());
+        out.put("roundsToShow", historyConfig.getRoundsToShow().toString());
+        return out;
+    }
+
+    private static JSONArray convertHistory(List<SecretHitlerGame.RoundHistoryEntry> history,
+            Lobby.HistoryDisplayConfig historyConfig) {
+        JSONArray out = new JSONArray();
+        if (!historyConfig.shouldShowHistory()) {
+            return out;
+        }
+
+        int startIndex = 0;
+        switch (historyConfig.getRoundsToShow()) {
+            case LAST_1:
+                startIndex = Math.max(0, history.size() - 1);
+                break;
+            case LAST_3:
+                startIndex = Math.max(0, history.size() - 3);
+                break;
+            case ALL:
+            default:
+                startIndex = 0;
+        }
+
+        for (int i = startIndex; i < history.size(); i++) {
+            SecretHitlerGame.RoundHistoryEntry entry = history.get(i);
+            JSONObject jsonEntry = new JSONObject();
+            jsonEntry.put("round", entry.getRound());
+            jsonEntry.put("president", entry.getPresident());
+            jsonEntry.put("chancellor", entry.getChancellor());
+            jsonEntry.put("votePassed", entry.didVotePass());
+            jsonEntry.put("result", entry.getResult() == null ? JSONObject.NULL : entry.getResult().toString());
+
+            JSONObject voteData = new JSONObject();
+            if (historyConfig.shouldShowVoteBreakdown()) {
+                for (Map.Entry<String, Boolean> vote : entry.getVotes().entrySet()) {
+                    voteData.put(vote.getKey(), vote.getValue());
+                }
+            }
+            jsonEntry.put("votes", voteData);
+
+            JSONArray actions = new JSONArray();
+            if (historyConfig.shouldShowPublicActions()) {
+                for (SecretHitlerGame.PublicAction action : entry.getPublicActions()) {
+                    JSONObject actionData = new JSONObject();
+                    actionData.put("type", action.getType().toString());
+                    actionData.put("president", action.getPresident());
+                    actionData.put("target", action.getTarget() == null ? JSONObject.NULL : action.getTarget());
+                    actionData.put("hitlerExecuted",
+                            action.getHitlerExecuted() == null ? JSONObject.NULL : action.getHitlerExecuted());
+                    actions.put(actionData);
+                }
+            }
+            jsonEntry.put("publicActions", actions);
+
+            out.put(jsonEntry);
         }
         return out;
     }

@@ -1,0 +1,135 @@
+#history-panel-container {
+  margin: 12px auto 20px;
+  max-width: 1150px;
+  width: calc(100vw - 24px);
+  background-color: var(--backgroundDark);
+  border: 2px solid var(--buttonShadowFill);
+  border-radius: 8px;
+  box-sizing: border-box;
+  padding: 10px 12px;
+  text-align: left;
+}
+
+#history-panel-title {
+  color: var(--headerTextColor);
+  font-family: var(--headerFont);
+  font-size: calc(11px + 1.2vmin);
+  text-align: left;
+  margin-bottom: 8px;
+}
+
+#history-table-wrap {
+  overflow-x: auto;
+}
+
+#history-table {
+  width: 100%;
+  min-width: 760px;
+  border-collapse: collapse;
+  font-family: var(--textFont);
+  color: var(--textColorOnDark);
+}
+
+#history-table th,
+#history-table td {
+  padding: 8px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.12);
+  text-align: left;
+  vertical-align: top;
+  font-size: calc(8px + 0.7vmin);
+}
+
+#history-table th {
+  color: var(--textColorHighlight);
+  font-weight: 700;
+}
+
+.history-votes,
+.history-actions {
+  line-height: 1.4;
+}
+
+.history-vote-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.history-vote-item {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 3px 8px;
+  border-radius: 999px;
+  border: 1px solid transparent;
+  color: var(--textColorWhite);
+}
+
+.history-vote-item-yes {
+  background: linear-gradient(
+    135deg,
+    rgba(76, 125, 214, 0.5),
+    rgba(76, 125, 214, 0.24)
+  );
+  border-color: rgba(156, 193, 255, 0.45);
+}
+
+.history-vote-item-no {
+  background: linear-gradient(
+    135deg,
+    rgba(226, 153, 58, 0.52),
+    rgba(226, 153, 58, 0.24)
+  );
+  border-color: rgba(255, 215, 158, 0.46);
+}
+
+.history-vote-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 14px;
+  height: 14px;
+  flex-shrink: 0;
+}
+
+.history-vote-icon-yes {
+  color: #d3e3ff;
+}
+
+.history-vote-icon-no {
+  color: #ffe2bd;
+}
+
+.history-vote-name {
+  white-space: nowrap;
+  color: var(--textColorWhite);
+  font-weight: 600;
+}
+
+.history-result-pill {
+  display: inline-block;
+  padding: 3px 8px;
+  border-radius: 999px;
+  font-size: calc(7px + 0.6vmin);
+  font-weight: 700;
+}
+
+.history-result-fascist {
+  background-color: rgba(224, 91, 43, 0.25);
+  color: #ffb59a;
+}
+
+.history-result-liberal {
+  background-color: rgba(110, 163, 207, 0.3);
+  color: #b5ddff;
+}
+
+.history-result-failed {
+  background-color: rgba(219, 200, 112, 0.3);
+  color: #ffe48d;
+}
+
+.history-result-pending {
+  background-color: rgba(255, 255, 255, 0.14);
+  color: var(--textColorOnDark);
+}

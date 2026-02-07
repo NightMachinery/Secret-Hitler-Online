@@ -39,6 +39,10 @@ public class SecretHitlerServer {
     public static final String PARAM_VETO = "veto";
     public static final String PARAM_CHOICE = "choice"; // the index of the chosen policy.
     public static final String PARAM_ICON = "icon";
+    public static final String PARAM_HISTORY_SHOW = "history-show";
+    public static final String PARAM_HISTORY_SHOW_PRESIDENTIAL_ACTIONS = "history-show-presidential-actions";
+    public static final String PARAM_HISTORY_SHOW_VOTE_BREAKDOWN = "history-show-vote-breakdown";
+    public static final String PARAM_HISTORY_ROUNDS_TO_SHOW = "history-rounds-to-show";
 
     // Passed to client
     // The type of the packet tells the client how to parse the contents.
@@ -88,6 +92,7 @@ public class SecretHitlerServer {
     private static final Logger logger = LoggerFactory.getLogger(SecretHitlerServer.class);
 
     transient private static boolean hasLobbyChanged;
+    transient private static boolean databasePersistenceEnabled;
 
     // </editor-fold>
 
@@ -114,9 +119,13 @@ public class SecretHitlerServer {
     }
 
     public static void main(String[] args) {
+        databasePersistenceEnabled = shouldEnableDatabasePersistence();
+
         // On load, check the connected database to see if there's a stored state from
         // the server.
-        loadDatabaseBackup();
+        if (databasePersistenceEnabled) {
+            loadDatabaseBackup();
+        }
         removeInactiveLobbies(); // immediately clean in case of redundant lobbies.
 
         // Only initialize Javalin communication after the database has been queried.
@@ -161,8 +170,10 @@ public class SecretHitlerServer {
         // Add hook for termination that backs up the lobbies to the database.
         Runtime.getRuntime().addShutdownHook(new Thread() {
             public void run() {
-                logger.info("Attempting to back up lobby data.");
-                storeDatabaseBackup();
+                if (databasePersistenceEnabled) {
+                    logger.info("Attempting to back up lobby data.");
+                    storeDatabaseBackup();
+                }
                 printLobbyStatus();
             }
         });
@@ -179,12 +190,24 @@ public class SecretHitlerServer {
                     printLobbyStatus();
                 }
                 // If there are active lobbies, store a backup of the game.
-                if (!codeToLobby.isEmpty() && hasLobbyChanged) {
+                if (databasePersistenceEnabled && !codeToLobby.isEmpty() && hasLobbyChanged) {
                     storeDatabaseBackup();
                     hasLobbyChanged = false;
                 }
             }
         }, delayMs, periodMs);
+    }
+
+    private static boolean shouldEnableDatabasePersistence() {
+        if (ApplicationConfig.DISABLE_DATABASE_PERSISTENCE) {
+            logger.info("Database persistence disabled by DISABLE_DATABASE_PERSISTENCE.");
+            return false;
+        }
+        if (ApplicationConfig.DATABASE_URI == null || ApplicationConfig.DATABASE_URI.isBlank()) {
+            logger.info("Database persistence disabled: DATABASE_URL is not set.");
+            return false;
+        }
+        return true;
     }
 
     /**
@@ -237,7 +260,7 @@ public class SecretHitlerServer {
         try {
             URI databaseUri;
             String envUri = ApplicationConfig.DATABASE_URI;
-            if (envUri == null) {
+            if (envUri == null || envUri.isBlank()) {
                 logger.error("Could not connect to database: No ENV_DATABASE_URL environment variable provided.");
                 return null;
             }
@@ -462,13 +485,39 @@ public class SecretHitlerServer {
             newCode = generateCode();
         }
 
-        Lobby lobby = new Lobby();
+        Lobby lobby = new Lobby(parseHistoryDisplayConfig(ctx));
         codeToLobby.put(newCode, lobby); // add a new lobby with the given code.
 
         ctx.status(200);
         ctx.result(newCode);
         logger.info("New lobby created: " + newCode);
         logger.info("Available lobbies: " + codeToLobby.keySet());
+    }
+
+    private static boolean parseBooleanQueryParam(Context ctx, String paramName, boolean defaultValue) {
+        String value = ctx.queryParam(paramName);
+        if (value == null) {
+            return defaultValue;
+        }
+        String normalized = value.trim().toLowerCase();
+        if (normalized.equals("true") || normalized.equals("1") || normalized.equals("y")
+                || normalized.equals("yes")) {
+            return true;
+        } else if (normalized.equals("false") || normalized.equals("0") || normalized.equals("n")
+                || normalized.equals("no")) {
+            return false;
+        } else {
+            return defaultValue;
+        }
+    }
+
+    private static Lobby.HistoryDisplayConfig parseHistoryDisplayConfig(Context ctx) {
+        boolean showHistory = parseBooleanQueryParam(ctx, PARAM_HISTORY_SHOW, true);
+        boolean showPublicActions = parseBooleanQueryParam(ctx, PARAM_HISTORY_SHOW_PRESIDENTIAL_ACTIONS, true);
+        boolean showVoteBreakdown = parseBooleanQueryParam(ctx, PARAM_HISTORY_SHOW_VOTE_BREAKDOWN, true);
+        Lobby.HistoryDisplayConfig.RoundsToShow roundsToShow = Lobby.HistoryDisplayConfig.RoundsToShow
+                .fromString(ctx.queryParam(PARAM_HISTORY_ROUNDS_TO_SHOW));
+        return new Lobby.HistoryDisplayConfig(showHistory, showPublicActions, showVoteBreakdown, roundsToShow);
     }
 
     /**
