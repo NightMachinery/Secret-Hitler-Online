@@ -38,6 +38,10 @@ const envClientOrigin = process.env.REACT_APP_CLIENT_ORIGIN || "";
 export const CLIENT_ORIGIN =
   stripTrailingSlash(envClientOrigin || "") ||
   (typeof window !== "undefined" ? browserOrigin : SERVER_ADDRESS_HTTP);
+export const UNLOCK_ALL_P =
+  (process.env.REACT_APP_UNLOCK_ALL_P || process.env.UNLOCK_ALL_P || "")
+    .toLowerCase()
+    .trim() === "true";
 
 export const CHECK_LOGIN = "/check-login";
 export const NEW_LOBBY = "/new-lobby";

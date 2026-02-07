@@ -54,6 +54,8 @@ services:
     extra_hosts:
       - "host.docker.internal:host-gateway"
     environment:
+      UNLOCK_ALL_P: "${UNLOCK_ALL_P:-true}"
+      REACT_APP_UNLOCK_ALL_P: "${UNLOCK_ALL_P:-true}"
       REACT_APP_SERVER_ADDRESS: "${REACT_APP_SERVER_ADDRESS:-example.com:4040}"
       REACT_APP_SERVER_ADDRESS_HTTP: "${REACT_APP_SERVER_ADDRESS_HTTP:-http://example.com:4040}"
       REACT_APP_WEBSOCKET_HEADER: "${REACT_APP_WEBSOCKET_HEADER:-ws://}"

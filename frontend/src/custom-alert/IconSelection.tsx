@@ -10,7 +10,7 @@ import portraits, {
   defaultPortrait,
 } from "../assets";
 import { portraitsAltText } from "../assets";
-import { CLIENT_ORIGIN } from "../constants";
+import { CLIENT_ORIGIN, UNLOCK_ALL_P } from "../constants";
 
 import ButtonPrompt from "./ButtonPrompt";
 import { SendWSCommand, WSCommandType } from "../types";
@@ -39,7 +39,7 @@ class IconSelection extends Component<IconSelectionProps, IconSelectionState> {
 
     // Check if the locked icons prompt should be shown. (using cookies!)
     let hasUserUnlockedIcons = false;
-    if (Cookies.get(UNLOCK_ICONS_COOKIE_NAME)) {
+    if (UNLOCK_ALL_P || Cookies.get(UNLOCK_ICONS_COOKIE_NAME)) {
       hasUserUnlockedIcons = true;
     }
 
@@ -144,7 +144,7 @@ class IconSelection extends Component<IconSelectionProps, IconSelectionState> {
 
   onClickUnlock() {
     // Unlock the icons
-    this.setState({ unlockLockedIcons: true });
+    this.setState({ unlockLockedIcons: true, showLockedPrompt: false });
     // Set cookie signaling that this action has occurred, which gives the player a different
     // icon selection screen on the next load.
     Cookies.set(UNLOCK_ICONS_COOKIE_NAME, "true", { expires: 365 });
@@ -200,26 +200,35 @@ class IconSelection extends Component<IconSelectionProps, IconSelectionState> {
         return (
           <>
             <div id={"locked-icon-text-container"}>
-              <p>
-                (You unlocked {lockedPortraits.length} extra icons by sharing
-                Secret Hitler Online! Thank you! 💖)
-              </p>
-              <TwitterShareButton
-                url={CLIENT_ORIGIN}
-                options={{
-                  text: "I'm playing #SecretHitlerOnline at",
-                  size: "large",
-                }}
-                onLoad={this.addTwitterHooks}
-                placeholder={
-                  <p
-                    id={"icon-text"}
-                    style={{ color: "var(--textColorLiberal)" }}
-                  >
-                    Loading...
+              {UNLOCK_ALL_P ? (
+                <p>
+                  (All extra icons are unlocked by server configuration:
+                  UNLOCK_ALL_P=true.)
+                </p>
+              ) : (
+                <>
+                  <p>
+                    (You unlocked {lockedPortraits.length} extra icons by
+                    sharing Secret Hitler Online! Thank you! 💖)
                   </p>
-                }
-              />
+                  <TwitterShareButton
+                    url={CLIENT_ORIGIN}
+                    options={{
+                      text: "I'm playing #SecretHitlerOnline at",
+                      size: "large",
+                    }}
+                    onLoad={this.addTwitterHooks}
+                    placeholder={
+                      <p
+                        id={"icon-text"}
+                        style={{ color: "var(--textColorLiberal)" }}
+                      >
+                        Loading...
+                      </p>
+                    }
+                  />
+                </>
+              )}
             </div>
           </>
         );
