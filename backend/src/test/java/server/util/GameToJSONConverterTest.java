@@ -7,7 +7,9 @@ import org.json.JSONArray;
 import org.json.JSONObject;
 import org.junit.Test;
 
+import java.lang.reflect.Field;
 import java.util.ArrayList;
+import java.util.concurrent.ConcurrentSkipListSet;
 
 import static junit.framework.TestCase.assertEquals;
 import static junit.framework.TestCase.assertTrue;
@@ -80,5 +82,25 @@ public class GameToJSONConverterTest {
         assertEquals(false, historyConfig.getBoolean("showVoteBreakdown"));
         assertEquals(false, historyConfig.getBoolean("showPublicActions"));
         assertTrue(historyConfig.getString("roundsToShow").equals("LAST_1"));
+    }
+
+    @Test
+    public void testGamePacketIncludesCreatorAndBotControlledMetadata() throws Exception {
+        SecretHitlerGame game = new SecretHitlerGame(makePlayers(6));
+        Lobby lobby = new Lobby();
+
+        Field creatorField = Lobby.class.getDeclaredField("creatorUsername");
+        creatorField.setAccessible(true);
+        creatorField.set(lobby, "0");
+
+        Field botControlledField = Lobby.class.getDeclaredField("botControlledPlayers");
+        botControlledField.setAccessible(true);
+        ConcurrentSkipListSet<String> botControlled = new ConcurrentSkipListSet<>();
+        botControlled.add("2");
+        botControlledField.set(lobby, botControlled);
+
+        JSONObject out = GameToJSONConverter.convert(game, "0", Lobby.HistoryDisplayConfig.defaultConfig(), lobby);
+        assertEquals("0", out.getString("creator"));
+        assertTrue(out.getJSONObject("botControlled").getBoolean("2"));
     }
 }
