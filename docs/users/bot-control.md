@@ -13,6 +13,7 @@ During an active game, the original lobby creator can temporarily hand off a pla
   - the affected player themselves.
 - Dead players cannot be toggled.
 - Bot status resets when the game ends and returns to lobby.
+- Built-in `Bot N` players are always bots and cannot be toggled.
 
 ## Reclaiming control
 
@@ -25,4 +26,11 @@ On the first successful manual game action, bot mode is automatically disabled f
 
 ## Visibility
 
-Bot-controlled players are visible to everyone in the game UI and are marked with a `[BOT]` label.
+Bot players are shown with a small `BOT` badge on the player card.
+
+Bot controls are shown as small corner buttons on player cards in the top player row:
+
+- creator sees per-player toggle buttons (`BOT` / `HUM`) for eligible human players
+- a bot-controlled user can reclaim control from their own card
+
+If bot mode is enabled for a user while they have an action prompt open, the UI immediately closes stale prompts and shows a notice.

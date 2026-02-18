@@ -18,10 +18,17 @@ export enum LobbyState {
   FASCIST_VICTORY_ELECTION = "FASCIST_VICTORY_ELECTION", // Fascist Party won by successfully electing Hitler chancellor.
 }
 
+export enum UserType {
+  HUMAN = "HUMAN",
+  BOT = "BOT",
+  OBSERVER = "OBSERVER",
+}
+
 export type PlayerState = {
   id?: Role;
   alive: boolean;
   investigated: boolean;
+  type: UserType;
 };
 
 export const enum RoundHistoryResult {
@@ -98,6 +105,7 @@ export type GameState = {
   historyConfig: HistoryConfig;
   creator?: string;
   botControlled?: Record<string, boolean>;
+  selfType: UserType;
 
   usernames?: string[];
   /** Maps from usernames to icon keys */

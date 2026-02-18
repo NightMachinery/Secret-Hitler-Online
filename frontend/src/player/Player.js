@@ -161,6 +161,23 @@ class Player extends Component {
                 </>
         }
 
+        let cornerAction;
+        if (this.props.cornerActionLabel && this.props.onCornerAction) {
+            cornerAction = (
+                <button
+                    className={"player-corner-action"}
+                    onClick={(event) => {
+                        event.preventDefault();
+                        event.stopPropagation();
+                        this.props.onCornerAction();
+                    }}
+                    title={this.props.cornerActionTitle}
+                >
+                    {this.props.cornerActionLabel}
+                </button>
+            );
+        }
+
         return (
             <div id="player-container"
                 className={this.getHighlight() + this.getClassName() + this.getButtonClass()}
@@ -178,6 +195,12 @@ class Player extends Component {
                      src={portraits[this.props.icon]}
                      className={this.getClassName()}
                 />
+
+                {this.props.isBotControlled && (
+                    <div className={"player-bot-badge"}>BOT</div>
+                )}
+
+                {cornerAction}
 
                 <img id="player-busy-icon"
                      src={IconBusy}
@@ -230,6 +253,10 @@ Player.defaultProps = {
     showVote: false,
     vote: false,
     icon: "p_default",
+    isBotControlled: false,
+    cornerActionLabel: "",
+    cornerActionTitle: "",
+    onCornerAction: null,
 };
 
 Player.propTypes = {
@@ -246,6 +273,10 @@ Player.propTypes = {
     showVote: PropTypes.bool,
     vote: PropTypes.bool,
     icon: PropTypes.string,
+    isBotControlled: PropTypes.bool,
+    cornerActionLabel: PropTypes.string,
+    cornerActionTitle: PropTypes.string,
+    onCornerAction: PropTypes.func,
 };
 
 export default Player;

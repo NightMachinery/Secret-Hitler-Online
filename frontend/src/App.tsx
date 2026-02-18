@@ -94,10 +94,10 @@ import {
   LobbyState,
   Role,
   ServerRequestPayload,
+  UserType,
   WSCommand,
   WSCommandType,
 } from "./types";
-import { isVictoryState } from "./utils";
 
 const EVENT_BAR_FADE_OUT_DURATION = 500;
 const CUSTOM_ALERT_FADE_DURATION = 1000;
@@ -135,6 +135,7 @@ const DEFAULT_GAME_STATE: GameState = {
   creator: "",
   botControlled: {},
   icon: {},
+  selfType: UserType.OBSERVER,
 };
 
 const COOKIE_NAME = "name";
@@ -1252,14 +1253,18 @@ class App extends Component<{}, AppState> {
   onGameStateChanged(newState: GameState) {
     let oldState = this.state.gameState;
     let name = this.state.name;
-    const isObserver = !Object.prototype.hasOwnProperty.call(
-      newState.players,
-      name
-    );
+    const isObserver = newState.selfType === UserType.OBSERVER;
     const myPlayer = !isObserver ? newState.players[name] : undefined;
     let isPresident = this.state.name === newState.president;
     let isChancellor = this.state.name === newState.chancellor;
+    const wasSelfBotControlled = Boolean(oldState.botControlled?.[name]);
+    const isSelfBotControlled = Boolean(newState.botControlled?.[name]);
     let state = newState.state;
+
+    this.handleBotControlTransition(
+      wasSelfBotControlled,
+      isSelfBotControlled
+    );
 
     // If last state was setup, which indicates that the client is re-entering the game or starting the game, then
     // we set the card count, liberal/fascist policy count, and the tracker.
@@ -1369,7 +1374,7 @@ class App extends Component<{}, AppState> {
             "Waiting for president to nominate a chancellor."
           );
 
-          if (isPresident) {
+          if (isPresident && !isSelfBotControlled) {
             //Show the chancellor nomination window.
             this.queueAlert(
               SelectNominationPrompt(name, newState, this.sendWSCommand)
@@ -1385,6 +1390,7 @@ class App extends Component<{}, AppState> {
           // Check if the player is dead or has already voted-- if so, do not show the voting prompt.
           if (
             !isObserver &&
+            !isSelfBotControlled &&
             myPlayer![PLAYER_IS_ALIVE] &&
             !Object.keys(newState.userVotes).includes(name)
           ) {
@@ -1411,7 +1417,7 @@ class App extends Component<{}, AppState> {
             "Waiting for the president to choose a policy to discard."
           );
 
-          if (isPresident) {
+          if (isPresident && !isSelfBotControlled) {
             if (!newState.presidentChoices) {
               throw new Error("President choices not found.");
             }
@@ -1429,7 +1435,7 @@ class App extends Component<{}, AppState> {
           this.queueStatusMessage(
             "Waiting for the chancellor to choose a policy to enact."
           );
-          if (isChancellor) {
+          if (isChancellor && !isSelfBotControlled) {
             if (!newState.chancellorChoices) {
               throw new Error("Chancellor choices not found.");
             }
@@ -1454,7 +1460,7 @@ class App extends Component<{}, AppState> {
           this.queueStatusMessage(
             "Chancellor has motioned to veto the agenda. Waiting for the president to decide."
           );
-          if (isPresident) {
+          if (isPresident && !isSelfBotControlled) {
             this.queueAlert(
               <VetoPrompt
                 sendWSCommand={this.sendWSCommand}
@@ -1467,7 +1473,7 @@ class App extends Component<{}, AppState> {
 
         case STATE_PP_PEEK:
           this.queueEventUpdate("PRESIDENTIAL POWER");
-          if (isPresident) {
+          if (isPresident && !isSelfBotControlled) {
             if (!newState.peek) {
               throw new Error("Peek policies not found.");
             }
@@ -1487,7 +1493,7 @@ class App extends Component<{}, AppState> {
 
         case STATE_PP_ELECTION:
           this.queueEventUpdate("PRESIDENTIAL POWER");
-          if (isPresident) {
+          if (isPresident && !isSelfBotControlled) {
             this.queueAlert(
               SelectSpecialElectionPrompt(name, newState, this.sendWSCommand)
             );
@@ -1500,7 +1506,7 @@ class App extends Component<{}, AppState> {
 
         case STATE_PP_EXECUTION:
           this.queueEventUpdate("PRESIDENTIAL POWER");
-          if (isPresident) {
+          if (isPresident && !isSelfBotControlled) {
             this.queueAlert(
               SelectExecutionPrompt(name, newState, this.sendWSCommand),
               true
@@ -1514,7 +1520,7 @@ class App extends Component<{}, AppState> {
 
         case STATE_PP_INVESTIGATE:
           this.queueEventUpdate("PRESIDENTIAL POWER");
-          if (isPresident) {
+          if (isPresident && !isSelfBotControlled) {
             this.queueAlert(
               SelectInvestigationPrompt(name, newState, this.sendWSCommand)
             );
@@ -1761,92 +1767,32 @@ class App extends Component<{}, AppState> {
     return Boolean(this.state.gameState.botControlled?.[playerName]);
   }
 
+  handleBotControlTransition(
+    wasSelfBotControlled: boolean,
+    isSelfBotControlled: boolean
+  ) {
+    if (!wasSelfBotControlled && isSelfBotControlled) {
+      // Clear any stale in-flight prompt/actions. The server now owns actions via bot.
+      this.clearAnimationQueue();
+      this.okMessageListeners = [];
+      this.setState({
+        showAlert: false,
+        alertContent: <div />,
+        showVotes: false,
+        statusBarText: "",
+      });
+      this.showSnackBar("Bot control was enabled for you. Reclaim to act.");
+    } else if (wasSelfBotControlled && !isSelfBotControlled) {
+      this.showSnackBar("You reclaimed manual control.");
+    }
+  }
+
   onClickSetBotStatus(target: string, enabled: boolean) {
     this.sendWSCommand({
       command: WSCommandType.SET_BOT_STATUS,
       target,
       enabled,
     });
-  }
-
-  renderBotControlPanel() {
-    const gameState = this.state.gameState;
-    if (
-      gameState.state === LobbyState.SETUP ||
-      isVictoryState(gameState.state)
-    ) {
-      return null;
-    }
-
-    const isCreator = gameState.creator === this.state.name;
-    const myBotControlled = this.isPlayerBotControlled(this.state.name);
-    if (!isCreator && !myBotControlled) {
-      return null;
-    }
-
-    const alivePlayers = gameState.playerOrder.filter(
-      (playerName) => gameState.players[playerName]?.alive
-    );
-
-    return (
-      <div
-        style={{
-          marginTop: "15px",
-          marginBottom: "10px",
-          padding: "10px",
-          border: "1px solid var(--textColor)",
-          maxWidth: "560px",
-          marginLeft: "auto",
-          marginRight: "auto",
-          textAlign: "left",
-        }}
-      >
-        <strong>BOT CONTROL</strong>
-        {isCreator && (
-          <p style={{ marginTop: "8px", marginBottom: "8px" }}>
-            As creator, you can temporarily hand off any alive player to bot
-            control.
-          </p>
-        )}
-        {!isCreator && myBotControlled && (
-          <p style={{ marginTop: "8px", marginBottom: "8px" }}>
-            You are currently bot-controlled. Reclaim control when ready.
-          </p>
-        )}
-
-        {isCreator &&
-          alivePlayers.map((playerName) => {
-            const botControlled = this.isPlayerBotControlled(playerName);
-            return (
-              <div
-                key={`bot-control-${playerName}`}
-                style={{
-                  display: "flex",
-                  alignItems: "center",
-                  justifyContent: "space-between",
-                  gap: "8px",
-                  marginBottom: "6px",
-                }}
-              >
-                <span>{playerName}</span>
-                <button
-                  onClick={() =>
-                    this.onClickSetBotStatus(playerName, !botControlled)
-                  }
-                >
-                  {botControlled ? "SET HUMAN" : "SET BOT"}
-                </button>
-              </div>
-            );
-          })}
-
-        {!isCreator && myBotControlled && (
-          <button onClick={() => this.onClickSetBotStatus(this.state.name, false)}>
-            RECLAIM CONTROL
-          </button>
-        )}
-      </div>
-    );
   }
 
   //// Animation Handling
@@ -2047,6 +1993,9 @@ class App extends Component<{}, AppState> {
             showVotes={this.state.showVotes}
             showBusy={this.state.allAnimationsFinished} // Only show busy when there isn't an active animation.
             playerDisabledFilter={DISABLE_EXECUTED_PLAYERS}
+            onBotControlToggle={(playerName, enabled) =>
+              this.onClickSetBotStatus(playerName, enabled)
+            }
           />
         </div>
 
@@ -2077,7 +2026,8 @@ class App extends Component<{}, AppState> {
                   disabled={
                     this.state.gameState[PARAM_STATE] !==
                       STATE_POST_LEGISLATIVE ||
-                    this.state.name !== this.state.gameState[PARAM_PRESIDENT]
+                    this.state.name !== this.state.gameState[PARAM_PRESIDENT] ||
+                    this.isPlayerBotControlled(this.state.name)
                   }
                   onClick={() => {
                     this.sendWSCommand({ command: WSCommandType.END_TERM });
@@ -2108,8 +2058,6 @@ class App extends Component<{}, AppState> {
             />
           </div>
         </div>
-
-        {this.renderBotControlPanel()}
 
         {this.state.gameState.historyConfig.showHistory && (
           <HistoryPanel

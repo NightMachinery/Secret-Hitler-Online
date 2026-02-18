@@ -4,6 +4,7 @@ import {
   PLAYER_IDENTITY,
   PARAM_CHANCELLOR,
   PARAM_STATE,
+  STATE_SETUP,
   STATE_CHANCELLOR_NOMINATION,
   STATE_LEGISLATIVE_PRESIDENT,
   STATE_LEGISLATIVE_PRESIDENT_VETO,
@@ -16,7 +17,7 @@ import {
   STATE_CHANCELLOR_VOTING,
 } from "../constants";
 import "./PlayerDisplay.css";
-import { GameState, Role } from "../types";
+import { GameState, Role, UserType } from "../types";
 import { doesHitlerKnowFascists, isVictoryState } from "../utils";
 
 // <editor-fold desc="Player Filters">
@@ -110,6 +111,7 @@ type PlayerDisplayProps = {
   showRoles?: boolean;
   showBusy?: boolean;
   includeUser?: boolean;
+  onBotControlToggle?: (playerName: string, enabled: boolean) => void;
 };
 
 const defaultProps: Partial<PlayerDisplayProps> = {
@@ -290,12 +292,46 @@ export default function PlayerDisplay(
         const onClick = () => {
           onPlayerSelected(playerName);
         };
-        const isBotControlled = Boolean(
+        const isTemporaryBotControlled = Boolean(
           props.gameState.botControlled?.[playerName]
         );
-        const displayName = isBotControlled
-          ? `${playerName} [BOT]`
-          : playerName;
+        const isBuiltInBot = playerData.type === UserType.BOT;
+        const isBotControlled = isTemporaryBotControlled || isBuiltInBot;
+        const userIsCreator = props.gameState.creator === props.user;
+        const gameIsActive =
+          props.gameState.state !== STATE_SETUP &&
+          !isVictoryState(props.gameState.state);
+
+        const showBotToggleForCreator =
+          Boolean(props.onBotControlToggle) &&
+          userIsCreator &&
+          gameIsActive &&
+          playerData.alive &&
+          !isBuiltInBot;
+
+        const showSelfReclaimToggle =
+          Boolean(props.onBotControlToggle) &&
+          !userIsCreator &&
+          gameIsActive &&
+          playerName === props.user &&
+          playerData.alive &&
+          isTemporaryBotControlled;
+
+        let cornerActionLabel = "";
+        let cornerActionTitle = "";
+        let onCornerAction: (() => void) | undefined = undefined;
+        if (showBotToggleForCreator) {
+          cornerActionLabel = isTemporaryBotControlled ? "HUM" : "BOT";
+          cornerActionTitle = isTemporaryBotControlled
+            ? `Set ${playerName} to human control`
+            : `Set ${playerName} to bot control`;
+          onCornerAction = () =>
+            props.onBotControlToggle?.(playerName, !isTemporaryBotControlled);
+        } else if (showSelfReclaimToggle) {
+          cornerActionLabel = "ME";
+          cornerActionTitle = "Reclaim your controls";
+          onCornerAction = () => props.onBotControlToggle?.(playerName, false);
+        }
 
         // Skip votes for players that are not alive.
         const showVote = index + start < playerVotesVisible && playerData.alive;
@@ -314,13 +350,17 @@ export default function PlayerDisplay(
               highlight={playerName === props.user}
               disabled={disabled}
               disabledText={disabledText}
-              name={displayName}
+              name={playerName}
               useAsButton={props.useAsButtons}
               isSelected={isSelected}
               onClick={onClick}
               showVote={showVote}
               vote={props.gameState.userVotes[playerName]}
               icon={props.gameState.icon[playerName]}
+              isBotControlled={isBotControlled}
+              cornerActionLabel={cornerActionLabel}
+              cornerActionTitle={cornerActionTitle}
+              onCornerAction={onCornerAction}
             />
           </div>
         );
