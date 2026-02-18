@@ -26,11 +26,49 @@ else
 	PRODUCTION_P="n"
 fi
 
-if ! brew list --versions "$POSTGRES_FORMULA" >/dev/null 2>&1; then
-	echo "Installing $POSTGRES_FORMULA with Homebrew..."
-	brew install "$POSTGRES_FORMULA"
-fi
-PG_BIN_DIR="$(brew --prefix "$POSTGRES_FORMULA")/bin"
+resolve_pg_bin_dir () {
+	if command -v brew >/dev/null 2>&1; then
+		if ! brew list --versions "$POSTGRES_FORMULA" >/dev/null 2>&1; then
+			echo "Installing $POSTGRES_FORMULA with Homebrew..."
+			brew install "$POSTGRES_FORMULA"
+		fi
+		echo "$(brew --prefix "$POSTGRES_FORMULA")/bin"
+		return
+	fi
+
+	if command -v initdb >/dev/null 2>&1; then
+		local initdb_dir
+		initdb_dir="$(dirname -- "$(command -v initdb)")"
+		if [[ -x "$initdb_dir/pg_ctl" && -x "$initdb_dir/pg_isready" && -x "$initdb_dir/psql" ]]; then
+			echo "$initdb_dir"
+			return
+		fi
+	fi
+
+	local dir version major best_dir="" best_major=-1
+	for dir in /usr/lib/postgresql/*/bin(N); do
+		version="${dir:h:t}"
+		major="${version%%.*}"
+		if [[ "$major" == <-> ]] && (( major > best_major )) && [[ -x "$dir/initdb" ]]; then
+			best_major=$major
+			best_dir="$dir"
+		fi
+	done
+	if [[ -n "$best_dir" ]]; then
+		echo "$best_dir"
+		return
+	fi
+
+	cat >&2 <<'EOF'
+Could not find PostgreSQL server binaries (initdb, pg_ctl, pg_isready, psql).
+
+macOS: install Homebrew and rerun this script.
+Ubuntu: sudo apt-get update && sudo apt-get install -y postgresql postgresql-client
+EOF
+	exit 1
+}
+
+PG_BIN_DIR="$(resolve_pg_bin_dir)"
 
 mkdir -p "$POSTGRES_STATE_DIR" "$POSTGRES_DATA_DIR" "$RUNTIME_DIR"
 if [[ ! -f "$POSTGRES_PASSWORD_FILE" ]]; then
@@ -113,8 +151,23 @@ set -euo pipefail
 : "${DEBUG_MODE_ENABLED:?DEBUG_MODE_ENABLED is required}"
 
 cd "$BACKEND_DIR"
-export JAVA_HOME="$(/usr/libexec/java_home -v 17)"
-export PATH="$PG_BIN_DIR:$JAVA_HOME/bin:$PATH"
+if [[ -z "${JAVA_HOME:-}" ]]; then
+  if command -v /usr/libexec/java_home >/dev/null 2>&1; then
+    JAVA_HOME="$(/usr/libexec/java_home -v 17)"
+  elif command -v java >/dev/null 2>&1; then
+    java_bin="$(readlink -f "$(command -v java)" 2>/dev/null || command -v java)"
+    candidate_java_home="$(dirname "$(dirname "$java_bin")")"
+    if [[ -x "$candidate_java_home/bin/java" ]]; then
+      JAVA_HOME="$candidate_java_home"
+    fi
+  fi
+fi
+if [[ -n "${JAVA_HOME:-}" ]]; then
+  export JAVA_HOME
+  export PATH="$PG_BIN_DIR:$JAVA_HOME/bin:$PATH"
+else
+  export PATH="$PG_BIN_DIR:$PATH"
+fi
 export ALL_PROXY=http://127.0.0.1:1087 all_proxy=http://127.0.0.1:1087 http_proxy=http://127.0.0.1:1087 https_proxy=http://127.0.0.1:1087 HTTP_PROXY=http://127.0.0.1:1087 HTTPS_PROXY=http://127.0.0.1:1087
 export DATABASE_URL="$DATABASE_URL_LOCAL"
 export DISABLE_DATABASE_PERSISTENCE=false
@@ -139,8 +192,24 @@ tmuxnew () {
 
 run_frontend='
 cd "'"$FRONTEND_DIR"'"
-nvm-load
-nvm use '"$NODE_VERSION"'
+if command -v nvm-load >/dev/null 2>&1; then
+  nvm-load
+fi
+if ! command -v nvm >/dev/null 2>&1; then
+  export NVM_DIR="${NVM_DIR:-$HOME/.nvm}"
+  if [[ -s "$NVM_DIR/nvm.sh" ]]; then
+    . "$NVM_DIR/nvm.sh"
+  fi
+fi
+if command -v nvm >/dev/null 2>&1; then
+  nvm install '"$NODE_VERSION"' >/dev/null
+  nvm use '"$NODE_VERSION"'
+elif command -v node >/dev/null 2>&1; then
+  echo "nvm not found; using system node $(node -v)"
+else
+  echo "Node.js is required. Install nvm (recommended) or Node '"$NODE_VERSION"'." >&2
+  exit 1
+fi
 export ALL_PROXY=http://127.0.0.1:1087 all_proxy=http://127.0.0.1:1087 http_proxy=http://127.0.0.1:1087 https_proxy=http://127.0.0.1:1087 HTTP_PROXY=http://127.0.0.1:1087 HTTPS_PROXY=http://127.0.0.1:1087
 export UNLOCK_ALL_P='"$UNLOCK_ALL_P"' REACT_APP_UNLOCK_ALL_P='"$UNLOCK_ALL_P"'
 '"$FRONTEND_CMD"'
