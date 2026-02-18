@@ -755,6 +755,15 @@ public class Lobby implements Serializable {
                 }
             }
         }
+        if (game != null) {
+            for (Player player : game.getPlayerList()) {
+                if (generatedBotPlayers.contains(player.getUsername())) {
+                    player.setType(Player.Type.BOT);
+                } else {
+                    player.setType(Player.Type.HUMAN);
+                }
+            }
+        }
         if (historyDisplayConfig == null) {
             historyDisplayConfig = HistoryDisplayConfig.defaultConfig();
         }
@@ -862,6 +871,7 @@ public class Lobby implements Serializable {
 
         // Initialize all of the CpuPlayers
         for (String botName : generatedBotPlayers) {
+            game.getPlayer(botName).setType(Player.Type.BOT);
             CpuPlayer cpu = new CpuPlayer(botName);
             cpuControllersByName.put(botName, cpu);
             cpu.initialize(game);

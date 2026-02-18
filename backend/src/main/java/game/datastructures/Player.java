@@ -8,10 +8,17 @@ import java.io.Serializable;
  */
 public class Player implements Serializable {
 
+    public enum Type {
+        HUMAN,
+        BOT,
+        OBSERVER
+    }
+
     final private String username;
     private Identity id;
     private boolean isAlive;
     private boolean investigated;
+    private Type type;
 
     private boolean isCPU = false;
 
@@ -27,6 +34,7 @@ public class Player implements Serializable {
         id = Identity.UNASSIGNED;
         isAlive = true;
         investigated = false;
+        type = Type.HUMAN;
     }
 
     public String getUsername() {
@@ -58,6 +66,17 @@ public class Player implements Serializable {
 
     public boolean isCpu() {
       return isCPU;
+    }
+
+    public Type getType() {
+        return type == null ? Type.HUMAN : type;
+    }
+
+    public void setType(Type type) {
+        if (type == null) {
+            throw new IllegalArgumentException("Player type cannot be null.");
+        }
+        this.type = type;
     }
 
     public boolean isHitler() {

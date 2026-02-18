@@ -32,7 +32,8 @@ public class GameToJSONConverter {
      *         {@code username}.
      *         Each {@code username} key maps to an object with the properties
      *         {@code id} (String),
-     *         {@code alive} (boolean), and {@code investigated} (boolean), to
+     *         {@code alive} (boolean), {@code investigated} (boolean), and
+     *         {@code type} (String), to
      *         represent the player.
      *         The identity is either this.HITLER, this.FASCIST, or this.LIBERAL.
      *         Ex: {"player1":{"alive": true, "investigated": false, "id":
@@ -59,6 +60,7 @@ public class GameToJSONConverter {
      *         game state LEGISLATIVE_CHANCELLOR).
      *         - {@code veto-occurred}: Set to true if a veto has already taken
      *         place on this legislative session.
+     *         - {@code selfType}: HUMAN, BOT, or OBSERVER for the requesting user.
      */
     public static JSONObject convert(SecretHitlerGame game, String userName, Lobby.HistoryDisplayConfig historyConfig) {
         return convert(game, userName, historyConfig, null);
@@ -85,6 +87,14 @@ public class GameToJSONConverter {
         Identity role = userIsPlayer ? game.getPlayer(userName).getIdentity() : null;
         boolean showAllRoles = game.hasGameFinished() || role == Identity.FASCIST
                 || (role == Identity.HITLER && game.getPlayerList().size() <= 6);
+        Player.Type selfType;
+        if (!userIsPlayer) {
+            selfType = Player.Type.OBSERVER;
+        } else if (lobby != null && lobby.isGeneratedBotPlayer(userName)) {
+            selfType = Player.Type.BOT;
+        } else {
+            selfType = game.getPlayer(userName).getType();
+        }
 
         System.out.println("Show all roles: " + showAllRoles);
 
@@ -100,6 +110,11 @@ public class GameToJSONConverter {
                 playerObj.put("id", id);
             }
             playerObj.put("investigated", player.hasBeenInvestigated());
+            Player.Type playerType = player.getType();
+            if (lobby != null && lobby.isGeneratedBotPlayer(player.getUsername())) {
+                playerType = Player.Type.BOT;
+            }
+            playerObj.put("type", playerType.toString());
 
             playerData.put(player.getUsername(), playerObj);
             playerOrder[i] = player.getUsername();
@@ -130,6 +145,7 @@ public class GameToJSONConverter {
         out.put("history", convertHistory(game.getHistory(), effectiveHistoryConfig));
         out.put("historyConfig", convertHistoryConfig(effectiveHistoryConfig));
         out.put("creator", lobby == null || lobby.getCreatorUsername() == null ? "" : lobby.getCreatorUsername());
+        out.put("selfType", selfType.toString());
 
         JSONObject botControlled = new JSONObject();
         if (lobby != null) {
