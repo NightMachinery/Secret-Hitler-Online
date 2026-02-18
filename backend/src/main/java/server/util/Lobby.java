@@ -3,6 +3,7 @@ package server.util;
 import game.CpuPlayer;
 import game.GameState;
 import game.SecretHitlerGame;
+import game.datastructures.Player;
 import io.javalin.websocket.WsContext;
 import org.json.JSONObject;
 import org.slf4j.Logger;
@@ -93,8 +94,11 @@ public class Lobby implements Serializable {
     final private Set<String> usersInGame;
     final private ConcurrentHashMap<String, String> usernameToIcon;
     private ConcurrentHashMap<String, String> usernameToAuthToken;
+    private String creatorUsername;
+    private Set<String> botControlledPlayers;
+    private Set<String> generatedBotPlayers;
+    private ConcurrentHashMap<String, CpuPlayer> cpuControllersByName;
 
-    private Set<CpuPlayer> cpuPlayers;
     private HistoryDisplayConfig historyDisplayConfig;
 
     /* Used to reassign users to previously chosen images if they disconnect */
@@ -126,8 +130,11 @@ public class Lobby implements Serializable {
         usersInGame = new ConcurrentSkipListSet<>();
         usernameToIcon = new ConcurrentHashMap<>();
         usernameToAuthToken = new ConcurrentHashMap<>();
+        creatorUsername = null;
+        botControlledPlayers = new ConcurrentSkipListSet<>();
+        generatedBotPlayers = new ConcurrentSkipListSet<>();
+        cpuControllersByName = new ConcurrentHashMap<>();
         usernameToPreferredIcon = new ConcurrentHashMap<>();
-        cpuPlayers = new ConcurrentSkipListSet<>();
         this.historyDisplayConfig = historyDisplayConfig == null ? HistoryDisplayConfig.defaultConfig() : historyDisplayConfig;
         resetTimeout();
     }
@@ -178,6 +185,23 @@ public class Lobby implements Serializable {
             return game.getPlayerList().stream().map(player -> player.getUsername()).collect(Collectors.toList());
         } else {
             return new ArrayList<String>(userToUsername.values());
+        }
+    }
+
+    synchronized public String getCreatorUsername() {
+        return creatorUsername;
+    }
+
+    synchronized public boolean isCreator(String name) {
+        if (creatorUsername == null || name == null || name.isBlank()) {
+            return false;
+        }
+        return creatorUsername.equals(name);
+    }
+
+    private void initializeCreatorIfUnset(String name) {
+        if (creatorUsername == null && name != null && !name.isBlank()) {
+            creatorUsername = name;
         }
     }
 
@@ -278,6 +302,100 @@ public class Lobby implements Serializable {
     }
 
     /**
+     * Returns true if a temporary human->bot handoff is enabled for the player.
+     */
+    synchronized public boolean isBotControlled(String name) {
+        if (name == null || name.isBlank()) {
+            return false;
+        }
+        return botControlledPlayers.contains(name);
+    }
+
+    synchronized public boolean isGeneratedBotPlayer(String name) {
+        if (name == null || name.isBlank()) {
+            return false;
+        }
+        return generatedBotPlayers.contains(name);
+    }
+
+    synchronized public Set<String> getBotControlledPlayersSnapshot() {
+        return new HashSet<>(botControlledPlayers);
+    }
+
+    private boolean shouldCpuActForPlayer(String name) {
+        return generatedBotPlayers.contains(name) || botControlledPlayers.contains(name);
+    }
+
+    /**
+     * Enables temporary bot control for a currently alive human player.
+     */
+    synchronized public void enableTemporaryBotControl(String name) {
+        if (name == null || name.isBlank()) {
+            throw new IllegalArgumentException("Target player must be specified.");
+        }
+        if (!isInGame() || game == null) {
+            throw new IllegalStateException("Bot control can only be changed during an active game.");
+        }
+        if (!game.hasPlayer(name)) {
+            throw new IllegalArgumentException("Player '" + name + "' is not in the current game.");
+        }
+        if (!game.getPlayer(name).isAlive()) {
+            throw new IllegalArgumentException("Cannot enable bot control for dead player '" + name + "'.");
+        }
+        if (generatedBotPlayers.contains(name)) {
+            throw new IllegalArgumentException("Cannot modify built-in bot player '" + name + "'.");
+        }
+
+        CpuPlayer cpu = cpuControllersByName.get(name);
+        if (cpu == null) {
+            cpu = new CpuPlayer(name);
+            cpuControllersByName.put(name, cpu);
+            cpu.initialize(game);
+        } else {
+            game.getPlayer(name).markAsCpu();
+        }
+        botControlledPlayers.add(name);
+    }
+
+    /**
+     * Disables temporary bot control for a player.
+     */
+    synchronized public void disableTemporaryBotControl(String name) {
+        if (name == null || name.isBlank()) {
+            throw new IllegalArgumentException("Target player must be specified.");
+        }
+        if (generatedBotPlayers.contains(name)) {
+            throw new IllegalArgumentException("Cannot modify built-in bot player '" + name + "'.");
+        }
+        botControlledPlayers.remove(name);
+        cpuControllersByName.remove(name);
+        if (game != null && game.hasPlayer(name)) {
+            game.getPlayer(name).markAsHuman();
+        }
+    }
+
+    synchronized public void setTemporaryBotControl(String name, boolean enabled) {
+        if (enabled) {
+            enableTemporaryBotControl(name);
+        } else {
+            disableTemporaryBotControl(name);
+        }
+    }
+
+    synchronized public void clearBotControlForGame() {
+        if (game != null) {
+            for (String username : botControlledPlayers) {
+                if (game.hasPlayer(username)) {
+                    game.getPlayer(username).markAsHuman();
+                }
+            }
+        }
+        botControlledPlayers.clear();
+        generatedBotPlayers.clear();
+        cpuControllersByName.clear();
+    }
+
+    /**
      * Checks if a user can be added back to the lobby while a game is running.
      * 
      * @param name the name of the user to add.
@@ -339,6 +457,7 @@ public class Lobby implements Serializable {
                 if (canAddUserDuringGame(name)) { // This username is in the game but is not currently connected.
                     // allow the user to be connected.
                     userToUsername.put(context, name);
+                    initializeCreatorIfUnset(name);
 
                     usernameToIcon.put(name, DEFAULT_ICON); // load default icon
                     // Try setting the player's icon using their previous choice
@@ -349,6 +468,7 @@ public class Lobby implements Serializable {
                 } else if (canAddObserverDuringGame(name)) {
                     // Allow non-player spectators to join active games.
                     userToUsername.put(context, name);
+                    initializeCreatorIfUnset(name);
 
                     usernameToIcon.put(name, DEFAULT_ICON);
                     if (usernameToPreferredIcon.containsKey(name)) {
@@ -362,6 +482,7 @@ public class Lobby implements Serializable {
                 if (!isFull()) {
                     if (!hasUserWithName(name)) { // This is a new user with a new name, so we add them to the Lobby.
                         userToUsername.put(context, name);
+                        initializeCreatorIfUnset(name);
                         if (!activeUsernames.contains(name)) {
                             activeUsernames.add(name);
                         }
@@ -392,6 +513,7 @@ public class Lobby implements Serializable {
             throw new IllegalArgumentException("Duplicate websockets cannot be added to a lobby.");
         }
         userToUsername.put(context, name);
+        initializeCreatorIfUnset(name);
         if (!isInGame() && !activeUsernames.contains(name)) {
             activeUsernames.add(name);
         }
@@ -499,17 +621,23 @@ public class Lobby implements Serializable {
         // Check if the game ended.
         if (game != null && game.hasGameFinished()) {
             game = null;
-            cpuPlayers.clear();
+            clearBotControlForGame();
         }
 
         // Update all the CpuPlayers so they can act
         boolean didCpuUpdateState = false;
         if (isInGame()) {
             // Update all CPUs before allowing them to start acting
-            for (CpuPlayer cpu : cpuPlayers) {
+            List<CpuPlayer> activeCpuControllers = new ArrayList<>();
+            for (Entry<String, CpuPlayer> entry : cpuControllersByName.entrySet()) {
+                if (shouldCpuActForPlayer(entry.getKey())) {
+                    activeCpuControllers.add(entry.getValue());
+                }
+            }
+            for (CpuPlayer cpu : activeCpuControllers) {
                 cpu.update(game);
             }
-            for (CpuPlayer cpu : cpuPlayers) {
+            for (CpuPlayer cpu : activeCpuControllers) {
                 if (game.getState() == GameState.CHANCELLOR_VOTING) {
                     // We're in a voting step, so it doesn't matter if the CPU is
                     // acting unless the gamestate changes.
@@ -569,7 +697,7 @@ public class Lobby implements Serializable {
     synchronized public void updateUser(WsContext ctx, String userName) {
         JSONObject message;
         if (isInGame()) {
-            message = GameToJSONConverter.convert(game, userName, getHistoryDisplayConfig()); // sends the game state
+            message = GameToJSONConverter.convert(game, userName, getHistoryDisplayConfig(), this); // sends the game state
             message.put(SecretHitlerServer.PARAM_PACKET_TYPE, SecretHitlerServer.PACKET_GAME_STATE);
         } else {
             message = new JSONObject();
@@ -601,6 +729,31 @@ public class Lobby implements Serializable {
         cpuTickTimer = new Timer();
         if (usernameToAuthToken == null) {
             usernameToAuthToken = new ConcurrentHashMap<>();
+        }
+        if (botControlledPlayers == null) {
+            botControlledPlayers = new ConcurrentSkipListSet<>();
+        }
+        if (generatedBotPlayers == null) {
+            generatedBotPlayers = new ConcurrentSkipListSet<>();
+        }
+        if (cpuControllersByName == null) {
+            cpuControllersByName = new ConcurrentHashMap<>();
+        }
+        if (game != null && cpuControllersByName.isEmpty()) {
+            for (Player player : game.getPlayerList()) {
+                if (!player.isCpu()) {
+                    continue;
+                }
+                String username = player.getUsername();
+                CpuPlayer cpu = new CpuPlayer(username);
+                cpuControllersByName.put(username, cpu);
+                cpu.initialize(game);
+                if (username.startsWith("Bot ")) {
+                    generatedBotPlayers.add(username);
+                } else {
+                    botControlledPlayers.add(username);
+                }
+            }
         }
         if (historyDisplayConfig == null) {
             historyDisplayConfig = HistoryDisplayConfig.defaultConfig();
@@ -682,10 +835,10 @@ public class Lobby implements Serializable {
 
         usersInGame.clear();
         usersInGame.addAll(userToUsername.values());
+        clearBotControlForGame();
 
         // Generate CpuPlayers if the lobby size has not been met
         List<String> cpuNames = new ArrayList<>();
-        cpuPlayers.clear();
         if (usersInGame.size() < SecretHitlerGame.MIN_PLAYERS) {
             int numCpuPlayersToGenerate = SecretHitlerGame.MIN_PLAYERS - usersInGame.size();
             int i = 1;
@@ -693,7 +846,7 @@ public class Lobby implements Serializable {
                 String botName = "Bot " + i;
                 if (!userToUsername.containsValue(botName)) {
                     cpuNames.add(botName);
-                    cpuPlayers.add(new CpuPlayer(botName));
+                    generatedBotPlayers.add(botName);
                     numCpuPlayersToGenerate--;
                 }
                 i++;
@@ -708,7 +861,9 @@ public class Lobby implements Serializable {
         game = new SecretHitlerGame(playerNames);
 
         // Initialize all of the CpuPlayers
-        for (CpuPlayer cpu : cpuPlayers) {
+        for (String botName : generatedBotPlayers) {
+            CpuPlayer cpu = new CpuPlayer(botName);
+            cpuControllersByName.put(botName, cpu);
             cpu.initialize(game);
         }
     }

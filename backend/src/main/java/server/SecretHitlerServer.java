@@ -40,6 +40,7 @@ public class SecretHitlerServer {
     public static final String PARAM_VETO = "veto";
     public static final String PARAM_CHOICE = "choice"; // the index of the chosen policy.
     public static final String PARAM_ICON = "icon";
+    public static final String PARAM_ENABLED = "enabled";
     public static final String PARAM_HISTORY_SHOW = "history-show";
     public static final String PARAM_HISTORY_SHOW_PRESIDENTIAL_ACTIONS = "history-show-presidential-actions";
     public static final String PARAM_HISTORY_SHOW_VOTE_BREAKDOWN = "history-show-vote-breakdown";
@@ -77,6 +78,7 @@ public class SecretHitlerServer {
     public static final String COMMAND_REGISTER_PEEK = "register-peek";
 
     public static final String COMMAND_END_TERM = "end-term";
+    public static final String COMMAND_SET_BOT_STATUS = "set-bot-status";
 
     private static final String CODE_CHARACTERS = "ABCDEFGHIJKLMNOPQRSTWXYZ"; // u,v characters can look ambiguous
     private static final int CODE_LENGTH = 4;
@@ -724,7 +726,8 @@ public class SecretHitlerServer {
             boolean updateUsers = true; // this flag can be disabled by certain commands.
             boolean sendOKMessage = true;
             try {
-                switch (message.getString(PARAM_COMMAND)) {
+                String command = message.getString(PARAM_COMMAND);
+                switch (command) {
                     case COMMAND_PING:
                         sendOKMessage = false;
                         updateUsers = false;
@@ -814,9 +817,44 @@ public class SecretHitlerServer {
                         lobby.trySetUserIcon(iconId, ctx);
                         break;
 
+                    case COMMAND_SET_BOT_STATUS:
+                        if (!lobby.isInGame()) {
+                            throw new RuntimeException("Bot control can only be changed during an active game.");
+                        }
+
+                        String target = message.getString(PARAM_TARGET);
+                        boolean enabled = message.getBoolean(PARAM_ENABLED);
+                        if (target == null || target.isBlank()) {
+                            throw new RuntimeException("Target player must be specified.");
+                        }
+                        if (!lobby.game().hasPlayer(target)) {
+                            throw new RuntimeException("Player '" + target + "' is not in the current game.");
+                        }
+                        if (!lobby.game().getPlayer(target).isAlive()) {
+                            throw new RuntimeException("Cannot modify bot control for dead player '" + target + "'.");
+                        }
+                        if (lobby.isGeneratedBotPlayer(target)) {
+                            throw new RuntimeException("Cannot modify built-in bot player '" + target + "'.");
+                        }
+
+                        boolean actorIsCreator = lobby.isCreator(name);
+                        if (enabled) {
+                            if (!actorIsCreator) {
+                                throw new RuntimeException("Only the creator can enable bot control for players.");
+                            }
+                        } else if (!actorIsCreator && !name.equals(target)) {
+                            throw new RuntimeException("Only the creator or the target player can disable bot control.");
+                        }
+                        lobby.setTemporaryBotControl(target, enabled);
+                        break;
+
                     default: // This is an invalid command.
                         throw new RuntimeException("unrecognized command " + message.get(PARAM_COMMAND));
                 } // End switch
+
+                if (lobby.isBotControlled(name) && shouldAutoDisableBotControl(command)) {
+                    lobby.disableTemporaryBotControl(name);
+                }
 
                 if (sendOKMessage) {
                     logger.debug(logMessage + " SUCCESS");
@@ -839,6 +877,13 @@ public class SecretHitlerServer {
             }
         }
         hasLobbyChanged = true;
+    }
+
+    private static boolean shouldAutoDisableBotControl(String command) {
+        return !COMMAND_PING.equals(command)
+                && !COMMAND_GET_STATE.equals(command)
+                && !COMMAND_SELECT_ICON.equals(command)
+                && !COMMAND_SET_BOT_STATUS.equals(command);
     }
 
     // TODO: This is bad. This is bad code practice. Exceptions should not be

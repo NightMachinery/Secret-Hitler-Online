@@ -52,6 +52,10 @@ public class Player implements Serializable {
       isCPU = true;
     }
 
+    public void markAsHuman() {
+      isCPU = false;
+    }
+
     public boolean isCpu() {
       return isCPU;
     }

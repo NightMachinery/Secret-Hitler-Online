@@ -61,6 +61,11 @@ public class GameToJSONConverter {
      *         place on this legislative session.
      */
     public static JSONObject convert(SecretHitlerGame game, String userName, Lobby.HistoryDisplayConfig historyConfig) {
+        return convert(game, userName, historyConfig, null);
+    }
+
+    public static JSONObject convert(SecretHitlerGame game, String userName, Lobby.HistoryDisplayConfig historyConfig,
+            Lobby lobby) {
         if (game == null) {
             throw new NullPointerException();
         }
@@ -124,6 +129,17 @@ public class GameToJSONConverter {
         out.put("vetoOccurred", game.didVetoOccurThisTurn());
         out.put("history", convertHistory(game.getHistory(), effectiveHistoryConfig));
         out.put("historyConfig", convertHistoryConfig(effectiveHistoryConfig));
+        out.put("creator", lobby == null || lobby.getCreatorUsername() == null ? "" : lobby.getCreatorUsername());
+
+        JSONObject botControlled = new JSONObject();
+        if (lobby != null) {
+            for (String username : lobby.getBotControlledPlayersSnapshot()) {
+                if (game.hasPlayer(username)) {
+                    botControlled.put(username, true);
+                }
+            }
+        }
+        out.put("botControlled", botControlled);
 
         if (game.getState() == GameState.LEGISLATIVE_PRESIDENT) {
             out.put("presidentChoices", convertPolicyListToStringArray(game.getPresidentLegislativeChoices()));
