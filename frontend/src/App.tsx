@@ -136,6 +136,30 @@ const DEFAULT_GAME_STATE: GameState = {
 
 const COOKIE_NAME = "name";
 const COOKIE_LOBBY = "lobby";
+const AUTH_TOKEN_STORAGE_KEY = "sho_auth_token_v1";
+
+const generateAuthToken = (): string => {
+  if (typeof window !== "undefined") {
+    const cryptoObj = window.crypto;
+    const randomUUID = (cryptoObj as any)?.randomUUID;
+    if (typeof randomUUID === "function") {
+      return randomUUID.call(cryptoObj);
+    }
+    if (cryptoObj && cryptoObj.getRandomValues) {
+      const bytes = new Uint8Array(16);
+      cryptoObj.getRandomValues(bytes);
+      return Array.from(bytes)
+        .map((value) => value.toString(16).padStart(2, "0"))
+        .join("");
+    }
+  }
+  return (
+    Date.now().toString(36) +
+    "-" +
+    Math.random().toString(36).slice(2) +
+    Math.random().toString(36).slice(2)
+  );
+};
 
 if (DEBUG) {
   console.warn("Running in debug mode.");
@@ -224,6 +248,28 @@ class App extends Component<{}, AppState> {
   okMessageListeners: (() => void)[] = [];
   allAnimationsFinished: boolean = true;
   gameOver: boolean = false;
+  authToken: string = "";
+
+  getOrCreateAuthToken(): string {
+    if (this.authToken) {
+      return this.authToken;
+    }
+    try {
+      const storedToken = localStorage.getItem(AUTH_TOKEN_STORAGE_KEY);
+      if (storedToken && storedToken.trim() !== "") {
+        this.authToken = storedToken;
+        return this.authToken;
+      }
+      const newToken = generateAuthToken();
+      localStorage.setItem(AUTH_TOKEN_STORAGE_KEY, newToken);
+      this.authToken = newToken;
+      return this.authToken;
+    } catch {
+      // Fallback for environments where localStorage is unavailable.
+      this.authToken = generateAuthToken();
+      return this.authToken;
+    }
+  }
 
   updateBrowserLobbyURL(lobby: string) {
     if (typeof window === "undefined") {
@@ -255,6 +301,7 @@ class App extends Component<{}, AppState> {
       joinLobby: lobby || "",
       createLobbyName: name || "",
     };
+    this.getOrCreateAuthToken();
 
     // The website uses Google Analytics!
     ReactGA.initialize("UA-166327773-1");
@@ -316,13 +363,16 @@ class App extends Component<{}, AppState> {
       category: "Login Attempt",
       action: "User attempted to provide login credentials to the server.",
     });
+    const token = this.getOrCreateAuthToken();
     return await fetch(
       SERVER_ADDRESS_HTTP +
         CHECK_LOGIN +
         "?name=" +
         encodeURI(name) +
         "&lobby=" +
-        encodeURI(lobby)
+        encodeURI(lobby) +
+        "&token=" +
+        encodeURIComponent(token)
     );
   }
 
@@ -339,6 +389,7 @@ class App extends Component<{}, AppState> {
       console.log("Opening connection with lobby: " + lobby);
       console.log("Failed connections: " + this.failedConnections);
     }
+    const token = this.getOrCreateAuthToken();
     let url =
       WEBSOCKET_HEADER +
       SERVER_ADDRESS +
@@ -346,7 +397,9 @@ class App extends Component<{}, AppState> {
       "?name=" +
       encodeURIComponent(name) +
       "&lobby=" +
-      encodeURIComponent(lobby);
+      encodeURIComponent(lobby) +
+      "&token=" +
+      encodeURIComponent(token);
     if (DEBUG) {
       console.trace("TryOpenWebsocket URL: " + url);
     }
@@ -655,13 +708,11 @@ class App extends Component<{}, AppState> {
           } else if (response.status === 403) {
             this.setState({
               joinError:
-                "There is already a user with the name '" +
-                this.state.joinName +
-                "' in the lobby.",
+                "This name is already in use or protected in this lobby.",
             });
             ReactGA.event({
               category: "Login Failed",
-              action: "Duplicate name - User unable to connect.",
+              action: "Name conflict/token mismatch - User unable to connect.",
             });
           } else if (response.status === 488) {
             this.setState({ joinError: "The lobby is currently in a game." });

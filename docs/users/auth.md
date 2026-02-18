@@ -4,47 +4,54 @@
 
 Refreshing closes that player's WebSocket connection.
 
-On the backend, the disconnected socket is removed immediately, but the username is only removed from active users after a short delay (`PLAYER_TIMEOUT_IN_SEC = 3`). This delay gives the player a brief window to reconnect without being treated as fully gone.
+Each browser stores a persistent auth token in localStorage. During login and
+websocket connect, the client sends:
 
-During an active game:
+- `name`
+- `lobby`
+- `token`
 
-- players who were in the game can rejoin with the same name
-- new users can also join as observers (spectators), as long as they use a name not currently in use by a connected user
+If the token matches the name already bound in that lobby, the server force-replaces
+the old socket(s) for that name with the new socket.
 
 So in practice:
 
-- refresh => socket drops
-- player can rejoin with same `name` + `lobby`
-- observer can join with a new `name` + `lobby`
-- server restores/replays the current running game state
+- refresh => old socket closes
+- reconnect with same `name` + `lobby` + `token`
+- server closes stale connection(s) for that identity
+- new socket is accepted immediately
 
-## How are users authenticated?
+## How users are authenticated
 
-There is no account/password/token auth layer.
+This app uses **lobby-local token binding**, not account/password auth.
 
-Identity is lobby-local and name-based:
+1. Client gets/creates `sho_auth_token_v1` in `localStorage`.
+2. Client calls `GET /check-login?name=...&lobby=...&token=...`.
+3. Client opens WebSocket with `?name=...&lobby=...&token=...`.
+4. Server binds `(lobby, name)` to the first successful token it sees.
+5. Future joins for that same `(lobby, name)` must present the same token.
 
-1. Client calls `GET /check-login?name=...&lobby=...`
-2. If accepted, client opens WebSocket with `?name=...&lobby=...`
-3. Every WS command includes `name` and `lobby`
-4. Server verifies that this WebSocket context is registered as that user in that lobby
-
-This is session-like behavior tied to the current WebSocket connection, not persistent account authentication.
+If a different token tries to use a protected name, login is rejected.
 
 ## Cookies, local storage, or session storage?
 
+### localStorage: yes
+
+- `sho_auth_token_v1` — persistent auth token used for name ownership and force-rejoin.
+
 ### Cookies: yes
 
-The frontend uses cookies for convenience/UI state:
+The frontend also uses cookies for convenience/UI state:
 
 - `name` — remember last entered username
 - `lobby` — remember last lobby code
 - `_unlock_icons` — cosmetic icon unlock state
 
-### localStorage/sessionStorage: no
+### sessionStorage: no
 
-No `localStorage` or `sessionStorage` usage is used for login/auth state.
+No `sessionStorage` is used for login/auth state.
 
 ### Are cookies used for backend auth?
 
-No. Backend auth/identity checks are based on WebSocket connection + `name` + `lobby` rules, not cookie validation.
+No. Backend auth/identity checks are token-based (`token` query param) plus
+WebSocket context validation.
