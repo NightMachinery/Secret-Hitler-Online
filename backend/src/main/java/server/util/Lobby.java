@@ -26,6 +26,7 @@ import java.util.stream.Collectors;
  * A user is defined as an active websocket connection.
  */
 public class Lobby implements Serializable {
+    private static final long serialVersionUID = -1555206041648247736L;
 
     public static class HistoryDisplayConfig implements Serializable {
         public enum RoundsToShow {
@@ -91,6 +92,7 @@ public class Lobby implements Serializable {
 
     final private Set<String> usersInGame;
     final private ConcurrentHashMap<String, String> usernameToIcon;
+    private ConcurrentHashMap<String, String> usernameToAuthToken;
 
     private Set<CpuPlayer> cpuPlayers;
     private HistoryDisplayConfig historyDisplayConfig;
@@ -123,6 +125,7 @@ public class Lobby implements Serializable {
         activeUsernames = new ConcurrentLinkedQueue<>();
         usersInGame = new ConcurrentSkipListSet<>();
         usernameToIcon = new ConcurrentHashMap<>();
+        usernameToAuthToken = new ConcurrentHashMap<>();
         usernameToPreferredIcon = new ConcurrentHashMap<>();
         cpuPlayers = new ConcurrentSkipListSet<>();
         this.historyDisplayConfig = historyDisplayConfig == null ? HistoryDisplayConfig.defaultConfig() : historyDisplayConfig;
@@ -211,6 +214,67 @@ public class Lobby implements Serializable {
      */
     synchronized public boolean hasUserWithName(String name) {
         return userToUsername.values().contains(name);
+    }
+
+    /**
+     * Returns true if the lobby has seen a user with the given name before.
+     */
+    synchronized public boolean hasKnownName(String name) {
+        return usernameToAuthToken.containsKey(name);
+    }
+
+    /**
+     * Returns true if the supplied token matches the stored token for a name.
+     */
+    synchronized public boolean hasMatchingAuthToken(String name, String token) {
+        if (name == null || token == null || token.isBlank()) {
+            return false;
+        }
+        String expectedToken = usernameToAuthToken.get(name);
+        return expectedToken != null && expectedToken.equals(token);
+    }
+
+    /**
+     * Returns true iff the supplied token is permitted to use the given name.
+     * If the name has no stored token yet, it is considered available.
+     */
+    synchronized public boolean canUseNameWithToken(String name, String token) {
+        if (name == null || name.isBlank() || token == null || token.isBlank()) {
+            return false;
+        }
+        String expectedToken = usernameToAuthToken.get(name);
+        return expectedToken == null || expectedToken.equals(token);
+    }
+
+    /**
+     * Binds a token to a username if no token is currently stored.
+     */
+    synchronized public void bindAuthTokenIfAbsent(String name, String token) {
+        if (name == null || name.isBlank() || token == null || token.isBlank()) {
+            throw new IllegalArgumentException("Name and token must be non-empty.");
+        }
+        usernameToAuthToken.putIfAbsent(name, token);
+    }
+
+    /**
+     * Returns whether the provided name belongs to a player from the currently
+     * running game.
+     */
+    synchronized public boolean wasUserInCurrentGame(String name) {
+        return usersInGame.contains(name);
+    }
+
+    /**
+     * Returns all currently connected sockets for the provided username.
+     */
+    synchronized public List<WsContext> getConnectionsForName(String name) {
+        List<WsContext> out = new ArrayList<>();
+        for (Entry<WsContext, String> entry : userToUsername.entrySet()) {
+            if (entry.getValue().equals(name)) {
+                out.add(entry.getKey());
+            }
+        }
+        return out;
     }
 
     /**
@@ -316,6 +380,34 @@ public class Lobby implements Serializable {
                 }
             }
         }
+    }
+
+    /**
+     * Adds a connected websocket context for a user whose identity has already
+     * been verified by token ownership.
+     * This is used for force-rejoin/replace flows.
+     */
+    synchronized public void addOrReplaceConnectedUser(WsContext context, String name) {
+        if (userToUsername.containsKey(context)) {
+            throw new IllegalArgumentException("Duplicate websockets cannot be added to a lobby.");
+        }
+        userToUsername.put(context, name);
+        if (!isInGame() && !activeUsernames.contains(name)) {
+            activeUsernames.add(name);
+        }
+        usernameToIcon.put(name, DEFAULT_ICON);
+        if (usernameToPreferredIcon.containsKey(name)) {
+            String iconID = usernameToPreferredIcon.get(name);
+            trySetUserIcon(iconID, context);
+        }
+    }
+
+    /**
+     * Removes a websocket context immediately without scheduling delayed user
+     * removal.
+     */
+    synchronized public void removeUserImmediately(WsContext context) {
+        userToUsername.remove(context);
     }
 
     /**
@@ -507,6 +599,9 @@ public class Lobby implements Serializable {
         activeUsernames = new ConcurrentLinkedQueue<>();
         userTimeoutTimer = new Timer();
         cpuTickTimer = new Timer();
+        if (usernameToAuthToken == null) {
+            usernameToAuthToken = new ConcurrentHashMap<>();
+        }
         if (historyDisplayConfig == null) {
             historyDisplayConfig = HistoryDisplayConfig.defaultConfig();
         }

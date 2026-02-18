@@ -33,6 +33,7 @@ public class SecretHitlerServer {
     // Passed to server
     public static final String PARAM_LOBBY = "lobby";
     public static final String PARAM_NAME = "name";
+    public static final String PARAM_TOKEN = "token";
     public static final String PARAM_COMMAND = "command";
     public static final String PARAM_TARGET = "target";
     public static final String PARAM_VOTE = "vote";
@@ -438,9 +439,11 @@ public class SecretHitlerServer {
     public static void checkLogin(Context ctx) {
         String lobbyCode = ctx.queryParam(PARAM_LOBBY);
         String name = ctx.queryParam(PARAM_NAME);
-        if (lobbyCode == null || name == null || name.isEmpty() || name.isBlank()) {
+        String token = ctx.queryParam(PARAM_TOKEN);
+        if (lobbyCode == null || name == null || name.isEmpty() || name.isBlank()
+                || token == null || token.isBlank()) {
             ctx.status(400);
-            ctx.result("Lobby and name must be specified.");
+            ctx.result("Lobby, name, and token must be specified.");
             return;
         }
 
@@ -450,11 +453,17 @@ public class SecretHitlerServer {
         } else { // the lobby exists
             Lobby lobby = codeToLobby.get(lobbyCode);
 
+            if (!lobby.canUseNameWithToken(name, token)) {
+                ctx.status(403);
+                ctx.result("This name is protected by another session token.");
+                return;
+            }
+
             if (lobby.isInGame()) {
                 if (lobby.hasUserWithName(name)) {
-                    ctx.status(403);
-                    ctx.result("There is already a user with the name '" + name + "' in the lobby.");
-                } else if (lobby.canAddUserDuringGame(name)) {
+                    ctx.status(200);
+                    ctx.result("Login request valid (replacing active session).");
+                } else if (lobby.wasUserInCurrentGame(name)) {
                     ctx.status(200);
                     ctx.result("Login request valid (re-joining an existing game).");
                 } else if (lobby.canAddObserverDuringGame(name)) {
@@ -464,12 +473,12 @@ public class SecretHitlerServer {
                     ctx.status(488);
                     ctx.result("The lobby is currently in a game.");
                 }
+            } else if (lobby.hasUserWithName(name)) {
+                ctx.status(200);
+                ctx.result("Login request valid (replacing active session).");
             } else if (lobby.isFull()) {
                 ctx.status(489);
                 ctx.result("The lobby is currently full.");
-            } else if (lobby.hasUserWithName(name)) { // repeat username.
-                ctx.status(403);
-                ctx.result("There is already a user with the name '" + name + "' in the lobby.");
             } else { // unique username found. Return OK.
                 ctx.status(200);
                 ctx.result("Login request valid.");
@@ -572,20 +581,25 @@ public class SecretHitlerServer {
      *          Otherwise, connects the user to the lobby.
      */
     private static void onWebsocketConnect(WsConnectContext ctx) {
-        if (ctx.queryParam(PARAM_LOBBY) == null || ctx.queryParam(PARAM_NAME) == null) {
+        if (ctx.queryParam(PARAM_LOBBY) == null || ctx.queryParam(PARAM_NAME) == null
+                || ctx.queryParam(PARAM_TOKEN) == null) {
             logger.debug("A websocket request was missing a parameter and was disconnected.");
             ctx.session.close(StatusCode.PROTOCOL,
-                    "Must have the '" + PARAM_LOBBY + "' and '" + PARAM_NAME + "' parameters.");
+                    "Must have the '" + PARAM_LOBBY + "', '" + PARAM_NAME + "', and '" + PARAM_TOKEN + "' parameters.");
             return;
         }
 
         // Sanitize user input
         String code = ctx.queryParam(PARAM_LOBBY);
         String name = ctx.queryParam(PARAM_NAME);
+        String token = ctx.queryParam(PARAM_TOKEN);
 
-        if (code == null || name == null || name.isEmpty() || name.isBlank()) {
-            logger.debug("FAILED (Lobby or name is empty/null)");
-            ctx.session.close(StatusCode.PROTOCOL, "Lobby and name must be specified.");
+        if (code == null || name == null || token == null
+                || name.isEmpty() || name.isBlank()
+                || token.isBlank()) {
+            logger.debug("FAILED (Lobby, name, or token is empty/null)");
+            ctx.session.close(StatusCode.PROTOCOL, "Lobby, name, and token must be specified.");
+            return;
         }
 
         logger.debug("Attempting to connect user '" + name + "' to lobby '" + code + "': ");
@@ -596,32 +610,60 @@ public class SecretHitlerServer {
         }
 
         Lobby lobby = codeToLobby.get(code);
-        if (lobby.isInGame()) {
-            if (lobby.hasUserWithName(name)) { // duplicate names not allowed
-                logger.debug("FAILED (Repeat username)");
-                ctx.session.close(StatusCode.PROTOCOL, "A user with the name " + name + " is already in the lobby.");
-                return;
-            } else if (!lobby.canAddUserDuringGame(name) && !lobby.canAddObserverDuringGame(name)) {
-                logger.debug("FAILED (Lobby in game)");
-                ctx.session.close(StatusCode.PROTOCOL, "The lobby " + code + " is currently in a game.");
+        synchronized (lobby) {
+            if (!lobby.canUseNameWithToken(name, token)) {
+                logger.debug("FAILED (Invalid token for username)");
+                ctx.session.close(StatusCode.PROTOCOL, "This name is protected by another session token.");
                 return;
             }
-        } else {
-            if (lobby.hasUserWithName(name)) { // duplicate names not allowed
-                logger.debug("FAILED (Repeat username)");
-                ctx.session.close(StatusCode.PROTOCOL, "A user with the name " + name + " is already in the lobby.");
-                return;
-            } else if (lobby.isFull()) {
-                logger.debug("FAILED (Lobby is full)");
-                ctx.session.close(StatusCode.PROTOCOL, "The lobby " + code + " is currently full.");
-                return;
+
+            boolean replacingActiveConnection = lobby.hasUserWithName(name);
+            boolean forceAttachUsingToken = replacingActiveConnection;
+
+            if (lobby.isInGame()) {
+                boolean tokenVerifiedGamePlayer = lobby.wasUserInCurrentGame(name)
+                        && (lobby.hasMatchingAuthToken(name, token) || !lobby.hasKnownName(name));
+
+                if (!replacingActiveConnection
+                        && !tokenVerifiedGamePlayer
+                        && !lobby.canAddObserverDuringGame(name)) {
+                    logger.debug("FAILED (Lobby in game)");
+                    ctx.session.close(StatusCode.PROTOCOL, "The lobby " + code + " is currently in a game.");
+                    return;
+                }
+
+                // If this is a known game player with a valid token, allow immediate
+                // re-attach even before timeout-based cleanup completes.
+                if (!replacingActiveConnection && tokenVerifiedGamePlayer && !lobby.canAddUserDuringGame(name)) {
+                    forceAttachUsingToken = true;
+                }
+            } else {
+                if (!replacingActiveConnection && lobby.isFull()) {
+                    logger.debug("FAILED (Lobby is full)");
+                    ctx.session.close(StatusCode.PROTOCOL, "The lobby " + code + " is currently full.");
+                    return;
+                }
             }
+
+            if (replacingActiveConnection) {
+                for (WsContext priorCtx : lobby.getConnectionsForName(name)) {
+                    priorCtx.session.close(StatusCode.NORMAL, "Replaced by a newer session.");
+                    lobby.removeUserImmediately(priorCtx);
+                    userToLobby.remove(priorCtx);
+                }
+            }
+
+            lobby.bindAuthTokenIfAbsent(name, token);
+            if (forceAttachUsingToken) {
+                lobby.addOrReplaceConnectedUser(ctx, name);
+            } else {
+                lobby.addUser(ctx, name);
+            }
+            logger.debug("SUCCESS");
+            userToLobby.put(ctx, lobby); // keep track of which lobby this connection is in.
+            lobby.updateAllUsers();
+            hasLobbyChanged = true;
         }
-        logger.debug("SUCCESS");
-        lobby.addUser(ctx, name);
-        userToLobby.put(ctx, lobby); // keep track of which lobby this connection is in.
-        lobby.updateAllUsers();
-        hasLobbyChanged = true;
     }
 
     /**
