@@ -228,6 +228,20 @@ public class Lobby implements Serializable {
     }
 
     /**
+     * Checks if a user can be added as an observer while a game is running.
+     *
+     * @param name the name of the user to add.
+     * @return true if the user can be added as an observer.
+     */
+    synchronized public boolean canAddObserverDuringGame(String name) {
+        if (name == null || name.isBlank()) {
+            return false;
+        }
+        // Observers are users that are not players from this game.
+        return isInGame() && !usersInGame.contains(name);
+    }
+
+    /**
      * Checks whether the lobby is full.
      * 
      * @return Returns true if the number of players in the lobby is {@literal >= }
@@ -264,6 +278,15 @@ public class Lobby implements Serializable {
 
                     usernameToIcon.put(name, DEFAULT_ICON); // load default icon
                     // Try setting the player's icon using their previous choice
+                    if (usernameToPreferredIcon.containsKey(name)) {
+                        String iconID = usernameToPreferredIcon.get(name);
+                        trySetUserIcon(iconID, context);
+                    }
+                } else if (canAddObserverDuringGame(name)) {
+                    // Allow non-player spectators to join active games.
+                    userToUsername.put(context, name);
+
+                    usernameToIcon.put(name, DEFAULT_ICON);
                     if (usernameToPreferredIcon.containsKey(name)) {
                         String iconID = usernameToPreferredIcon.get(name);
                         trySetUserIcon(iconID, context);

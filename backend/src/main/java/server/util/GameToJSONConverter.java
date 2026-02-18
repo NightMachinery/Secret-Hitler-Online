@@ -74,7 +74,10 @@ public class GameToJSONConverter {
         List<Player> playerList = game.getPlayerList();
 
         // Players should only be shown all roles under specific circumstances.
-        Identity role = game.getPlayer(userName).getIdentity();
+        // Observers (non-players) should not see hidden roles until the game has
+        // finished.
+        boolean userIsPlayer = game.hasPlayer(userName);
+        Identity role = userIsPlayer ? game.getPlayer(userName).getIdentity() : null;
         boolean showAllRoles = game.hasGameFinished() || role == Identity.FASCIST
                 || (role == Identity.HITLER && game.getPlayerList().size() <= 6);
 

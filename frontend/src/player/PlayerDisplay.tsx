@@ -207,11 +207,17 @@ export default function PlayerDisplay(
     gameState: GameState,
     playerName: string
   ): boolean => {
-    const myRole = gameState.players[props.user].id;
-    const otherRole = gameState.players[playerName].id;
+    const myPlayerState = gameState.players[props.user];
+    const otherPlayerState = gameState.players[playerName];
+    const otherRole = otherPlayerState?.id;
 
     if (otherRole === undefined) {
       return false;
+    }
+    const myRole = myPlayerState?.id;
+    if (myRole === undefined) {
+      // Spectators should only see hidden role identities once the game is over.
+      return isVictoryState(gameState.state);
     }
     if (isVictoryState(gameState.state)) {
       return true;

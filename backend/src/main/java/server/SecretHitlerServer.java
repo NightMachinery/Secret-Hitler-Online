@@ -450,17 +450,23 @@ public class SecretHitlerServer {
         } else { // the lobby exists
             Lobby lobby = codeToLobby.get(lobbyCode);
 
-            if (lobby.isFull()) {
-                ctx.status(489);
-                ctx.result("The lobby is currently full.");
-            } else if (lobby.isInGame()) {
-                if (lobby.canAddUserDuringGame(name)) {
+            if (lobby.isInGame()) {
+                if (lobby.hasUserWithName(name)) {
+                    ctx.status(403);
+                    ctx.result("There is already a user with the name '" + name + "' in the lobby.");
+                } else if (lobby.canAddUserDuringGame(name)) {
                     ctx.status(200);
                     ctx.result("Login request valid (re-joining an existing game).");
+                } else if (lobby.canAddObserverDuringGame(name)) {
+                    ctx.status(200);
+                    ctx.result("Login request valid (joining as observer).");
                 } else {
                     ctx.status(488);
                     ctx.result("The lobby is currently in a game.");
                 }
+            } else if (lobby.isFull()) {
+                ctx.status(489);
+                ctx.result("The lobby is currently full.");
             } else if (lobby.hasUserWithName(name)) { // repeat username.
                 ctx.status(403);
                 ctx.result("There is already a user with the name '" + name + "' in the lobby.");
@@ -590,18 +596,26 @@ public class SecretHitlerServer {
         }
 
         Lobby lobby = codeToLobby.get(code);
-        if (lobby.hasUserWithName(name)) { // duplicate names not allowed
-            logger.debug("FAILED (Repeat username)");
-            ctx.session.close(StatusCode.PROTOCOL, "A user with the name " + name + " is already in the lobby.");
-            return;
-        } else if (lobby.isFull()) {
-            logger.debug("FAILED (Lobby is full)");
-            ctx.session.close(StatusCode.PROTOCOL, "The lobby " + code + " is currently full.");
-            return;
-        } else if (lobby.isInGame() && !lobby.canAddUserDuringGame(name)) {
-            logger.debug("FAILED (Lobby in game)");
-            ctx.session.close(StatusCode.PROTOCOL, "The lobby " + code + " is currently in a game..");
-            return;
+        if (lobby.isInGame()) {
+            if (lobby.hasUserWithName(name)) { // duplicate names not allowed
+                logger.debug("FAILED (Repeat username)");
+                ctx.session.close(StatusCode.PROTOCOL, "A user with the name " + name + " is already in the lobby.");
+                return;
+            } else if (!lobby.canAddUserDuringGame(name) && !lobby.canAddObserverDuringGame(name)) {
+                logger.debug("FAILED (Lobby in game)");
+                ctx.session.close(StatusCode.PROTOCOL, "The lobby " + code + " is currently in a game.");
+                return;
+            }
+        } else {
+            if (lobby.hasUserWithName(name)) { // duplicate names not allowed
+                logger.debug("FAILED (Repeat username)");
+                ctx.session.close(StatusCode.PROTOCOL, "A user with the name " + name + " is already in the lobby.");
+                return;
+            } else if (lobby.isFull()) {
+                logger.debug("FAILED (Lobby is full)");
+                ctx.session.close(StatusCode.PROTOCOL, "The lobby " + code + " is currently full.");
+                return;
+            }
         }
         logger.debug("SUCCESS");
         lobby.addUser(ctx, name);

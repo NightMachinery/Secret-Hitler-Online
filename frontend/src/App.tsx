@@ -1192,6 +1192,11 @@ class App extends Component<{}, AppState> {
   onGameStateChanged(newState: GameState) {
     let oldState = this.state.gameState;
     let name = this.state.name;
+    const isObserver = !Object.prototype.hasOwnProperty.call(
+      newState.players,
+      name
+    );
+    const myPlayer = !isObserver ? newState.players[name] : undefined;
     let isPresident = this.state.name === newState.president;
     let isChancellor = this.state.name === newState.chancellor;
     let state = newState.state;
@@ -1282,12 +1287,13 @@ class App extends Component<{}, AppState> {
           if (
             newState.electionTracker === 0 &&
             newState.liberalPolicies === 0 &&
-            newState.fascistPolicies === 0
+            newState.fascistPolicies === 0 &&
+            !isObserver
           ) {
             // If the game has just started (everything in default state), show the player's role.
             this.queueAlert(
               <RoleAlert
-                role={newState.players[this.state.name].id}
+                role={myPlayer!.id}
                 gameState={newState}
                 name={name}
                 onClick={() => {
@@ -1318,7 +1324,8 @@ class App extends Component<{}, AppState> {
           this.queueStatusMessage("Waiting for all players to vote.");
           // Check if the player is dead or has already voted-- if so, do not show the voting prompt.
           if (
-            newState.players[name][PLAYER_IS_ALIVE] &&
+            !isObserver &&
+            myPlayer![PLAYER_IS_ALIVE] &&
             !Object.keys(newState.userVotes).includes(name)
           ) {
             this.queueAlert(
@@ -1569,7 +1576,7 @@ class App extends Component<{}, AppState> {
           let liberalVictoryPolicy = state === STATE_LIBERAL_VICTORY_POLICY;
           let liberalVictoryExecution =
             state === STATE_LIBERAL_VICTORY_EXECUTION;
-          let playerID = newState.players[name].id;
+          let playerID = myPlayer?.id;
           let playerWon =
             (playerID === Role.LIBERAL &&
               (liberalVictoryExecution || liberalVictoryPolicy)) ||
@@ -1579,16 +1586,18 @@ class App extends Component<{}, AppState> {
           // Register player victory/loss with analytics.
           // TODO: Only register if player is host, or if player is the only
           // non-bot player in the game.
-          if (playerWon) {
-            ReactGA.event({
-              category: "Victory",
-              action: playerID + " team won the game.",
-            });
-          } else {
-            ReactGA.event({
-              category: "Loss",
-              action: playerID + " team lost the game.",
-            });
+          if (!isObserver && playerID !== undefined) {
+            if (playerWon) {
+              ReactGA.event({
+                category: "Victory",
+                action: playerID + " team won the game.",
+              });
+            } else {
+              ReactGA.event({
+                category: "Loss",
+                action: playerID + " team lost the game.",
+              });
+            }
           }
 
           if (fascistVictoryElection || fascistVictoryPolicy) {
