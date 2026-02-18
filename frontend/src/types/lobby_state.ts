@@ -96,6 +96,8 @@ export type GameState = {
   peek?: PolicyType[];
   history: RoundHistoryEntry[];
   historyConfig: HistoryConfig;
+  creator?: string;
+  botControlled?: Record<string, boolean>;
 
   usernames?: string[];
   /** Maps from usernames to icon keys */

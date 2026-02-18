@@ -97,6 +97,7 @@ import {
   WSCommand,
   WSCommandType,
 } from "./types";
+import { isVictoryState } from "./utils";
 
 const EVENT_BAR_FADE_OUT_DURATION = 500;
 const CUSTOM_ALERT_FADE_DURATION = 1000;
@@ -131,6 +132,8 @@ const DEFAULT_GAME_STATE: GameState = {
   peek: [],
   history: [],
   historyConfig: DEFAULT_HISTORY_CONFIG,
+  creator: "",
+  botControlled: {},
   icon: {},
 };
 
@@ -544,6 +547,12 @@ class App extends Component<{}, AppState> {
         }
         if (!message.historyConfig) {
           message.historyConfig = { ...DEFAULT_HISTORY_CONFIG };
+        }
+        if (!message.botControlled || typeof message.botControlled !== "object") {
+          message.botControlled = {};
+        }
+        if (typeof message.creator !== "string") {
+          message.creator = "";
         }
         if (message !== this.state.gameState) {
           this.onGameStateChanged(message);
@@ -1748,6 +1757,98 @@ class App extends Component<{}, AppState> {
     });
   }
 
+  isPlayerBotControlled(playerName: string): boolean {
+    return Boolean(this.state.gameState.botControlled?.[playerName]);
+  }
+
+  onClickSetBotStatus(target: string, enabled: boolean) {
+    this.sendWSCommand({
+      command: WSCommandType.SET_BOT_STATUS,
+      target,
+      enabled,
+    });
+  }
+
+  renderBotControlPanel() {
+    const gameState = this.state.gameState;
+    if (
+      gameState.state === LobbyState.SETUP ||
+      isVictoryState(gameState.state)
+    ) {
+      return null;
+    }
+
+    const isCreator = gameState.creator === this.state.name;
+    const myBotControlled = this.isPlayerBotControlled(this.state.name);
+    if (!isCreator && !myBotControlled) {
+      return null;
+    }
+
+    const alivePlayers = gameState.playerOrder.filter(
+      (playerName) => gameState.players[playerName]?.alive
+    );
+
+    return (
+      <div
+        style={{
+          marginTop: "15px",
+          marginBottom: "10px",
+          padding: "10px",
+          border: "1px solid var(--textColor)",
+          maxWidth: "560px",
+          marginLeft: "auto",
+          marginRight: "auto",
+          textAlign: "left",
+        }}
+      >
+        <strong>BOT CONTROL</strong>
+        {isCreator && (
+          <p style={{ marginTop: "8px", marginBottom: "8px" }}>
+            As creator, you can temporarily hand off any alive player to bot
+            control.
+          </p>
+        )}
+        {!isCreator && myBotControlled && (
+          <p style={{ marginTop: "8px", marginBottom: "8px" }}>
+            You are currently bot-controlled. Reclaim control when ready.
+          </p>
+        )}
+
+        {isCreator &&
+          alivePlayers.map((playerName) => {
+            const botControlled = this.isPlayerBotControlled(playerName);
+            return (
+              <div
+                key={`bot-control-${playerName}`}
+                style={{
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "space-between",
+                  gap: "8px",
+                  marginBottom: "6px",
+                }}
+              >
+                <span>{playerName}</span>
+                <button
+                  onClick={() =>
+                    this.onClickSetBotStatus(playerName, !botControlled)
+                  }
+                >
+                  {botControlled ? "SET HUMAN" : "SET BOT"}
+                </button>
+              </div>
+            );
+          })}
+
+        {!isCreator && myBotControlled && (
+          <button onClick={() => this.onClickSetBotStatus(this.state.name, false)}>
+            RECLAIM CONTROL
+          </button>
+        )}
+      </div>
+    );
+  }
+
   //// Animation Handling
   // <editor-fold desc="Animation Handling">
 
@@ -2007,6 +2108,8 @@ class App extends Component<{}, AppState> {
             />
           </div>
         </div>
+
+        {this.renderBotControlPanel()}
 
         {this.state.gameState.historyConfig.showHistory && (
           <HistoryPanel

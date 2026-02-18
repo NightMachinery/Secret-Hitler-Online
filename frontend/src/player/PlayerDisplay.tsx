@@ -290,6 +290,12 @@ export default function PlayerDisplay(
         const onClick = () => {
           onPlayerSelected(playerName);
         };
+        const isBotControlled = Boolean(
+          props.gameState.botControlled?.[playerName]
+        );
+        const displayName = isBotControlled
+          ? `${playerName} [BOT]`
+          : playerName;
 
         // Skip votes for players that are not alive.
         const showVote = index + start < playerVotesVisible && playerData.alive;
@@ -308,7 +314,7 @@ export default function PlayerDisplay(
               highlight={playerName === props.user}
               disabled={disabled}
               disabledText={disabledText}
-              name={playerName}
+              name={displayName}
               useAsButton={props.useAsButtons}
               isSelected={isSelected}
               onClick={onClick}

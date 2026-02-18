@@ -16,6 +16,7 @@ export const enum WSCommandType {
   GET_INVESTIGATION = "get-investigation",
   // Voting action
   REGISTER_VOTE = "register-vote",
+  SET_BOT_STATUS = "set-bot-status",
   // Policy action
   REGISTER_CHANCELLOR_CHOICE = "register-chancellor-choice",
   REGISTER_PRESIDENT_CHOICE = "register-president-choice",
@@ -36,6 +37,7 @@ export type ServerRequestPayload =
   | { command: WSCommandType.REGISTER_SPECIAL_ELECTION; target: string }
   | { command: WSCommandType.GET_INVESTIGATION; target: string }
   | { command: WSCommandType.REGISTER_VOTE; vote: boolean }
+  | { command: WSCommandType.SET_BOT_STATUS; target: string; enabled: boolean }
   | { command: WSCommandType.REGISTER_CHANCELLOR_CHOICE; choice: number }
   | { command: WSCommandType.REGISTER_PRESIDENT_CHOICE; choice: number };
 
