@@ -26,22 +26,13 @@ else
 	PRODUCTION_P="n"
 fi
 
-resolve_pg_bin_dir () {
-	if command -v brew >/dev/null 2>&1; then
-		if ! brew list --versions "$POSTGRES_FORMULA" >/dev/null 2>&1; then
-			echo "Installing $POSTGRES_FORMULA with Homebrew..."
-			brew install "$POSTGRES_FORMULA"
-		fi
-		echo "$(brew --prefix "$POSTGRES_FORMULA")/bin"
-		return
-	fi
-
+find_pg_bin_dir () {
 	if command -v initdb >/dev/null 2>&1; then
 		local initdb_dir
 		initdb_dir="$(dirname -- "$(command -v initdb)")"
 		if [[ -x "$initdb_dir/pg_ctl" && -x "$initdb_dir/pg_isready" && -x "$initdb_dir/psql" ]]; then
 			echo "$initdb_dir"
-			return
+			return 0
 		fi
 	fi
 
@@ -56,14 +47,57 @@ resolve_pg_bin_dir () {
 	done
 	if [[ -n "$best_dir" ]]; then
 		echo "$best_dir"
+		return 0
+	fi
+
+	return 1
+}
+
+install_postgres_with_apt () {
+	local -a apt_cmd_prefix=()
+	if [[ "${EUID:-$(id -u)}" -ne 0 ]]; then
+		if command -v sudo >/dev/null 2>&1; then
+			apt_cmd_prefix=(sudo)
+		else
+			echo "apt-get is available but sudo is not. Re-run this script as root to install PostgreSQL." >&2
+			return 1
+		fi
+	fi
+
+	echo "Installing PostgreSQL with apt-get..."
+	"${apt_cmd_prefix[@]}" apt-get update
+	"${apt_cmd_prefix[@]}" apt-get install -y postgresql postgresql-client
+}
+
+resolve_pg_bin_dir () {
+	if command -v brew >/dev/null 2>&1; then
+		if ! brew list --versions "$POSTGRES_FORMULA" >/dev/null 2>&1; then
+			echo "Installing $POSTGRES_FORMULA with Homebrew..."
+			brew install "$POSTGRES_FORMULA"
+		fi
+		echo "$(brew --prefix "$POSTGRES_FORMULA")/bin"
 		return
+	fi
+
+	local pg_bin_dir
+	if pg_bin_dir="$(find_pg_bin_dir)"; then
+		echo "$pg_bin_dir"
+		return
+	fi
+
+	if command -v apt-get >/dev/null 2>&1; then
+		install_postgres_with_apt
+		if pg_bin_dir="$(find_pg_bin_dir)"; then
+			echo "$pg_bin_dir"
+			return
+		fi
 	fi
 
 	cat >&2 <<'EOF'
 Could not find PostgreSQL server binaries (initdb, pg_ctl, pg_isready, psql).
 
 macOS: install Homebrew and rerun this script.
-Ubuntu: sudo apt-get update && sudo apt-get install -y postgresql postgresql-client
+Ubuntu/Debian: sudo apt-get update && sudo apt-get install -y postgresql postgresql-client
 EOF
 	exit 1
 }
