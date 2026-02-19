@@ -1,0 +1,10 @@
+#+TITLE: Secret-Hitler-Online/log
+
+* _
+#+BEGIN_SRC markdown
+Find the most popular rule extensions for secret hitler for playing with 10+ players, and document each in a separate markdown code block.
+#+END_SRC
+
+#+BEGIN_SRC markdown
+Find the most popular rule extensions for secret hitler for playing with 10+ players, and document each in `docs/extensions/`. Search.
+#+END_SRC
