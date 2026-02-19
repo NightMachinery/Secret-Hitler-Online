@@ -15,14 +15,9 @@ class PlayerPolicyStatus extends  Component {
     render() {
         let fascistPlayers, liberalPlayers;
         let props = this.props;
-        if (props.playerCount <= 6) {
-            fascistPlayers = 1;
-        } else if (props.playerCount <= 8) {
-            fascistPlayers = 2;
-        } else {
-            fascistPlayers = 3;
-        }
-        liberalPlayers = props.playerCount - fascistPlayers - NUM_HITLER_PLAYERS;
+        const totalFascists = Math.floor((props.playerCount - 1) / 2);
+        fascistPlayers = totalFascists - NUM_HITLER_PLAYERS;
+        liberalPlayers = props.playerCount - totalFascists;
 
         return (
             <div id={"pps-container"}>

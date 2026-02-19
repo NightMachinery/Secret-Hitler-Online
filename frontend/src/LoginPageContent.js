@@ -35,7 +35,7 @@ class LoginPageContent extends Component {
                         <p id={"login-page-description-text"}>
                             Secret Hitler Online is an adaptation of the original Secret Hitler board game,
                             reimagined for the web.
-                            It supports up to 10 players, featuring smooth art and animations with all the secrecy and
+                            It supports up to 20 players, featuring smooth art and animations with all the secrecy and
                             intrigue of the original. It's designed to be easy to pick up and play for any quarantine
                             game night.<br/><br/>Play for free in your browser, with no ads ever!
                             <br/><br/>

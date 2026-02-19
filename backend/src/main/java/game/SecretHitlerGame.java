@@ -19,6 +19,8 @@ import java.util.*;
  * created by Goat, Wolf {@literal &} Cabbage (c) 2016. You can find more
  * details on their
  * website, or order the physical game, at https://www.secrethitler.com/.
+ * <p>
+ * This implementation supports 5-20 players.
  *
  * Secret Hitler is licensed through Creative Commons.
  */
@@ -27,17 +29,12 @@ public class SecretHitlerGame implements Serializable {
     /////////////////// Static Fields
     // <editor-fold desc="Static Fields">
 
-    // Keeps track of the number of fascists that should be in the game for a given
-    // number
-    // of players. - - - - - 5 6 7 8 9 10
-    public static final int[] NUM_FASCISTS_FOR_PLAYERS = { -1, -1, -1, -1, -1, 1, 1, 2, 2, 3, 3 };
-
     // The number of fascist and liberal policies in a standard deck.
     public static final int NUM_FASCIST_POLICIES = 11;
     public static final int NUM_LIBERAL_POLICIES = 6;
 
     public static final int MIN_PLAYERS = 5;
-    public static final int MAX_PLAYERS = 10;
+    public static final int MAX_PLAYERS = 20;
 
     public static final int MAX_FAILED_ELECTIONS = 3;
     private static final float VOTING_CUTOFF = 0.5000001f;
@@ -45,6 +42,22 @@ public class SecretHitlerGame implements Serializable {
 
     public static final int PRESIDENT_DRAW_SIZE = 3;
     public static final int CHANCELLOR_DRAW_SIZE = 2;
+
+    /**
+     * Calculates the total number of fascists in a game with {@code players}
+     * players, including Hitler.
+     */
+    private static int getTotalFascistsForPlayerCount(int players) {
+        return (players - 1) / 2; // Integer division floors by default.
+    }
+
+    /**
+     * Calculates the number of non-Hitler fascists in a game with {@code players}
+     * players.
+     */
+    private static int getRegularFascistsForPlayerCount(int players) {
+        return getTotalFascistsForPlayerCount(players) - 1;
+    }
 
     public enum RoundHistoryResult {
         VOTE_FAILED,
@@ -429,15 +442,14 @@ public class SecretHitlerGame implements Serializable {
     /**
      * Randomly assigns the player roles.
      * 
-     * @requires the number of players is between 5 and 10, inclusive.
+     * @requires the number of players is between 5 and 20, inclusive.
      * @modifies this
      * @effects all Players in playerList are assigned either LIBERAL, FASCIST, or
      *          HITLER.
-     *          The number of each is given by the following table:
-     *          # players: 5 6 7 8 9 10
-     *          # liberals: 3 4 4 5 5 6
-     *          # fascists: 1 1 2 2 3 3
-     *          # hitler: 1 1 1 1 1 1
+     *          Hitler count is always 1.
+     *          Total fascists (including Hitler) is floor((players - 1) / 2).
+     *          Regular fascists are total fascists - 1.
+     *          Liberals are players - total fascists.
      */
     private void assignRoles() {
         int players = playerList.size();
@@ -447,7 +459,7 @@ public class SecretHitlerGame implements Serializable {
             throw new IllegalStateException("Cannot assign roles with too many players.");
         }
 
-        int numFascistsToSet = NUM_FASCISTS_FOR_PLAYERS[players];
+        int numFascistsToSet = getRegularFascistsForPlayerCount(players);
 
         // Set all players to default state
         for (Player player : playerList) {

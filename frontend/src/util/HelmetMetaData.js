@@ -17,7 +17,7 @@ export default function HelmetMetaData(props) {
 	let description =
 		props.description !== undefined
 			? props.description
-			: "Secret Hitler Online is a free hidden-identity game for up to 10 players, elegantly adapted from the original Secret Hitler. " +
+			: "Secret Hitler Online is a free hidden-identity game for up to 20 players, elegantly adapted from the original Secret Hitler. " +
 			  "Play for free in your browser with no ads ever. Can you find and stop the Secret Hitler?";
 	let hashtag =
 		props.hashtag !== undefined ? props.hashtag : "#SecretHitlerOnline";

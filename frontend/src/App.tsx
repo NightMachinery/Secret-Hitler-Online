@@ -51,6 +51,7 @@ import {
   SERVER_PING,
   PARAM_ICON,
   PARAM_INVESTIGATION,
+  MAX_PLAYERS,
 } from "./constants";
 
 import PlayerDisplay, {
@@ -1146,7 +1147,7 @@ class App extends Component<{}, AppState> {
             <div id={"lobby-player-area-container"}>
               <div id={"lobby-player-text-choose-container"}>
                 <p id={"lobby-player-count-text"}>
-                  Players ({this.state.usernames.length}/10)
+                  Players ({this.state.usernames.length}/{MAX_PLAYERS})
                 </p>
                 <button
                   id={"lobby-change-icon-button"}

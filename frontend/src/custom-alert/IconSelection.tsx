@@ -37,15 +37,17 @@ class IconSelection extends Component<IconSelectionProps, IconSelectionState> {
   constructor(props: IconSelectionProps) {
     super(props);
 
+    const hasLockedPortraits = lockedPortraits.length > 0;
+
     // Check if the locked icons prompt should be shown. (using cookies!)
-    let hasUserUnlockedIcons = false;
-    if (UNLOCK_ALL_P || Cookies.get(UNLOCK_ICONS_COOKIE_NAME)) {
+    let hasUserUnlockedIcons = !hasLockedPortraits;
+    if (hasLockedPortraits && (UNLOCK_ALL_P || Cookies.get(UNLOCK_ICONS_COOKIE_NAME))) {
       hasUserUnlockedIcons = true;
     }
 
     this.state = {
       unlockLockedIcons: hasUserUnlockedIcons,
-      showLockedPrompt: !hasUserUnlockedIcons,
+      showLockedPrompt: hasLockedPortraits && !hasUserUnlockedIcons,
     };
 
     this.onConfirmButtonClick = this.onConfirmButtonClick.bind(this);
@@ -159,6 +161,7 @@ class IconSelection extends Component<IconSelectionProps, IconSelectionState> {
   }
 
   render() {
+    const hasLockedPortraits = lockedPortraits.length > 0;
     let headerPortraits: string[];
     let footerContent: () => React.ReactNode;
     if (this.state.showLockedPrompt) {
@@ -197,6 +200,9 @@ class IconSelection extends Component<IconSelectionProps, IconSelectionState> {
     } else {
       headerPortraits = unlockedPortraits.concat(lockedPortraits);
       footerContent = () => {
+        if (!hasLockedPortraits) {
+          return <></>;
+        }
         return (
           <>
             <div id={"locked-icon-text-container"}>

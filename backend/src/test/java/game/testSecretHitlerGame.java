@@ -18,6 +18,18 @@ public class testSecretHitlerGame {
         return out;
     }
 
+    private int getExpectedTotalFascists(int numPlayers) {
+        return (numPlayers - 1) / 2;
+    }
+
+    private int getExpectedRegularFascists(int numPlayers) {
+        return getExpectedTotalFascists(numPlayers) - 1;
+    }
+
+    private int getExpectedLiberals(int numPlayers) {
+        return numPlayers - getExpectedTotalFascists(numPlayers);
+    }
+
     @Test
     public void testGameFlow() {
         SecretHitlerGame game = new SecretHitlerGame(makePlayers(6));
@@ -40,12 +52,51 @@ public class testSecretHitlerGame {
             }
             assertTrue(player.isAlive());
         }
-        assertEquals(fascistCount, SecretHitlerGame.NUM_FASCISTS_FOR_PLAYERS[6]);
+        assertEquals(fascistCount, getExpectedRegularFascists(6));
         assertEquals(hitlerCount, 1);
-        assertEquals(liberalCount, playerList.size() - SecretHitlerGame.NUM_FASCISTS_FOR_PLAYERS[6] - 1);
+        assertEquals(liberalCount, getExpectedLiberals(6));
 
         game.nominateChancellor("2");
         assertEquals(game.getState(), GameState.CHANCELLOR_VOTING);
+    }
+
+    @Test
+    public void testRoleAssignmentMatchesFormulaForFiveToTwentyPlayers() {
+        for (int numPlayers = SecretHitlerGame.MIN_PLAYERS; numPlayers <= SecretHitlerGame.MAX_PLAYERS; numPlayers++) {
+            SecretHitlerGame game = new SecretHitlerGame(makePlayers(numPlayers));
+            List<Player> playerList = game.getPlayerList();
+
+            int fascistCount = 0;
+            int liberalCount = 0;
+            int hitlerCount = 0;
+            for (Player player : playerList) {
+                if (player.isHitler()) {
+                    hitlerCount++;
+                } else if (player.isFascist()) {
+                    fascistCount++;
+                } else {
+                    liberalCount++;
+                }
+            }
+
+            assertEquals("Unexpected Hitler count for " + numPlayers + " players", 1, hitlerCount);
+            assertEquals("Unexpected fascist count for " + numPlayers + " players",
+                    getExpectedRegularFascists(numPlayers), fascistCount);
+            assertEquals("Unexpected liberal count for " + numPlayers + " players",
+                    getExpectedLiberals(numPlayers), liberalCount);
+        }
+    }
+
+    @Test
+    public void testBoundaryPlayerCountsFiveToTwentyInclusive() {
+        new SecretHitlerGame(makePlayers(SecretHitlerGame.MAX_PLAYERS));
+
+        try {
+            new SecretHitlerGame(makePlayers(SecretHitlerGame.MAX_PLAYERS + 1));
+            fail("Expected an IllegalArgumentException for player counts above MAX_PLAYERS.");
+        } catch (IllegalArgumentException ignored) {
+            // Expected
+        }
     }
 
     @Test

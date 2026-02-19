@@ -14,11 +14,11 @@ class Board extends Component {
 
     /**
      * Returns the correct board image based on the number of players in the game.
-     * @requires this.props.numPlayers must in range [5, 10], inclusive.
+     * @requires this.props.numPlayers must in range [5, 20], inclusive.
      * @return {image} The Fascist board corresponding to the number of players.
-     *         >= 6: FascistBoard_5_6
+     *         5-6: FascistBoard_5_6
      *         7-8: FascistBoard_7_8
-     *         9-10: FascistBoard_9_10
+     *         9+: FascistBoard_9_10
      */
     getFascistBoard() {
         if(this.props.numPlayers <= 6) {
