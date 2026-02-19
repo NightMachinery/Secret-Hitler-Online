@@ -38,7 +38,7 @@ If `/game` is not routed to backend, live game updates will fail.
 Use the production compose file created for this domain:
 
 ```bash
-docker compose -f docker-compose.secrethitler.prod.yml up -d --build
+docker compose -f docker-compose.secrethitler.prod.yml up -d --force-recreate --remove-orphans
 ```
 
 This compose file binds services to localhost:
@@ -47,6 +47,25 @@ This compose file binds services to localhost:
 - `127.0.0.1:4040` (backend)
 
 Caddy then exposes them publicly on HTTPS.
+
+## Redeploy flow
+
+On the remote server, redeploy with:
+
+```bash
+cd /path/to/Secret-Hitler-Online
+git pull --ff-only origin development
+docker compose -f docker-compose.secrethitler.prod.yml up -d --force-recreate --remove-orphans
+```
+
+Why not `--build`? This compose file uses `image:` + bind mounts (no `build:` blocks), so `--build` does not rebuild app images here.
+
+## Verify deployment
+
+```bash
+docker compose -f docker-compose.secrethitler.prod.yml ps
+docker compose -f docker-compose.secrethitler.prod.yml logs -f --tail=100 backend frontend
+```
 
 ## Reload and validate Caddy
 

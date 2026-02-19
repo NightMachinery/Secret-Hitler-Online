@@ -6,6 +6,7 @@ bin
 
 # Gradle stored files
 .gradle
+backend/.gradle-home/
 
 # VSCode Workspace Configuration
 .idea/
