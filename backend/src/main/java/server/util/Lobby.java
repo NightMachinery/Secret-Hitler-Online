@@ -11,6 +11,7 @@ import org.slf4j.LoggerFactory;
 import server.SecretHitlerServer;
 
 import java.io.IOException;
+import java.nio.channels.ClosedChannelException;
 import java.io.Serializable;
 import java.util.*;
 import java.util.Map.Entry;
@@ -352,9 +353,14 @@ public class Lobby implements Serializable {
             cpuControllersByName.put(name, cpu);
             cpu.initialize(game);
         } else {
-            game.getPlayer(name).markAsCpu();
+            cpu.synchronizeWithGame(game);
         }
         botControlledPlayers.add(name);
+
+        if (game.getState() == GameState.POST_LEGISLATIVE && name.equals(game.getCurrentPresident())) {
+            game.endPresidentialTerm();
+            cpu.synchronizeWithGame(game);
+        }
     }
 
     /**
@@ -708,7 +714,27 @@ public class Lobby implements Serializable {
         JSONObject icons = new JSONObject(usernameToIcon);
         message.put("icon", icons);
 
-        ctx.send(message.toString());
+        try {
+            ctx.send(message.toString());
+        } catch (RuntimeException e) {
+            removeUserImmediately(ctx);
+            if (isClosedSocketException(e)) {
+                logger.debug("Skipping websocket update for closed connection of user '{}'.", userName);
+            } else {
+                logger.warn("Failed to send websocket update to user '{}'.", userName, e);
+            }
+        }
+    }
+
+    private boolean isClosedSocketException(Throwable error) {
+        Throwable current = error;
+        while (current != null) {
+            if (current instanceof ClosedChannelException) {
+                return true;
+            }
+            current = current.getCause();
+        }
+        return false;
     }
 
     /**
@@ -753,6 +779,10 @@ public class Lobby implements Serializable {
                 } else {
                     botControlledPlayers.add(username);
                 }
+            }
+        } else if (game != null) {
+            for (CpuPlayer cpu : cpuControllersByName.values()) {
+                cpu.synchronizeWithGame(game);
             }
         }
         if (game != null) {

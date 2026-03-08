@@ -13,6 +13,7 @@ import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Random;
+import java.lang.reflect.Field;
 
 public class testCpuPlayer {
   static int ITERATIONS = 100000;
@@ -210,5 +211,34 @@ public class testCpuPlayer {
       System.out.println("" + state.toString() + ": "
         + (winTypes.get(state) * 1f / ITERATIONS * 100f) + "%");
     }
+  }
+
+  @Test
+  public void testUpdateDoesNotRequireChancellorChoicesWhenCpuAttachedMidRound() throws Exception {
+    List<String> players = makePlayers(5);
+    SecretHitlerGame game = new SecretHitlerGame(players);
+
+    game.nominateChancellor("1");
+    for (String player : players) {
+      game.registerVote(player, true);
+    }
+    game.presidentDiscardPolicy(0);
+    game.chancellorEnactPolicy(0);
+    assertEquals(GameState.POST_LEGISLATIVE, game.getState());
+
+    CpuPlayer cpu = new CpuPlayer(game.getCurrentPresident());
+    cpu.initialize(game);
+
+    Field lastUpdatedRoundField = CpuPlayer.class.getDeclaredField("lastUpdatedRound");
+    lastUpdatedRoundField.setAccessible(true);
+    lastUpdatedRoundField.setInt(cpu, game.getRound() - 1);
+
+    Field chancellorChoicesField = CpuPlayer.class.getDeclaredField("chancellorChoices");
+    chancellorChoicesField.setAccessible(true);
+    chancellorChoicesField.set(cpu, null);
+
+    cpu.update(game);
+
+    assertEquals(game.getRound(), lastUpdatedRoundField.getInt(cpu));
   }
 }

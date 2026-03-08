@@ -8,9 +8,11 @@ import java.io.IOException;
 import java.io.Serializable;
 import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Random;
+import java.util.Set;
 
 import game.datastructures.Identity;
 import game.datastructures.Player;
@@ -53,15 +55,24 @@ public class CpuPlayer implements Serializable, Comparable<CpuPlayer> {
   }
 
   public void initialize(SecretHitlerGame game) {
+    syncToGame(game, true);
+  } // end initialize()
+
+  public void synchronizeWithGame(SecretHitlerGame game) {
+    syncToGame(game, false);
+  }
+
+  private void syncToGame(SecretHitlerGame game, boolean resetLearnedState) {
     List<Player> playerList = game.getPlayerList();
 
-    // Set player suspicion to neutral (5) by default
-    playerReputation.clear();
-    for (Player player : playerList) {
-      playerReputation.put(player.getUsername(), 0);
-    }
+    attachPlayerData(playerList);
+    syncPlayerReputation(playerList, resetLearnedState);
+    syncKnownRoles(game, playerList, resetLearnedState);
+    chancellorChoices = null;
+    lastUpdatedRound = game.getRound();
+  }
 
-    // Get a reference to our current player data
+  private void attachPlayerData(List<Player> playerList) {
     myPlayerData = null;
     for (Player playerData : playerList) {
       if (playerData.getUsername().equals(myName)) {
@@ -74,27 +85,52 @@ public class CpuPlayer implements Serializable, Comparable<CpuPlayer> {
           "Could not find a matching Player username in the current game while initializing this CpuPlayer.");
     }
 
-    // Mark ourselves as a CPU Player in the game
     myPlayerData.markAsCpu();
+  }
 
-    // Update known identities, based on identity, according to rules
-    knownPlayerRoles.clear();
+  private void syncPlayerReputation(List<Player> playerList, boolean resetLearnedState) {
+    Set<String> currentPlayers = new HashSet<>();
+    for (Player player : playerList) {
+      currentPlayers.add(player.getUsername());
+    }
+
+    if (resetLearnedState) {
+      playerReputation.clear();
+    } else {
+      playerReputation.keySet().retainAll(currentPlayers);
+    }
+
+    for (Player player : playerList) {
+      playerReputation.putIfAbsent(player.getUsername(), 0);
+    }
+  }
+
+  private void syncKnownRoles(
+      SecretHitlerGame game,
+      List<Player> playerList,
+      boolean resetLearnedState) {
+    Set<String> currentPlayers = new HashSet<>();
+    for (Player player : playerList) {
+      currentPlayers.add(player.getUsername());
+    }
+
+    if (resetLearnedState) {
+      knownPlayerRoles.clear();
+    } else {
+      knownPlayerRoles.keySet().retainAll(currentPlayers);
+    }
+
     if (myPlayerData.getIdentity() == Identity.FASCIST ||
         (myPlayerData.getIdentity() == Identity.HITLER && game.getPlayerList().size() <= 6)) {
-      // Mark players as known if (1) player is fascist or (2) if player is
-      // hitler AND there are only 5-6 players in the game.
       for (Player player : playerList) {
         if (!player.getUsername().equals(myName)) {
-          // Add to known identities
           knownPlayerRoles.put(player.getUsername(), player.getIdentity());
         }
       }
     }
 
-    // Add our own identity to the list of known roles
     knownPlayerRoles.put(myName, myPlayerData.getIdentity());
-
-  } // end initialize()
+  }
 
   private void updateReputation(String name, int repModifier) {
     int newRep = playerReputation.get(name) + repModifier;
@@ -113,6 +149,7 @@ public class CpuPlayer implements Serializable, Comparable<CpuPlayer> {
       Policy.Type lastPolicy = game.getLastEnactedPolicy();
 
       if (lastPolicy == null || game.didElectionTrackerAdvance()) {
+        lastUpdatedRound = game.getRound();
         return;
       }
 
@@ -120,7 +157,9 @@ public class CpuPlayer implements Serializable, Comparable<CpuPlayer> {
       String lastChancellor = game.getCurrentChancellor();
 
       if (myName.equals(lastPresident)) {
-        if (chancellorChoices.get(0) != chancellorChoices.get(1)) {
+        if (chancellorChoices != null
+            && chancellorChoices.size() >= SecretHitlerGame.CHANCELLOR_DRAW_SIZE
+            && chancellorChoices.get(0) != chancellorChoices.get(1)) {
           // We tested the chancellor. Did they pass?
           if (game.getLastEnactedPolicy() == Policy.Type.FASCIST) {
             updateReputation(lastChancellor, -3);
@@ -134,6 +173,7 @@ public class CpuPlayer implements Serializable, Comparable<CpuPlayer> {
         // was passed.
         int repModifier = lastPolicy == Policy.Type.LIBERAL ? 1 : -1;
         if (lastPresident == null || lastChancellor == null) {
+          lastUpdatedRound = game.getRound();
           return;
         }
         updateReputation(lastPresident, repModifier);
