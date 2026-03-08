@@ -8,12 +8,18 @@ export default function HelmetMetaData(props) {
 		pathname = window.location.pathname || "/";
 	}
 	let currentUrl = CLIENT_ORIGIN ? CLIENT_ORIGIN + pathname : pathname;
+	let defaultImagePath = `${process.env.PUBLIC_URL || ""}/assets/social-preview.jpg`;
+	if (CLIENT_ORIGIN) {
+		const normalizedOrigin = CLIENT_ORIGIN.replace(/\/+$/, "");
+		const normalizedPath = defaultImagePath.replace(/^\.?\//, "");
+		defaultImagePath = `${normalizedOrigin}/${normalizedPath}`;
+	}
 	let quote = props.quote !== undefined ? props.quote : "";
 	let title = props.title !== undefined ? props.title : "Secret Hitler Online";
 	let image =
 		props.image !== undefined
 			? props.image
-			: "https://live.staticflickr.com/65535/49904192417_3bf847b3f9_w.jpg";
+			: defaultImagePath;
 	let description =
 		props.description !== undefined
 			? props.description

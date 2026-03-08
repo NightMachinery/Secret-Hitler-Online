@@ -2,6 +2,9 @@ import React, {Component} from "react";
 import ReactGA from "react-ga";
 import "./LoginPageContent.css";
 import "./util/CustomAliceCarousel.css";
+import placePolicyGif from "./assets/login-media/place-policy.gif";
+import showPolicyGif from "./assets/login-media/show-policy.gif";
+import showVotesGif from "./assets/login-media/show-votes.gif";
 
 
 class LoginPageContent extends Component {
@@ -23,9 +26,9 @@ class LoginPageContent extends Component {
     render() {
         let handleDragStart = (e) => e.preventDefault();
         let items = [
-            <img id={"login-page-gif"} src={'https://i.postimg.cc/zvnLRbqq/place-policy.gif'} onDragStart={handleDragStart} alt={"A policy tile being placed on the board."}/>,
-            <img id={"login-page-gif"} src={'https://i.postimg.cc/Wbvqcn7z/show-policy.gif'} onDragStart={handleDragStart} alt={"An animated folder revealing a policy tile."}/>,
-            <img id={"login-page-gif"} src={'https://i.postimg.cc/cCNCZxw2/show-votes.gif'} onDragStart={handleDragStart} alt={"An animation showing all the cast votes."}/>
+            <img id={"login-page-gif"} src={placePolicyGif} onDragStart={handleDragStart} alt={"A policy tile being placed on the board."}/>,
+            <img id={"login-page-gif"} src={showPolicyGif} onDragStart={handleDragStart} alt={"An animated folder revealing a policy tile."}/>,
+            <img id={"login-page-gif"} src={showVotesGif} onDragStart={handleDragStart} alt={"An animation showing all the cast votes."}/>
         ];
         return (
             <>
