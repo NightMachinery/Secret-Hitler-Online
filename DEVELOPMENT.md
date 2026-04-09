@@ -14,6 +14,8 @@
 
 ## Public self-hosting (production)
 
+Preferred workflow: use `./self_host.zsh` as documented in `docs/self-hosting.md`. The legacy compose notes below are still useful as reference, but the script-based flow is the supported path.
+
 Use `docker-compose.prod.yml` when running a public instance.
 
 - Start the production stack:

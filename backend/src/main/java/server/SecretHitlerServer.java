@@ -158,7 +158,14 @@ public class SecretHitlerServer {
                     }
                 });
             });
-        }).start(getHerokuAssignedPort());
+        });
+
+        String bindHost = ApplicationConfig.BIND_HOST;
+        if (bindHost != null && !bindHost.isBlank()) {
+            serverApp.start(bindHost.trim(), getHerokuAssignedPort());
+        } else {
+            serverApp.start(getHerokuAssignedPort());
+        }
 
         serverApp.get("/check-login", SecretHitlerServer::checkLogin); // Checks if a login is valid.
         serverApp.get("/new-lobby", SecretHitlerServer::createNewLobby); // Creates and returns the code for a new lobby
