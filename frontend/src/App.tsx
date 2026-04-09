@@ -204,6 +204,7 @@ type AppState = {
   snackbarMessage: string;
   showAlert: boolean;
   alertContent: JSX.Element;
+  alertMinimized: boolean;
   showEventBar: boolean;
   eventBarMessage: string;
   statusBarText: string;
@@ -237,6 +238,7 @@ const defaultAppState: AppState = {
   snackbarMessage: "",
   showAlert: false,
   alertContent: <div />,
+  alertMinimized: false,
   showEventBar: false,
   eventBarMessage: "",
   statusBarText: "---",
@@ -323,6 +325,8 @@ class App extends Component<{}, AppState> {
     this.onAnimationFinish = this.onAnimationFinish.bind(this);
     this.onGameStateChanged = this.onGameStateChanged.bind(this);
     this.hideAlertAndFinish = this.hideAlertAndFinish.bind(this);
+    this.minimizeAlert = this.minimizeAlert.bind(this);
+    this.restoreAlert = this.restoreAlert.bind(this);
     this.addAnimationToQueue = this.addAnimationToQueue.bind(this);
     this.clearAnimationQueue = this.clearAnimationQueue.bind(this);
     this.queueAlert = this.queueAlert.bind(this);
@@ -1742,6 +1746,7 @@ class App extends Component<{}, AppState> {
                 </ButtonPrompt>
               ),
               showAlert: true,
+              alertMinimized: false,
             });
           });
           this.gameOver = true;
@@ -1779,6 +1784,7 @@ class App extends Component<{}, AppState> {
       this.setState({
         showAlert: false,
         alertContent: <div />,
+        alertMinimized: false,
         showVotes: false,
         statusBarText: "",
       });
@@ -1898,15 +1904,27 @@ class App extends Component<{}, AppState> {
    *           Otherwise, immediately queues the next animation.
    */
   hideAlertAndFinish(delayExit = true) {
-    this.setState({ showAlert: false });
+    this.setState({ showAlert: false, alertMinimized: false });
     if (delayExit) {
       setTimeout(() => {
-        this.setState({ alertContent: <div /> }); // reset the alert box contents
+        this.setState({ alertContent: <div />, alertMinimized: false }); // reset the alert box contents
         this.onAnimationFinish();
       }, CUSTOM_ALERT_FADE_DURATION);
     } else {
-      this.setState({ alertContent: <div /> });
+      this.setState({ alertContent: <div />, alertMinimized: false });
       this.onAnimationFinish();
+    }
+  }
+
+  minimizeAlert() {
+    if (this.state.showAlert) {
+      this.setState({ alertMinimized: true });
+    }
+  }
+
+  restoreAlert() {
+    if (this.state.showAlert) {
+      this.setState({ alertMinimized: false });
     }
   }
 
@@ -1946,6 +1964,7 @@ class App extends Component<{}, AppState> {
       this.setState({
         alertContent: content,
         showAlert: true,
+        alertMinimized: false,
       });
       if (closeOnOK) {
         // Remove the exit delay if waiting for the server response, because otherwise the player will lag
@@ -1978,7 +1997,13 @@ class App extends Component<{}, AppState> {
       <div className="App" style={{ textAlign: "center" }}>
         <header className="App-header">SECRET-HITLER.ONLINE</header>
 
-        <CustomAlert show={this.state.showAlert}>
+        <CustomAlert
+          show={this.state.showAlert}
+          allowMinimize={true}
+          isMinimized={this.state.alertMinimized}
+          onMinimize={this.minimizeAlert}
+          onRestore={this.restoreAlert}
+        >
           {this.state.alertContent}
         </CustomAlert>
 

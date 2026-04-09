@@ -1,9 +1,27 @@
 import React from 'react';
-import { render } from '@testing-library/react';
+import { render, screen } from '@testing-library/react';
 import App from './App';
 
-test('renders learn react link', () => {
-  const { getByText } = render(<App />);
-  const linkElement = getByText(/learn react/i);
-  expect(linkElement).toBeInTheDocument();
+jest.mock('react-ga', () => ({
+  initialize: jest.fn(),
+  pageview: jest.fn(),
+  event: jest.fn(),
+}));
+
+beforeEach(() => {
+  global.fetch = jest.fn(() =>
+    Promise.resolve({
+      ok: true,
+      json: async () => ({}),
+    })
+  );
+});
+
+afterEach(() => {
+  jest.clearAllMocks();
+});
+
+test('renders the login header', () => {
+  render(<App />);
+  expect(screen.getAllByText(/SECRET-HITLER.ONLINE/i)[0]).toBeInTheDocument();
 });

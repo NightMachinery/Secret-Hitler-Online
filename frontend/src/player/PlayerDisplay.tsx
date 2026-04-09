@@ -337,7 +337,11 @@ export default function PlayerDisplay(
         const showVote = index + start < playerVotesVisible && playerData.alive;
 
         return (
-          <div id={"player-display-text-container"} key={playerName}>
+          <div
+            id={"player-display-text-container"}
+            key={playerName}
+            data-player-name={playerName}
+          >
             {label}
             <Player
               isBusy={
@@ -392,26 +396,6 @@ export default function PlayerDisplay(
     setPlayerVotesVisible(0);
   };
 
-  /* Note that there are two player-display-containers, so that the player tiles can be split into two rows if there
-   * is insufficient space for them.*/
-  const playerOrder = getPlayerOrder();
-
-  // divides the playerOrder at the given index to allow for even groupings if the page is too narrow to fit
-  // all players.
-  let div1, div2;
-  if (playerOrder.length <= 4) {
-    // all players can be sorted into the first group.
-    div1 = playerOrder.length;
-    div2 = playerOrder.length;
-  } else if (playerOrder.length <= 8) {
-    // divide the players into two groups, with size preference given to the second group.
-    div1 = Math.floor(playerOrder.length / 2);
-    div2 = playerOrder.length;
-  } else {
-    div1 = Math.floor(playerOrder.length / 3);
-    div2 = Math.floor((playerOrder.length * 2) / 3);
-  }
-
   if (props.showVotes && !isPlayingVoteAnimation) {
     setIsPlayingVoteAnimation(true);
     setupVoteAnimation();
@@ -422,11 +406,7 @@ export default function PlayerDisplay(
 
   return (
     <div id="player-display">
-      <div id="player-display-container">{renderPlayer(0, div1)}</div>
-      <div id="player-display-container">{renderPlayer(div1, div2)}</div>
-      <div id="player-display-container">
-        {renderPlayer(div2, playerOrder.length)}
-      </div>
+      {renderPlayer(0, getPlayerOrder().length)}
     </div>
   );
 }
