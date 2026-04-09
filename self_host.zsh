@@ -211,24 +211,26 @@ PY2
 
 save_config () {
   local origin="$1"
-  local assignments
+  local assignments tmp_config
   ensure_dirs
   assignments="$(parse_origin_assignments "$origin")" || die "Invalid public origin: $origin"
   eval "$assignments"
 
-  cat > "$CONFIG_FILE" <<EOF
+  tmp_config="$(mktemp "$STATE_DIR/config.zsh.XXXXXX")"
+  cat > "$tmp_config" <<EOF
 PUBLIC_ORIGIN=${(qqq)PUBLIC_ORIGIN}
 PUBLIC_SCHEME=${(qqq)PUBLIC_SCHEME}
 PUBLIC_HOSTPORT=${(qqq)PUBLIC_HOSTPORT}
 PUBLIC_HOST=${(qqq)PUBLIC_HOST}
 EOF
+  mv "$tmp_config" "$CONFIG_FILE"
 }
 
 load_config () {
-  [[ -f "$CONFIG_FILE" ]] || die "Missing saved config at $CONFIG_FILE. Run ./self_host.zsh setup <public-origin> first."
+  [[ -s "$CONFIG_FILE" ]] || die "Saved config is missing or empty at $CONFIG_FILE. Re-run ./self_host.zsh setup <public-origin> or ./self_host.zsh docker-setup <public-origin>."
   source "$CONFIG_FILE"
-  [[ -n "${PUBLIC_ORIGIN:-}" ]] || die "Saved config is missing PUBLIC_ORIGIN"
-  [[ -n "${PUBLIC_HOSTPORT:-}" ]] || die "Saved config is missing PUBLIC_HOSTPORT"
+  [[ -n "${PUBLIC_ORIGIN:-}" ]] || die "Saved config at $CONFIG_FILE is invalid (missing PUBLIC_ORIGIN). Re-run ./self_host.zsh setup <public-origin> or ./self_host.zsh docker-setup <public-origin>."
+  [[ -n "${PUBLIC_HOSTPORT:-}" ]] || die "Saved config at $CONFIG_FILE is invalid (missing PUBLIC_HOSTPORT). Re-run ./self_host.zsh setup <public-origin> or ./self_host.zsh docker-setup <public-origin>."
 }
 
 ensure_password () {
