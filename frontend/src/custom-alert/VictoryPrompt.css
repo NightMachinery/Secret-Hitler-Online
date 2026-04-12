@@ -1,0 +1,18 @@
+.victory-summary {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  gap: 0.75rem;
+  flex-wrap: wrap;
+  margin: 0 0 0.75rem;
+  text-align: center;
+}
+
+.victory-summary-label {
+  color: var(--textColorOnDark);
+}
+
+.victory-summary-count {
+  font-family: var(--headerFont);
+  letter-spacing: 0.03em;
+}

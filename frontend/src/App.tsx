@@ -56,7 +56,6 @@ import {
 
 import PlayerDisplay, {
   DISABLE_EXECUTED_PLAYERS,
-  DISABLE_NONE,
 } from "./player/PlayerDisplay";
 import StatusBar from "./status-bar/StatusBar";
 import Board from "./board/Board";
@@ -78,9 +77,6 @@ import InvestigationAlert from "./custom-alert/InvestigationAlert";
 import Deck from "./board/Deck";
 import PlayerPolicyStatus from "./util/PlayerPolicyStatus";
 import HistoryPanel from "./util/HistoryPanel";
-
-import VictoryFascistHeader from "./assets/victory-fascist-header.png";
-import VictoryLiberalHeader from "./assets/victory-liberal-header.png";
 import IconSelection from "./custom-alert/IconSelection";
 import HelmetMetaData from "./util/HelmetMetaData";
 import { defaultPortrait } from "./assets";
@@ -88,6 +84,7 @@ import Player from "./player/Player";
 import LoginPageContent from "./LoginPageContent";
 import Cookies from "js-cookie";
 import AnnouncementBox from "./util/AnnouncementBox";
+import VictoryPrompt from "./custom-alert/VictoryPrompt";
 import {
   GameState,
   HistoryConfig,
@@ -2035,23 +2032,6 @@ class App extends Component<{}, AppState> {
           // Policies will already be shown for policy-based victories.
           // If the game was won via election, show the votes.
 
-          // Divide fascist and liberal players.
-          const fascistPlayers: string[] = [];
-          const liberalPlayers: string[] = [];
-          newState.playerOrder.forEach((player) => {
-            const role = newState.players[player].id;
-            if (role === Role.FASCIST || role === Role.HITLER) {
-              fascistPlayers.push(player);
-            } else {
-              liberalPlayers.push(player);
-            }
-          });
-
-          let victoryMessage: string,
-            messageClass: string,
-            headerImage: string,
-            headerAlt: string;
-          let players: string[] = [];
           let state = newState.state;
           let fascistVictoryPolicy = state === STATE_FASCIST_VICTORY_POLICY;
           let fascistVictoryElection = state === STATE_FASCIST_VICTORY_ELECTION;
@@ -2081,55 +2061,13 @@ class App extends Component<{}, AppState> {
               });
             }
           }
-
-          if (fascistVictoryElection || fascistVictoryPolicy) {
-            players = fascistPlayers.concat(liberalPlayers);
-            headerImage = VictoryFascistHeader;
-            headerAlt = "Fascist Victory, written in red with a skull icon.";
-            messageClass = "highlight";
-            if (fascistVictoryPolicy) {
-              victoryMessage = "Fascists successfully passed six policies!";
-            } else if (fascistVictoryElection) {
-              victoryMessage =
-                "Fascists successfully elected Hitler as chancellor!";
-            }
-          } else {
-            players = liberalPlayers.concat(fascistPlayers);
-            headerImage = VictoryLiberalHeader;
-            headerAlt = "Liberal Victory, written in blue with a dove icon.";
-            messageClass = "highlight-blue";
-            if (liberalVictoryPolicy) {
-              victoryMessage = "Liberals successfully passed five policies!";
-            } else if (liberalVictoryExecution) {
-              victoryMessage = "Liberals successfully executed Hitler!";
-            }
-          }
-          if (DEBUG) {
-            console.log("Player ordering: " + players);
-          }
           this.addAnimationToQueue(() => {
             this.setState({
               alertContent: (
-                <ButtonPrompt
-                  renderLabel={() => {
-                    return (
-                      <>
-                        <img
-                          src={headerImage}
-                          alt={headerAlt}
-                          id={"victory-header"}
-                        />
-                        <p
-                          style={{ textAlign: "center" }}
-                          className={messageClass}
-                        >
-                          {victoryMessage}
-                        </p>
-                      </>
-                    );
-                  }}
-                  buttonText={"RETURN TO LOBBY"}
-                  buttonOnClick={() => {
+                <VictoryPrompt
+                  gameState={newState}
+                  user={this.state.name}
+                  onReturnToLobby={() => {
                     this.gameOver = false;
                     this.reconnectOnConnectionClosed = true;
                     this.tryOpenWebSocket(this.state.name, this.state.lobby);
@@ -2144,17 +2082,7 @@ class App extends Component<{}, AppState> {
                       discardDeckSize: 0,
                     });
                   }}
-                >
-                  <PlayerDisplay
-                    players={players}
-                    playerDisabledFilter={DISABLE_NONE}
-                    showRoles={true}
-                    showLabels={false}
-                    useAsButtons={false}
-                    user={this.state.name}
-                    gameState={newState}
-                  />
-                </ButtonPrompt>
+                />
               ),
               showAlert: true,
               alertMinimized: false,
