@@ -8,6 +8,7 @@ FRONTEND_DIR="$ROOT_DIR/frontend"
 STATE_DIR="${SELF_HOST_STATE_DIR:-$ROOT_DIR/.local/self-hosting}"
 RUNTIME_DIR="$STATE_DIR/runtime"
 CONFIG_FILE="$STATE_DIR/config.zsh"
+POSTGRES_IDENTITY_FILE="$STATE_DIR/postgres-identity.zsh"
 CADDYFILE="${SELF_HOST_CADDYFILE:-$HOME/Caddyfile}"
 NODE_VERSION="${SELF_HOST_NODE_VERSION:-16.20.2}"
 POSTGRES_FORMULA="${POSTGRES_FORMULA:-postgresql@16}"
@@ -16,20 +17,25 @@ POSTGRES_DB="${SELF_HOST_POSTGRES_DB:-secret_hitler_self_host}"
 POSTGRES_USER="${SELF_HOST_POSTGRES_USER:-secret_hitler}"
 POSTGRES_STATE_DIR="$STATE_DIR/postgres"
 POSTGRES_DATA_DIR="$POSTGRES_STATE_DIR/data"
+POSTGRES_SOCKET_DIR="$POSTGRES_STATE_DIR/socket"
 POSTGRES_PASSWORD_FILE="$POSTGRES_STATE_DIR/password.txt"
 POSTGRES_LOG_FILE="$POSTGRES_STATE_DIR/postgres.log"
 BACKEND_PORT="${SELF_HOST_BACKEND_PORT:-4040}"
 FRONTEND_PORT="${SELF_HOST_FRONTEND_PORT:-6010}"
 UNLOCK_ALL_P="${UNLOCK_ALL_P:-true}"
 DOCKER_COMPOSE_FILE="${SELF_HOST_DOCKER_COMPOSE_FILE:-$ROOT_DIR/docker-compose.secrethitler.prod.yml}"
+DOCKER_POSTGRES_IMAGE="${SELF_HOST_DOCKER_POSTGRES_IMAGE:-postgres:15}"
 BEGIN_MARKER="# BEGIN Secret-Hitler-Online managed by self_host.zsh"
 END_MARKER="# END Secret-Hitler-Online managed by self_host.zsh"
 POSTGRES_SESSION="secret-hitler-postgres"
 BACKEND_SESSION="secret-hitler-backend"
 FRONTEND_SESSION="secret-hitler-frontend"
 DOCKER_SESSION="secret-hitler-docker"
+MODE_FILE="$STATE_DIR/mode"
 SKIP_START="${SELF_HOST_SKIP_START:-0}"
 SKIP_CADDY_RELOAD="${SELF_HOST_SKIP_CADDY_RELOAD:-0}"
+SELF_HOST_OWNER_USER="${SELF_HOST_OWNER_USER:-$(id -un)}"
+SELF_HOST_OWNER_GROUP="${SELF_HOST_OWNER_GROUP:-$(id -gn)}"
 
 proxy_vars=(
   ALL_PROXY all_proxy
@@ -82,8 +88,261 @@ is_truthy () {
   [[ "$value" == "1" || "$value" == "true" || "$value" == "yes" || "$value" == "y" || "$value" == "on" ]]
 }
 
+write_mode () {
+  mkdir -p "$STATE_DIR"
+  print -r -- "$1" > "$MODE_FILE"
+}
+
+read_mode () {
+  [[ -s "$MODE_FILE" ]] || return 0
+  cat "$MODE_FILE"
+}
+
+run_with_optional_sudo () {
+  if [[ "${EUID:-$(id -u)}" -eq 0 ]]; then
+    "$@"
+  else
+    local sudo_bin="/usr/bin/sudo"
+    [[ -x "$sudo_bin" ]] || sudo_bin="$(command -v sudo 2>/dev/null || true)"
+    if [[ -n "$sudo_bin" ]]; then
+      "$sudo_bin" -n "$@" 2>/dev/null || "$sudo_bin" "$@"
+    else
+      "$@"
+    fi
+  fi
+}
+
+ensure_tree_owned_by_current_user () {
+  local path="$1"
+  [[ -e "$path" ]] || return 0
+  local chown_bin="/usr/bin/chown"
+  local chmod_bin="/usr/bin/chmod"
+  [[ -x "$chown_bin" ]] || chown_bin="$(command -v chown)"
+  [[ -x "$chmod_bin" ]] || chmod_bin="$(command -v chmod)"
+
+  if [[ ! -O "$path" || ! -w "$path" ]]; then
+    log "Repairing ownership for $path"
+    run_with_optional_sudo "$chown_bin" -R "$SELF_HOST_OWNER_USER:$SELF_HOST_OWNER_GROUP" "$path"
+  fi
+  "$chmod_bin" -R u+rwX "$path" 2>/dev/null || run_with_optional_sudo "$chmod_bin" -R u+rwX "$path"
+}
+
+repair_local_runtime_permissions () {
+  ensure_tree_owned_by_current_user "$STATE_DIR"
+  ensure_tree_owned_by_current_user "$BACKEND_DIR/.gradle"
+  ensure_tree_owned_by_current_user "$FRONTEND_DIR/build"
+  ensure_tree_owned_by_current_user "$FRONTEND_DIR/node_modules/.cache"
+}
+
+docker_project_name () {
+  print -r -- "$ROOT_DIR:t" | tr '[:upper:]' '[:lower:]' | sed -E 's/[^a-z0-9]+/-/g; s/^-+//; s/-+$//'
+}
+
+docker_postgres_volume_name () {
+  local project_name
+  project_name="$(docker_project_name)"
+  print -r -- "${SELF_HOST_DOCKER_POSTGRES_VOLUME:-${project_name}_postgres-data}"
+}
+
+docker_postgres_volume_exists () {
+  command -v docker >/dev/null 2>&1 || return 1
+  local volume_name
+  volume_name="$(docker_postgres_volume_name)"
+  docker volume inspect "$volume_name" >/dev/null 2>&1
+}
+
+docker_stack_has_runtime () {
+  command -v docker >/dev/null 2>&1 || return 1
+  [[ -f "$DOCKER_COMPOSE_FILE" ]] || return 1
+  docker compose -f "$DOCKER_COMPOSE_FILE" ps -q 2>/dev/null | grep -q .
+}
+
+docker_postgres_volume_has_data () {
+  command -v docker >/dev/null 2>&1 || return 1
+  local volume_name
+  volume_name="$(docker_postgres_volume_name)"
+  docker_postgres_volume_exists || return 1
+  docker run --rm -v "$volume_name:/var/lib/postgresql/data" "$DOCKER_POSTGRES_IMAGE" sh -ceu '
+    find /var/lib/postgresql/data -mindepth 1 -maxdepth 1 | grep -q .
+  ' >/dev/null 2>&1
+}
+
+local_postgres_data_has_data () {
+  [[ -f "$POSTGRES_DATA_DIR/PG_VERSION" ]]
+}
+
+backup_directory_if_present () {
+  local path="$1"
+  local label="$2"
+  [[ -d "$path" ]] || return 0
+  if [[ -z "$(find "$path" -mindepth 1 -maxdepth 1 -print -quit 2>/dev/null)" ]]; then
+    return 0
+  fi
+  local backup_path="${path}.${label}.backup.$(date +%Y%m%d%H%M%S)"
+  log "Backing up $path to $backup_path"
+  mv "$path" "$backup_path"
+  mkdir -p "$path"
+}
+
+pick_free_tcp_port () {
+  python3 - <<'PY2'
+import socket
+
+sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+sock.bind(("127.0.0.1", 0))
+print(sock.getsockname()[1])
+sock.close()
+PY2
+}
+
+wait_for_local_postgres () {
+  local port="$1"
+  local attempts="${2:-60}"
+  local i
+  for (( i = 1; i <= attempts; i++ )); do
+    if PGPASSWORD="$POSTGRES_PASSWORD" "$PG_BIN_DIR/pg_isready" -h 127.0.0.1 -p "$port" -U "$POSTGRES_USER" -d postgres >/dev/null 2>&1; then
+      return 0
+    fi
+    sleep 1
+  done
+  return 1
+}
+
+wait_for_docker_postgres () {
+  local container_name="$1"
+  local attempts="${2:-60}"
+  local i
+  for (( i = 1; i <= attempts; i++ )); do
+    if docker exec "$container_name" pg_isready -h 127.0.0.1 -p 5432 >/dev/null 2>&1; then
+      return 0
+    fi
+    sleep 1
+  done
+  return 1
+}
+
+docker_volume_backup_if_present () {
+  local volume_name="$1"
+  local label="$2"
+
+  docker volume inspect "$volume_name" >/dev/null 2>&1 || return 0
+  docker run --rm -v "$volume_name:/from:ro" "$DOCKER_POSTGRES_IMAGE" sh -ceu '
+    find /from -mindepth 1 -maxdepth 1 | grep -q .
+  ' >/dev/null 2>&1 || return 0
+
+  local backup_volume="${volume_name}-${label}-backup-$(date +%Y%m%d%H%M%S)"
+  log "Backing up Docker volume $volume_name to $backup_volume"
+  docker volume create "$backup_volume" >/dev/null
+  docker run --rm \
+    -v "$volume_name:/from:ro" \
+    -v "$backup_volume:/to" \
+    "$DOCKER_POSTGRES_IMAGE" sh -ceu '
+      cp -a /from/. /to/
+    '
+}
+
+clear_docker_volume () {
+  local volume_name="$1"
+  docker volume create "$volume_name" >/dev/null
+  docker run --rm -v "$volume_name:/data" "$DOCKER_POSTGRES_IMAGE" sh -ceu '
+    rm -rf /data/* /data/.[!.]* /data/..?* 2>/dev/null || true
+  '
+}
+
+init_local_postgres_cluster () {
+  local data_dir="$1"
+  local log_file="$2"
+  local socket_dir="$3"
+  local password_file="$POSTGRES_STATE_DIR/pwfile.$$"
+
+  rm -rf "$data_dir"
+  mkdir -p "$data_dir" "$(dirname -- "$log_file")" "$socket_dir"
+  : > "$log_file"
+
+  printf "%s" "$POSTGRES_PASSWORD" > "$password_file"
+  "$PG_BIN_DIR/initdb" -D "$data_dir" -U "$POSTGRES_USER" -A scram-sha-256 --pwfile="$password_file" >/dev/null
+  rm -f "$password_file"
+}
+
+start_local_postgres_temp () {
+  local data_dir="$1"
+  local log_file="$2"
+  local socket_dir="$3"
+  local port="$4"
+
+  mkdir -p "$socket_dir"
+  "$PG_BIN_DIR/pg_ctl" -D "$data_dir" -l "$log_file" -o "-p $port -h 127.0.0.1 -k $socket_dir" start >/dev/null
+  wait_for_local_postgres "$port" || die "Temporary local PostgreSQL instance did not become ready. Check $log_file"
+}
+
+stop_local_postgres_temp () {
+  local data_dir="$1"
+  if [[ -f "$data_dir/PG_VERSION" ]] && "$PG_BIN_DIR/pg_ctl" -D "$data_dir" status >/dev/null 2>&1; then
+    "$PG_BIN_DIR/pg_ctl" -D "$data_dir" stop -m fast >/dev/null || true
+  fi
+}
+
+start_temp_docker_postgres () {
+  local volume_name="$1"
+  local port="$2"
+  local container_name="$3"
+
+  docker volume create "$volume_name" >/dev/null
+  docker rm -f "$container_name" >/dev/null 2>&1 || true
+  docker run -d --rm \
+    --name "$container_name" \
+    -e POSTGRES_PASSWORD="$POSTGRES_PASSWORD" \
+    -e POSTGRES_USER="$POSTGRES_USER" \
+    -e POSTGRES_DB="$POSTGRES_DB" \
+    -p "127.0.0.1:${port}:5432" \
+    -v "$volume_name:/var/lib/postgresql/data" \
+    "$DOCKER_POSTGRES_IMAGE" >/dev/null
+  wait_for_docker_postgres "$container_name" || {
+    docker logs "$container_name" >&2 || true
+    die "Temporary Docker PostgreSQL container did not become ready."
+  }
+}
+
+detect_docker_postgres_user () {
+  local container_name="$1"
+  local candidate
+  local -a candidates=("$POSTGRES_USER" secret postgres)
+
+  for candidate in "${candidates[@]}"; do
+    [[ -n "$candidate" ]] || continue
+    if docker exec "$container_name" env PGPASSWORD="$POSTGRES_PASSWORD" \
+      psql -h 127.0.0.1 -p 5432 -U "$candidate" -d postgres -Atqc 'SELECT 1' >/dev/null 2>&1; then
+      print -r -- "$candidate"
+      return 0
+    fi
+  done
+
+  return 1
+}
+
+detect_docker_postgres_db () {
+  local container_name="$1"
+  local source_user="$2"
+
+  if docker exec "$container_name" env PGPASSWORD="$POSTGRES_PASSWORD" \
+    psql -h 127.0.0.1 -p 5432 -U "$source_user" -d postgres -Atqc "SELECT 1 FROM pg_database WHERE datname = '$POSTGRES_DB'" \
+    | grep -qx '1'; then
+    print -r -- "$POSTGRES_DB"
+    return 0
+  fi
+
+  local detected_db
+  detected_db="$(
+    docker exec "$container_name" env PGPASSWORD="$POSTGRES_PASSWORD" \
+      psql -h 127.0.0.1 -p 5432 -U "$source_user" -d postgres -Atqc \
+      "SELECT datname FROM pg_database WHERE datistemplate = false AND datname <> 'postgres' ORDER BY datname LIMIT 1"
+  )"
+  [[ -n "$detected_db" ]] || detected_db="postgres"
+  print -r -- "$detected_db"
+}
+
 ensure_dirs () {
-  mkdir -p "$STATE_DIR" "$RUNTIME_DIR" "$POSTGRES_STATE_DIR" "$POSTGRES_DATA_DIR"
+  mkdir -p "$STATE_DIR" "$RUNTIME_DIR" "$POSTGRES_STATE_DIR" "$POSTGRES_DATA_DIR" "$POSTGRES_SOCKET_DIR"
 }
 
 find_pg_bin_dir () {
@@ -226,6 +485,23 @@ EOF
   mv "$tmp_config" "$CONFIG_FILE"
 }
 
+load_postgres_identity () {
+  if [[ -s "$POSTGRES_IDENTITY_FILE" ]]; then
+    source "$POSTGRES_IDENTITY_FILE"
+  fi
+}
+
+save_postgres_identity () {
+  local tmp_identity
+  ensure_dirs
+  tmp_identity="$(mktemp "$STATE_DIR/postgres-identity.zsh.XXXXXX")"
+  cat > "$tmp_identity" <<EOF
+POSTGRES_DB=${(qqq)POSTGRES_DB}
+POSTGRES_USER=${(qqq)POSTGRES_USER}
+EOF
+  mv "$tmp_identity" "$POSTGRES_IDENTITY_FILE"
+}
+
 load_config () {
   [[ -s "$CONFIG_FILE" ]] || die "Saved config is missing or empty at $CONFIG_FILE. Re-run ./self_host.zsh setup <public-origin> or ./self_host.zsh docker-setup <public-origin>."
   source "$CONFIG_FILE"
@@ -270,6 +546,7 @@ write_runtime_scripts () {
 : "${PG_BIN_DIR:?PG_BIN_DIR is required}"
 : "${POSTGRES_STATE_DIR:?POSTGRES_STATE_DIR is required}"
 : "${POSTGRES_DATA_DIR:?POSTGRES_DATA_DIR is required}"
+: "${POSTGRES_SOCKET_DIR:?POSTGRES_SOCKET_DIR is required}"
 : "${POSTGRES_PASSWORD_FILE:?POSTGRES_PASSWORD_FILE is required}"
 : "${POSTGRES_LOG_FILE:?POSTGRES_LOG_FILE is required}"
 : "${POSTGRES_PORT:?POSTGRES_PORT is required}"
@@ -277,7 +554,7 @@ write_runtime_scripts () {
 : "${POSTGRES_USER:?POSTGRES_USER is required}"
 
 export PATH="$PG_BIN_DIR:$PATH"
-mkdir -p "$POSTGRES_STATE_DIR" "$POSTGRES_DATA_DIR"
+mkdir -p "$POSTGRES_STATE_DIR" "$POSTGRES_DATA_DIR" "$POSTGRES_SOCKET_DIR"
 
 if [[ ! -f "$POSTGRES_PASSWORD_FILE" ]]; then
   openssl rand -hex 24 > "$POSTGRES_PASSWORD_FILE"
@@ -294,7 +571,7 @@ if [[ ! -f "$POSTGRES_DATA_DIR/PG_VERSION" ]]; then
 fi
 
 if ! pg_ctl -D "$POSTGRES_DATA_DIR" status >/dev/null 2>&1; then
-  pg_ctl -D "$POSTGRES_DATA_DIR" -l "$POSTGRES_LOG_FILE" -o "-p $POSTGRES_PORT -h 127.0.0.1" start
+  pg_ctl -D "$POSTGRES_DATA_DIR" -l "$POSTGRES_LOG_FILE" -o "-p $POSTGRES_PORT -h 127.0.0.1 -k $POSTGRES_SOCKET_DIR" start
 fi
 
 until pg_isready -h 127.0.0.1 -p "$POSTGRES_PORT" -U "$POSTGRES_USER" -d postgres >/dev/null 2>&1; do
@@ -534,7 +811,7 @@ PY2
 }
 
 start_postgres_session () {
-  tmuxnew "$POSTGRES_SESSION" "env PG_BIN_DIR='$PG_BIN_DIR' POSTGRES_STATE_DIR='$POSTGRES_STATE_DIR' POSTGRES_DATA_DIR='$POSTGRES_DATA_DIR' POSTGRES_PASSWORD_FILE='$POSTGRES_PASSWORD_FILE' POSTGRES_LOG_FILE='$POSTGRES_LOG_FILE' POSTGRES_PORT='$POSTGRES_PORT' POSTGRES_DB='$POSTGRES_DB' POSTGRES_USER='$POSTGRES_USER' bash '$POSTGRES_BOOT_SCRIPT'"
+  tmuxnew "$POSTGRES_SESSION" "env PG_BIN_DIR='$PG_BIN_DIR' POSTGRES_STATE_DIR='$POSTGRES_STATE_DIR' POSTGRES_DATA_DIR='$POSTGRES_DATA_DIR' POSTGRES_SOCKET_DIR='$POSTGRES_SOCKET_DIR' POSTGRES_PASSWORD_FILE='$POSTGRES_PASSWORD_FILE' POSTGRES_LOG_FILE='$POSTGRES_LOG_FILE' POSTGRES_PORT='$POSTGRES_PORT' POSTGRES_DB='$POSTGRES_DB' POSTGRES_USER='$POSTGRES_USER' bash '$POSTGRES_BOOT_SCRIPT'"
 }
 
 start_backend_session () {
@@ -586,6 +863,133 @@ stop_local_stack () {
   fi
 }
 
+stop_docker_stack_internal () {
+  if command -v docker >/dev/null 2>&1 && [[ -f "$DOCKER_COMPOSE_FILE" ]]; then
+    load_docker_runtime_values
+    eval "$(build_docker_command 'down --remove-orphans')" >/dev/null 2>&1 || true
+  fi
+  tmux kill-session -t "$DOCKER_SESSION" &>/dev/null || true
+}
+
+migrate_docker_postgres_to_local () {
+  command -v docker >/dev/null 2>&1 || return 0
+  docker_postgres_volume_has_data || return 0
+
+  log "Migrating Docker PostgreSQL data into local self-hosted state"
+  local volume_name
+  volume_name="$(docker_postgres_volume_name)"
+  local source_port target_port
+  source_port="$(pick_free_tcp_port)"
+  target_port="$(pick_free_tcp_port)"
+  while [[ "$target_port" == "$source_port" ]]; do
+    target_port="$(pick_free_tcp_port)"
+  done
+
+  local source_container="secret-hitler-postgres-migrate-source-$$"
+  local target_data_dir="$POSTGRES_STATE_DIR/migrate-local-data"
+  local target_socket_dir="$POSTGRES_STATE_DIR/migrate-local-socket"
+  local target_log_file="$POSTGRES_STATE_DIR/migrate-local.log"
+  local source_user source_db
+
+  backup_directory_if_present "$POSTGRES_DATA_DIR" "docker-import"
+  rm -rf "$target_data_dir" "$target_socket_dir"
+
+  {
+    start_temp_docker_postgres "$volume_name" "$source_port" "$source_container"
+    source_user="$(detect_docker_postgres_user "$source_container")" || die "Could not determine the PostgreSQL role used by the Docker volume."
+    source_db="$(detect_docker_postgres_db "$source_container" "$source_user")"
+
+    POSTGRES_USER="$source_user"
+    POSTGRES_DB="$source_db"
+    save_postgres_identity
+
+    init_local_postgres_cluster "$target_data_dir" "$target_log_file" "$target_socket_dir"
+    start_local_postgres_temp "$target_data_dir" "$target_log_file" "$target_socket_dir" "$target_port"
+
+    docker exec "$source_container" env PGPASSWORD="$POSTGRES_PASSWORD" \
+      pg_dump -h 127.0.0.1 -p 5432 -U "$source_user" -d "$source_db" --clean --if-exists --create --no-owner --no-privileges \
+      | PGPASSWORD="$POSTGRES_PASSWORD" "$PG_BIN_DIR/psql" -v ON_ERROR_STOP=1 -h 127.0.0.1 -p "$target_port" -U "$POSTGRES_USER" -d postgres >/dev/null
+
+    stop_local_postgres_temp "$target_data_dir"
+    rm -rf "$POSTGRES_DATA_DIR"
+    mv "$target_data_dir" "$POSTGRES_DATA_DIR"
+    mkdir -p "$POSTGRES_SOCKET_DIR"
+    ensure_tree_owned_by_current_user "$POSTGRES_STATE_DIR"
+  } always {
+    stop_local_postgres_temp "$target_data_dir"
+    docker rm -f "$source_container" >/dev/null 2>&1 || true
+    rm -rf "$target_socket_dir"
+    [[ -d "$target_data_dir" ]] && rm -rf "$target_data_dir"
+  }
+}
+
+migrate_local_postgres_to_docker () {
+  command -v docker >/dev/null 2>&1 || return 0
+  local_postgres_data_has_data || return 0
+
+  log "Migrating local PostgreSQL data into Docker volume"
+  local volume_name
+  volume_name="$(docker_postgres_volume_name)"
+  local source_port target_port
+  source_port="$(pick_free_tcp_port)"
+  target_port="$(pick_free_tcp_port)"
+  while [[ "$target_port" == "$source_port" ]]; do
+    target_port="$(pick_free_tcp_port)"
+  done
+
+  local source_socket_dir="$POSTGRES_STATE_DIR/migrate-local-source-socket"
+  local source_log_file="$POSTGRES_STATE_DIR/migrate-local-source.log"
+  local target_container="secret-hitler-postgres-migrate-target-$$"
+
+  docker_volume_backup_if_present "$volume_name" "local-export"
+  clear_docker_volume "$volume_name"
+  rm -rf "$source_socket_dir"
+
+  {
+    start_local_postgres_temp "$POSTGRES_DATA_DIR" "$source_log_file" "$source_socket_dir" "$source_port"
+    start_temp_docker_postgres "$volume_name" "$target_port" "$target_container"
+
+    PGPASSWORD="$POSTGRES_PASSWORD" "$PG_BIN_DIR/pg_dump" -h 127.0.0.1 -p "$source_port" -U "$POSTGRES_USER" -d "$POSTGRES_DB" --clean --if-exists --create \
+      | docker exec -i "$target_container" env PGPASSWORD="$POSTGRES_PASSWORD" psql -v ON_ERROR_STOP=1 -h 127.0.0.1 -p 5432 -U "$POSTGRES_USER" -d postgres >/dev/null
+  } always {
+    stop_local_postgres_temp "$POSTGRES_DATA_DIR"
+    docker rm -f "$target_container" >/dev/null 2>&1 || true
+    rm -rf "$source_socket_dir"
+  }
+}
+
+switch_to_local_mode () {
+  local previous_mode
+  previous_mode="$(read_mode)"
+
+  if [[ "$previous_mode" == "docker" ]] || tmux has-session -t "$DOCKER_SESSION" &>/dev/null || docker_stack_has_runtime \
+    || { [[ -z "$previous_mode" ]] && docker_postgres_volume_has_data; }; then
+    log "Switching self-hosting mode from Docker to local tmux services"
+    stop_docker_stack_internal
+    migrate_docker_postgres_to_local
+  fi
+
+  repair_local_runtime_permissions
+  save_postgres_identity
+  write_mode "local"
+}
+
+switch_to_docker_mode () {
+  local previous_mode
+  previous_mode="$(read_mode)"
+
+  if [[ "$previous_mode" == "local" ]] || tmux has-session -t "$POSTGRES_SESSION" &>/dev/null \
+    || tmux has-session -t "$BACKEND_SESSION" &>/dev/null || tmux has-session -t "$FRONTEND_SESSION" &>/dev/null \
+    || { [[ -z "$previous_mode" ]] && local_postgres_data_has_data; }; then
+    log "Switching self-hosting mode from local tmux services to Docker"
+    stop_local_stack
+    migrate_local_postgres_to_docker
+  fi
+
+  save_postgres_identity
+  write_mode "docker"
+}
+
 ensure_docker_requirements () {
   require_command docker
   docker compose version >/dev/null 2>&1 || die "docker compose is required"
@@ -609,6 +1013,7 @@ export FRONTEND_PORT='${FRONTEND_PORT}'
 export POSTGRES_DB='${POSTGRES_DB}'
 export POSTGRES_USER='${POSTGRES_USER}'
 export POSTGRES_PASSWORD='${POSTGRES_PASSWORD}'
+export DATABASE_URL='postgres://${POSTGRES_USER}:${POSTGRES_PASSWORD}@db:5432/${POSTGRES_DB}'
 docker compose -f '$DOCKER_COMPOSE_FILE' ${compose_args}
 EOF
 }
@@ -635,6 +1040,9 @@ handle_setup () {
   save_config "$origin"
   load_config
   ensure_dirs
+  load_postgres_identity
+  load_runtime_values
+  switch_to_local_mode
   load_runtime_values
   write_runtime_scripts
   write_caddy_block
@@ -651,6 +1059,9 @@ handle_redeploy () {
   require_command python3
   load_config
   ensure_dirs
+  load_postgres_identity
+  load_runtime_values
+  switch_to_local_mode
   load_runtime_values
   write_runtime_scripts
   run_frontend_build
@@ -665,6 +1076,9 @@ handle_start () {
   require_command tmux
   load_config
   ensure_dirs
+  load_postgres_identity
+  load_runtime_values
+  switch_to_local_mode
   load_runtime_values
   write_runtime_scripts
   [[ -d "$FRONTEND_DIR/build" ]] || die "Missing frontend build output. Run ./self_host.zsh redeploy first."
@@ -680,6 +1094,9 @@ handle_docker_setup () {
   save_config "$origin"
   load_config
   ensure_dirs
+  load_postgres_identity
+  load_docker_runtime_values
+  switch_to_docker_mode
   load_docker_runtime_values
   write_caddy_block
   if ! is_truthy "$SKIP_START"; then
@@ -694,6 +1111,9 @@ handle_docker_redeploy () {
   ensure_docker_requirements
   load_config
   ensure_dirs
+  load_postgres_identity
+  load_docker_runtime_values
+  switch_to_docker_mode
   load_docker_runtime_values
   if ! is_truthy "$SKIP_START"; then
     start_docker_stack "up --build --force-recreate --remove-orphans"
@@ -707,6 +1127,9 @@ handle_docker_start () {
   ensure_docker_requirements
   load_config
   ensure_dirs
+  load_postgres_identity
+  load_docker_runtime_values
+  switch_to_docker_mode
   load_docker_runtime_values
   start_docker_stack "up --remove-orphans"
 }
@@ -715,6 +1138,7 @@ handle_docker_stop () {
   ensure_docker_requirements
   load_config
   ensure_dirs
+  load_postgres_identity
   load_docker_runtime_values
   eval "$(build_docker_command 'down --remove-orphans')"
   tmux kill-session -t "$DOCKER_SESSION" &>/dev/null || true

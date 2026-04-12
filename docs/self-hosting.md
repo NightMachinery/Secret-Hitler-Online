@@ -11,6 +11,11 @@ Use `./self_host.zsh` to run this project behind Caddy at a user-supplied public
   - backend on `127.0.0.1:4040`
   - frontend on `127.0.0.1:6010`
 - Provides separate Docker-only commands when you explicitly want Docker
+- Automatically switches modes:
+  - starting local mode stops the Docker stack first
+  - starting Docker mode stops the tmux-managed local stack first
+  - PostgreSQL data is migrated across modes during the switch
+- Repairs common ownership issues left behind by Docker-managed artifacts before starting local mode
 
 `redeploy` always uses the latest **local** working tree. It does **not** pull from git.
 
@@ -73,11 +78,14 @@ Behavior:
   - reloads Caddy
   - installs frontend dependencies and builds the frontend
   - starts tmux sessions
+  - if a Docker-based self-host already exists, stops it and migrates its PostgreSQL data into local mode
 - `redeploy`
   - rebuilds from current local source
   - restarts the tmux-managed services
+  - if the previous active mode was Docker, stops it and migrates PostgreSQL first
 - `start`
   - starts services from the saved config without rebuilding
+  - if the previous active mode was Docker, stops it and migrates PostgreSQL first
 - `stop`
   - stops tmux sessions
   - stops the local PostgreSQL server with `pg_ctl`
@@ -122,11 +130,17 @@ Behavior:
   - saves the public origin
   - updates `~/Caddyfile`
   - validates/reloads Caddy with the Caddyfile adapter
+  - stops the local tmux-managed stack if it is active
+  - migrates PostgreSQL data from local mode into Docker mode
   - starts `docker compose up --build --force-recreate --remove-orphans` in tmux
 - `docker-redeploy`
   - reruns the Docker stack from the current local working tree
+  - stops the local tmux-managed stack if it is active
+  - migrates PostgreSQL data from local mode into Docker mode
 - `docker-start`
   - starts the Docker stack without the rebuild/recreate flags
+  - stops the local tmux-managed stack if it is active
+  - migrates PostgreSQL data from local mode into Docker mode
 - `docker-stop`
   - runs `docker compose down --remove-orphans`
   - stops the Docker tmux session
@@ -193,3 +207,4 @@ Then run the script normally:
 - The frontend build bakes in `REACT_APP_CLIENT_ORIGIN` for public metadata.
 - API and websocket traffic use same-origin browser fallbacks behind Caddy.
 - Local self-hosting state is stored under `.local/self-hosting/`.
+- The script remembers the effective PostgreSQL role/database names under `.local/self-hosting/` so mode switches keep using the same app database identity.
