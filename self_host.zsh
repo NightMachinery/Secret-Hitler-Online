@@ -1133,6 +1133,8 @@ export FRONTEND_PORT='${FRONTEND_PORT}'
 export POSTGRES_DB='${POSTGRES_DB}'
 export POSTGRES_USER='${POSTGRES_USER}'
 export POSTGRES_PASSWORD='${POSTGRES_PASSWORD}'
+export DOCKER_UID='${EUID:-$(id -u)}'
+export DOCKER_GID='$(id -g)'
 export DOCKER_POSTGRES_VOLUME_NAME='$(docker_postgres_volume_name)'
 export DATABASE_URL='postgres://${POSTGRES_USER}:${POSTGRES_PASSWORD}@db:5432/${POSTGRES_DB}'
 docker compose -f '$DOCKER_COMPOSE_FILE' ${compose_args}

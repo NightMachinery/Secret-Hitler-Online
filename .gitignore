@@ -6,7 +6,8 @@ bin
 
 # Gradle stored files
 .gradle
-backend/.gradle-home/
+backend/.gradle-home/*
+!backend/.gradle-home/.gitignore
 
 # VSCode Workspace Configuration
 .idea/

@@ -17,11 +17,14 @@ services:
   backend:
     image: gradle:8.6.0-jdk17
     container_name: sh-backend
+    user: "${DOCKER_UID:-1000}:${DOCKER_GID:-1000}"
     working_dir: /app/backend
     volumes:
       - ./backend:/app/backend
-      - gradle-cache:/home/gradle/.gradle
+      - ./backend/.gradle-home:/gradle-home
     environment:
+      HOME: "/tmp/secret-hitler-docker-home"
+      GRADLE_USER_HOME: "/gradle-home"
       DEBUG_MODE: "${DEBUG_MODE:-true}"
       DATABASE_URL: "${DATABASE_URL:-postgres://secret:secret@db:5432/secrethitler}"
       PORT: "4040"
@@ -52,6 +55,3 @@ services:
       - backend
     ports:
       - "3000:3000"
-
-volumes:
-  gradle-cache: {}

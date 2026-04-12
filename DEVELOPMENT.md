@@ -2,7 +2,7 @@
 
 ## Quick start using Docker:
 - Run everything with Docker Compose (DB + backend + frontend):
-  - `docker compose up --build`
+  - `DOCKER_UID=$(id -u) DOCKER_GID=$(id -g) docker compose up --build`
   - Open frontend: [http://localhost:3000](http://localhost:3000)
   - Backend health: [http://localhost:4040/ping](http://localhost:4040/ping)
 - Alternative: only DB in Docker, run app locally:
@@ -21,7 +21,7 @@ The backend no longer carries Heroku-specific Gradle/plugin wiring; public hosti
 Use `docker-compose.prod.yml` when running a public instance.
 
 - Start the production stack:
-  - `docker compose -f docker-compose.prod.yml up --build -d`
+  - `DOCKER_UID=$(id -u) DOCKER_GID=$(id -g) docker compose -f docker-compose.prod.yml up --build -d`
 - Default public frontend URL in that file:
   - `http://example.com:6010`
 - Default backend URL in that file:
@@ -35,6 +35,16 @@ export REACT_APP_CLIENT_ORIGIN=http://1.2.3.4:6010
 export CORS_ALLOWED_ORIGINS=http://1.2.3.4:6010
 export REACT_APP_SERVER_ADDRESS=1.2.3.4:4040
 export REACT_APP_SERVER_ADDRESS_HTTP=http://1.2.3.4:4040
+docker compose -f docker-compose.prod.yml up --build -d
+)
+```
+
+To avoid root-owned backend Gradle artifacts on Linux, also pass your host UID/GID:
+
+```bash
+(
+export DOCKER_UID="$(id -u)"
+export DOCKER_GID="$(id -g)"
 docker compose -f docker-compose.prod.yml up --build -d
 )
 ```

@@ -19,13 +19,16 @@ services:
     image: gradle:8.6.0-jdk17
     container_name: sh-backend-prod
     restart: unless-stopped
+    user: "${DOCKER_UID:-1000}:${DOCKER_GID:-1000}"
     working_dir: /app/backend
     volumes:
       - ./backend:/app/backend
-      - gradle-cache:/home/gradle/.gradle
+      - ./backend/.gradle-home:/gradle-home
     extra_hosts:
       - "host.docker.internal:host-gateway"
     environment:
+      HOME: "/tmp/secret-hitler-docker-home"
+      GRADLE_USER_HOME: "/gradle-home"
       DATABASE_URL: "${DATABASE_URL:-postgres://secret:secret@db:5432/secrethitler}"
       PORT: "${BACKEND_PORT:-4040}"
       BACKEND_GRADLE_ARGS: "${BACKEND_GRADLE_ARGS:---console=plain --info}"
@@ -79,7 +82,6 @@ services:
       - "${FRONTEND_PORT:-6010}:${FRONTEND_PORT:-6010}"
 
 volumes:
-  gradle-cache: {}
   npm-cache: {}
   postgres-data:
     name: "${DOCKER_POSTGRES_VOLUME_NAME:-secret-hitler-online_postgres-data}"
