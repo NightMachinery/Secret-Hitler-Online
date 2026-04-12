@@ -462,6 +462,78 @@ build_proxy_export_lines () {
   print -r -- "${(F)exports}"
 }
 
+build_gradle_proxy_opts () {
+  local https_proxy_value="${HTTPS_PROXY:-${https_proxy:-${ALL_PROXY:-${all_proxy:-}}}}"
+  local http_proxy_value="${HTTP_PROXY:-${http_proxy:-${ALL_PROXY:-${all_proxy:-}}}}"
+  local no_proxy_value="${NO_PROXY:-${no_proxy:-}}"
+
+  python3 - "$http_proxy_value" "$https_proxy_value" "$no_proxy_value" <<'PY2'
+import shlex
+import sys
+from urllib.parse import urlparse
+
+http_proxy = sys.argv[1].strip()
+https_proxy = sys.argv[2].strip()
+no_proxy = sys.argv[3].strip()
+
+
+def parse_proxy(raw: str):
+    if not raw:
+        return None
+    parsed = urlparse(raw)
+    if parsed.scheme not in {"http", "https"}:
+        return None
+    if not parsed.hostname:
+        return None
+    port = parsed.port
+    if port is None:
+        port = 443 if parsed.scheme == "https" else 80
+    return {
+        "host": parsed.hostname,
+        "port": str(port),
+        "username": parsed.username or "",
+        "password": parsed.password or "",
+    }
+
+
+def add_proxy_opts(prefix: str, parsed_proxy, opts):
+    if not parsed_proxy:
+        return
+    opts.append(f"-D{prefix}.proxyHost={shlex.quote(parsed_proxy['host'])}")
+    opts.append(f"-D{prefix}.proxyPort={shlex.quote(parsed_proxy['port'])}")
+    if parsed_proxy["username"]:
+        opts.append(f"-D{prefix}.proxyUser={shlex.quote(parsed_proxy['username'])}")
+    if parsed_proxy["password"]:
+        opts.append(f"-D{prefix}.proxyPassword={shlex.quote(parsed_proxy['password'])}")
+
+
+opts = []
+add_proxy_opts("http", parse_proxy(http_proxy), opts)
+add_proxy_opts("https", parse_proxy(https_proxy), opts)
+
+if no_proxy:
+    patterns = []
+    for raw_part in no_proxy.split(","):
+        part = raw_part.strip()
+        if not part or "/" in part:
+            continue
+        if part == "*":
+            patterns.append("*")
+            continue
+        if part.startswith("."):
+            patterns.append(f"*{part}")
+            continue
+        patterns.append(part)
+    if patterns:
+        joined = "|".join(patterns)
+        quoted = shlex.quote(joined)
+        opts.append(f"-Dhttp.nonProxyHosts={quoted}")
+        opts.append(f"-Dhttps.nonProxyHosts={quoted}")
+
+print(" ".join(opts))
+PY2
+}
+
 parse_origin_assignments () {
   local raw_origin="$1"
   python3 - "$raw_origin" <<'PY2'
@@ -551,6 +623,7 @@ load_runtime_values () {
   POSTGRES_PASSWORD="$(<"$POSTGRES_PASSWORD_FILE")"
   DATABASE_URL_LOCAL="postgres://${POSTGRES_USER}:${POSTGRES_PASSWORD}@127.0.0.1:${POSTGRES_PORT}/${POSTGRES_DB}"
   PROXY_EXPORTS="$(build_proxy_export_lines)"
+  BACKEND_GRADLE_PROXY_OPTS="$(build_gradle_proxy_opts)"
 }
 
 load_docker_runtime_values () {
@@ -654,6 +727,15 @@ export CORS_ALLOWED_ORIGINS="$PUBLIC_ORIGIN"
 export PORT="$BACKEND_PORT"
 export BIND_HOST=127.0.0.1
 unset DEBUG_MODE || true
+
+if [[ -n "${BACKEND_GRADLE_PROXY_OPTS:-}" ]]; then
+  if [[ "${GRADLE_OPTS:-}" == *"-Dhttp.proxyHost="* || "${GRADLE_OPTS:-}" == *"-Dhttps.proxyHost="* ]]; then
+    echo "Using existing GRADLE_OPTS proxy settings."
+  else
+    export GRADLE_OPTS="${GRADLE_OPTS:+$GRADLE_OPTS }$BACKEND_GRADLE_PROXY_OPTS"
+    echo "Added JVM proxy flags to GRADLE_OPTS for backend Gradle startup."
+  fi
+fi
 
 until pg_isready -h 127.0.0.1 -p "$POSTGRES_PORT" -U "$POSTGRES_USER" -d postgres >/dev/null 2>&1; do
   sleep 1
@@ -850,7 +932,7 @@ start_postgres_session () {
 }
 
 start_backend_session () {
-  tmuxnew "$BACKEND_SESSION" "env BACKEND_DIR='$BACKEND_DIR' PG_BIN_DIR='$PG_BIN_DIR' DATABASE_URL_LOCAL='$DATABASE_URL_LOCAL' POSTGRES_PORT='$POSTGRES_PORT' POSTGRES_USER='$POSTGRES_USER' BACKEND_PORT='$BACKEND_PORT' BACKEND_GRADLE_ARGS='$BACKEND_GRADLE_ARGS' PUBLIC_ORIGIN='$PUBLIC_ORIGIN' bash '$BACKEND_BOOT_SCRIPT'"
+  tmuxnew "$BACKEND_SESSION" "env BACKEND_DIR='$BACKEND_DIR' PG_BIN_DIR='$PG_BIN_DIR' DATABASE_URL_LOCAL='$DATABASE_URL_LOCAL' POSTGRES_PORT='$POSTGRES_PORT' POSTGRES_USER='$POSTGRES_USER' BACKEND_PORT='$BACKEND_PORT' BACKEND_GRADLE_ARGS='$BACKEND_GRADLE_ARGS' BACKEND_GRADLE_PROXY_OPTS='$BACKEND_GRADLE_PROXY_OPTS' PUBLIC_ORIGIN='$PUBLIC_ORIGIN' bash '$BACKEND_BOOT_SCRIPT'"
 }
 
 start_frontend_session () {
