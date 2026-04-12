@@ -21,6 +21,7 @@ POSTGRES_SOCKET_DIR="$POSTGRES_STATE_DIR/socket"
 POSTGRES_PASSWORD_FILE="$POSTGRES_STATE_DIR/password.txt"
 POSTGRES_LOG_FILE="$POSTGRES_STATE_DIR/postgres.log"
 BACKEND_PORT="${SELF_HOST_BACKEND_PORT:-4040}"
+BACKEND_GRADLE_ARGS="${SELF_HOST_BACKEND_GRADLE_ARGS:---console=plain --info}"
 FRONTEND_PORT="${SELF_HOST_FRONTEND_PORT:-6010}"
 UNLOCK_ALL_P="${UNLOCK_ALL_P:-true}"
 DOCKER_COMPOSE_FILE="${SELF_HOST_DOCKER_COMPOSE_FILE:-$ROOT_DIR/docker-compose.secrethitler.prod.yml}"
@@ -625,6 +626,7 @@ EOF
 : "${POSTGRES_PORT:?POSTGRES_PORT is required}"
 : "${POSTGRES_USER:?POSTGRES_USER is required}"
 : "${BACKEND_PORT:?BACKEND_PORT is required}"
+: "${BACKEND_GRADLE_ARGS:?BACKEND_GRADLE_ARGS is required}"
 : "${PUBLIC_ORIGIN:?PUBLIC_ORIGIN is required}"
 
 cd "$BACKEND_DIR"
@@ -657,7 +659,14 @@ until pg_isready -h 127.0.0.1 -p "$POSTGRES_PORT" -U "$POSTGRES_USER" -d postgre
   sleep 1
 done
 
-exec bash -lc './gradlew run'
+read -r -a gradle_args <<< "$BACKEND_GRADLE_ARGS"
+printf 'Starting backend with ./gradlew'
+for arg in "${gradle_args[@]}"; do
+  printf ' %q' "$arg"
+done
+printf ' run\n'
+
+exec ./gradlew "${gradle_args[@]}" run
 EOF
   } > "$backend_boot_script"
   chmod +x "$backend_boot_script"
@@ -841,7 +850,7 @@ start_postgres_session () {
 }
 
 start_backend_session () {
-  tmuxnew "$BACKEND_SESSION" "env BACKEND_DIR='$BACKEND_DIR' PG_BIN_DIR='$PG_BIN_DIR' DATABASE_URL_LOCAL='$DATABASE_URL_LOCAL' POSTGRES_PORT='$POSTGRES_PORT' POSTGRES_USER='$POSTGRES_USER' BACKEND_PORT='$BACKEND_PORT' PUBLIC_ORIGIN='$PUBLIC_ORIGIN' bash '$BACKEND_BOOT_SCRIPT'"
+  tmuxnew "$BACKEND_SESSION" "env BACKEND_DIR='$BACKEND_DIR' PG_BIN_DIR='$PG_BIN_DIR' DATABASE_URL_LOCAL='$DATABASE_URL_LOCAL' POSTGRES_PORT='$POSTGRES_PORT' POSTGRES_USER='$POSTGRES_USER' BACKEND_PORT='$BACKEND_PORT' BACKEND_GRADLE_ARGS='$BACKEND_GRADLE_ARGS' PUBLIC_ORIGIN='$PUBLIC_ORIGIN' bash '$BACKEND_BOOT_SCRIPT'"
 }
 
 start_frontend_session () {
@@ -1036,6 +1045,7 @@ export REACT_APP_SERVER_ADDRESS_HTTP=''
 export REACT_APP_WEBSOCKET_HEADER=''
 export CORS_ALLOWED_ORIGINS='${PUBLIC_ORIGIN}'
 export BACKEND_PORT='${BACKEND_PORT}'
+export BACKEND_GRADLE_ARGS='${BACKEND_GRADLE_ARGS}'
 export FRONTEND_PORT='${FRONTEND_PORT}'
 export POSTGRES_DB='${POSTGRES_DB}'
 export POSTGRES_USER='${POSTGRES_USER}'

@@ -28,6 +28,7 @@ services:
     environment:
       DATABASE_URL: "${DATABASE_URL:-postgres://secret:secret@db:5432/secrethitler}"
       PORT: "${BACKEND_PORT:-4040}"
+      BACKEND_GRADLE_ARGS: "${BACKEND_GRADLE_ARGS:---console=plain --info}"
       CORS_ALLOWED_ORIGINS: "${CORS_ALLOWED_ORIGINS:-http://example.com:6010}"
       HTTP_PROXY: "${HTTP_PROXY:-}"
       HTTPS_PROXY: "${HTTPS_PROXY:-}"
@@ -36,7 +37,7 @@ services:
       https_proxy: "${HTTPS_PROXY:-}"
       no_proxy: "${NO_PROXY:-localhost,127.0.0.1,db,backend,frontend,host.docker.internal}"
       GRADLE_OPTS: "${GRADLE_OPTS:-}"
-    command: ["bash", "-lc", "./gradlew run"]
+    command: ["bash", "-lc", "read -r -a gradle_args <<< \"$${BACKEND_GRADLE_ARGS}\" && printf 'Starting backend with ./gradlew'; for arg in \"$${gradle_args[@]}\"; do printf ' %q' \"$$arg\"; done; printf ' run\\n'; exec ./gradlew \"$${gradle_args[@]}\" run"]
     depends_on:
       db:
         condition: service_healthy

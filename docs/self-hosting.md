@@ -204,6 +204,13 @@ Then run the script normally:
 ./self_host.zsh setup https://example.com
 ```
 
+For backend startup visibility, self-hosting runs Gradle with verbose logging by default (`--console=plain --info`). You can override that with `SELF_HOST_BACKEND_GRADLE_ARGS`, for example:
+
+```bash
+export SELF_HOST_BACKEND_GRADLE_ARGS="--console=plain --debug"
+./self_host.zsh start
+```
+
 ## Notes
 
 - The frontend build bakes in `REACT_APP_CLIENT_ORIGIN` for public metadata.
