@@ -133,6 +133,7 @@ repair_local_runtime_permissions () {
   ensure_tree_owned_by_current_user "$BACKEND_DIR/.gradle"
   ensure_tree_owned_by_current_user "$BACKEND_DIR/build"
   ensure_tree_owned_by_current_user "$FRONTEND_DIR/build"
+  ensure_tree_owned_by_current_user "$FRONTEND_DIR/node_modules"
   ensure_tree_owned_by_current_user "$FRONTEND_DIR/node_modules/.cache"
 }
 
@@ -779,7 +780,13 @@ command -v nvm >/dev/null 2>&1 || {
 }
 nvm use "$NODE_VERSION"
 npm ci --include=dev
-UNLOCK_ALL_P="$UNLOCK_ALL_P" REACT_APP_UNLOCK_ALL_P="$UNLOCK_ALL_P" REACT_APP_CLIENT_ORIGIN="$PUBLIC_ORIGIN" npm run build
+UNLOCK_ALL_P="$UNLOCK_ALL_P" \
+REACT_APP_UNLOCK_ALL_P="$UNLOCK_ALL_P" \
+REACT_APP_CLIENT_ORIGIN="$PUBLIC_ORIGIN" \
+REACT_APP_SERVER_ADDRESS='' \
+REACT_APP_SERVER_ADDRESS_HTTP='' \
+REACT_APP_WEBSOCKET_HEADER='' \
+npm run build
 EOF
   } > "$frontend_build_script"
   chmod +x "$frontend_build_script"
