@@ -2,7 +2,7 @@
 
 ## Quick start using Docker:
 - Run everything with Docker Compose (DB + backend + frontend):
-  - `DOCKER_UID=$(id -u) DOCKER_GID=$(id -g) docker compose up --build`
+  - `docker compose up --build`
   - Open frontend: [http://localhost:3000](http://localhost:3000)
   - Backend health: [http://localhost:4040/ping](http://localhost:4040/ping)
 - Alternative: only DB in Docker, run app locally:
@@ -21,7 +21,7 @@ The backend no longer carries Heroku-specific Gradle/plugin wiring; public hosti
 Use `docker-compose.prod.yml` when running a public instance.
 
 - Start the production stack:
-  - `DOCKER_UID=$(id -u) DOCKER_GID=$(id -g) docker compose -f docker-compose.prod.yml up --build -d`
+  - `docker compose -f docker-compose.prod.yml up --build -d`
 - Default public frontend URL in that file:
   - `http://example.com:6010`
 - Default backend URL in that file:
@@ -39,15 +39,7 @@ docker compose -f docker-compose.prod.yml up --build -d
 )
 ```
 
-To avoid root-owned backend Gradle artifacts on Linux, also pass your host UID/GID:
-
-```bash
-(
-export DOCKER_UID="$(id -u)"
-export DOCKER_GID="$(id -g)"
-docker compose -f docker-compose.prod.yml up --build -d
-)
-```
+Docker now keeps writable backend/frontend paths in named volumes, so it does not write build outputs or installed dependencies into your local checkout. Use `docker compose down -v` if you want to reset those container-local caches/artifacts.
 
 If your server can only reach package registries through a local proxy (for example, on the host at `0.0.0.0:1087`), run:
 

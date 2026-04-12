@@ -17,14 +17,13 @@ services:
   backend:
     image: gradle:8.6.0-jdk17
     container_name: sh-backend
-    user: "${DOCKER_UID:-1000}:${DOCKER_GID:-1000}"
     working_dir: /app/backend
     volumes:
       - ./backend:/app/backend
-      - ./backend/.gradle-home:/gradle-home
+      - backend-build:/app/backend/build
+      - backend-project-gradle:/app/backend/.gradle
+      - gradle-cache:/home/gradle/.gradle
     environment:
-      HOME: "/tmp/secret-hitler-docker-home"
-      GRADLE_USER_HOME: "/gradle-home"
       DEBUG_MODE: "${DEBUG_MODE:-true}"
       DATABASE_URL: "${DATABASE_URL:-postgres://secret:secret@db:5432/secrethitler}"
       PORT: "4040"
@@ -42,6 +41,9 @@ services:
     working_dir: /app/frontend
     volumes:
       - ./frontend:/app/frontend
+      - frontend-node-modules:/app/frontend/node_modules
+      - frontend-build:/app/frontend/build
+      - npm-cache:/root/.npm
     environment:
       HOST: 0.0.0.0
       CHOKIDAR_USEPOLLING: "true"
@@ -50,8 +52,16 @@ services:
       REACT_APP_SERVER_ADDRESS: "${REACT_APP_SERVER_ADDRESS:-localhost:4040}"
       REACT_APP_SERVER_ADDRESS_HTTP: "${REACT_APP_SERVER_ADDRESS_HTTP:-http://localhost:4040}"
       REACT_APP_WEBSOCKET_HEADER: "${REACT_APP_WEBSOCKET_HEADER:-ws://}"
-    command: bash -lc "npm install && npm run devLocal"
+    command: bash -lc "npm ci && npm run devLocal"
     depends_on:
       - backend
     ports:
       - "3000:3000"
+
+volumes:
+  backend-build: {}
+  backend-project-gradle: {}
+  frontend-node-modules: {}
+  frontend-build: {}
+  gradle-cache: {}
+  npm-cache: {}
