@@ -128,42 +128,87 @@
     user-select: none
 }
 
-.player-bot-badge {
+.player-status-badges {
     position: absolute;
     top: 3%;
     left: 4%;
-    background: rgba(0, 0, 0, 0.72);
-    color: var(--textColorWhite);
-    border: 1px solid rgba(255, 255, 255, 0.65);
-    border-radius: 999px;
-    padding: 0.1rem 0.35rem;
-    font-size: min(1.8vh, 2.1vmin);
-    font-family: var(--headerFont);
-    letter-spacing: 0.05em;
-    line-height: 1.1;
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 0.2rem;
     z-index: 5;
     pointer-events: none;
 }
 
-.player-corner-action {
+.player-status-badge {
+    background: rgba(0, 0, 0, 0.74);
+    color: var(--textColorWhite);
+    border: 1px solid rgba(255, 255, 255, 0.65);
+    border-radius: 999px;
+    padding: 0.14rem 0.45rem;
+    font-size: min(1.6vh, 1.8vmin);
+    font-family: var(--headerFont);
+    letter-spacing: 0.04em;
+    line-height: 1.1;
+    box-shadow: 0 2px 6px rgba(0, 0, 0, 0.24);
+}
+
+.player-status-badge-bot {
+    background: rgba(37, 37, 37, 0.88);
+}
+
+.player-status-badge-offline {
+    background: rgba(95, 39, 18, 0.92);
+}
+
+.player-status-badge-moderator {
+    background: rgba(24, 64, 131, 0.92);
+}
+
+.player-status-badge-creator {
+    background: rgba(112, 72, 14, 0.95);
+}
+
+.player-corner-actions {
     position: absolute;
     top: 3%;
     right: 4%;
-    min-width: 2.2rem;
-    height: 1.5rem;
-    border: 1px solid rgba(255, 255, 255, 0.8);
-    border-radius: 999px;
-    background: rgba(17, 17, 17, 0.78);
-    color: var(--textColorWhite);
-    font-family: var(--headerFont);
-    font-size: min(1.55vh, 1.8vmin);
-    padding: 0 0.35rem;
-    cursor: pointer;
+    display: flex;
+    flex-direction: column;
+    align-items: flex-end;
+    gap: 0.24rem;
     z-index: 6;
 }
 
+.player-corner-action {
+    min-width: 2.55rem;
+    height: 1.65rem;
+    border: 1px solid rgba(255, 255, 255, 0.78);
+    border-radius: 999px;
+    background: linear-gradient(180deg, rgba(51, 64, 88, 0.96), rgba(27, 34, 51, 0.96));
+    color: var(--textColorWhite);
+    font-family: var(--headerFont);
+    font-size: min(1.45vh, 1.65vmin);
+    padding: 0 0.48rem;
+    cursor: pointer;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.28);
+}
+
 .player-corner-action:hover {
-    background: rgba(36, 36, 36, 0.88);
+    transform: translateY(-1px);
+    filter: brightness(1.08);
+}
+
+.player-corner-action-primary {
+    background: linear-gradient(180deg, rgba(149, 41, 41, 0.97), rgba(101, 18, 18, 0.97));
+}
+
+.player-corner-action-secondary {
+    background: linear-gradient(180deg, rgba(60, 78, 112, 0.97), rgba(31, 43, 68, 0.97));
+}
+
+.player-corner-action-danger {
+    background: linear-gradient(180deg, rgba(116, 43, 28, 0.97), rgba(77, 25, 16, 0.97));
 }
 
 .darken {

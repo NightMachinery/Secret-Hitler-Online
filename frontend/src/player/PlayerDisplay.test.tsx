@@ -1,5 +1,5 @@
 import React from "react";
-import { render } from "@testing-library/react";
+import { render, screen } from "@testing-library/react";
 import PlayerDisplay from "./PlayerDisplay";
 import {
   GameState,
@@ -56,6 +56,15 @@ const buildGameState = (playerOrder: string[]): GameState => ({
     roundsToShow: HistoryRoundsToShow.ALL,
   },
   selfType: UserType.HUMAN,
+  creator: playerOrder[0],
+  moderators: [],
+  connected: playerOrder.reduce<Record<string, boolean>>(
+    (acc, playerName) => ({
+      ...acc,
+      [playerName]: true,
+    }),
+    {}
+  ),
   icon: playerOrder.reduce<Record<string, string>>(
     (acc, playerName) => ({
       ...acc,
@@ -88,5 +97,22 @@ describe("PlayerDisplay", () => {
       playerNodes.map((node) => node.getAttribute("data-player-name"))
     ).toEqual(playerOrder);
     expect(container.querySelector("#player-display-container")).toBeNull();
+  });
+
+  test("shows offline badge and moderation action for eligible viewer", () => {
+    const gameState = buildGameState(["Alice", "Bob", "Cara"]);
+    gameState.connected = { Alice: true, Bob: false, Cara: true };
+
+    render(
+      <PlayerDisplay
+        user={"Alice"}
+        gameState={gameState}
+        showLabels={false}
+        onOpenModeratorPrompt={() => {}}
+      />
+    );
+
+    expect(screen.getByText("OFFLINE")).toBeInTheDocument();
+    expect(screen.getByTitle("Promote Bob to moderator")).toBeInTheDocument();
   });
 });

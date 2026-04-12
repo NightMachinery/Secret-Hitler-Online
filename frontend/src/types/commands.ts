@@ -17,6 +17,11 @@ export const enum WSCommandType {
   // Voting action
   REGISTER_VOTE = "register-vote",
   SET_BOT_STATUS = "set-bot-status",
+  LEAVE_LOBBY = "leave-lobby",
+  SET_MODERATOR_STATUS = "set-moderator-status",
+  KICK_USER = "kick-user",
+  BAN_USER = "ban-user",
+  RESET_BANS = "reset-bans",
   // Policy action
   REGISTER_CHANCELLOR_CHOICE = "register-chancellor-choice",
   REGISTER_PRESIDENT_CHOICE = "register-president-choice",
@@ -38,6 +43,11 @@ export type ServerRequestPayload =
   | { command: WSCommandType.GET_INVESTIGATION; target: string }
   | { command: WSCommandType.REGISTER_VOTE; vote: boolean }
   | { command: WSCommandType.SET_BOT_STATUS; target: string; enabled: boolean }
+  | { command: WSCommandType.LEAVE_LOBBY }
+  | { command: WSCommandType.SET_MODERATOR_STATUS; target: string; enabled: boolean }
+  | { command: WSCommandType.KICK_USER; target: string }
+  | { command: WSCommandType.BAN_USER; target: string }
+  | { command: WSCommandType.RESET_BANS }
   | { command: WSCommandType.REGISTER_CHANCELLOR_CHOICE; choice: number }
   | { command: WSCommandType.REGISTER_PRESIDENT_CHOICE; choice: number };
 

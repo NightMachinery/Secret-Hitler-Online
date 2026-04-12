@@ -145,6 +145,10 @@ public class GameToJSONConverter {
         out.put("history", convertHistory(game.getHistory(), effectiveHistoryConfig));
         out.put("historyConfig", convertHistoryConfig(effectiveHistoryConfig));
         out.put("creator", lobby == null || lobby.getCreatorUsername() == null ? "" : lobby.getCreatorUsername());
+        out.put("moderators", lobby == null ? new JSONArray() : new JSONArray(lobby.getModeratorUsernamesSnapshot()));
+        out.put("connected", lobby == null
+                ? new JSONObject()
+                : new JSONObject(lobby.getConnectedStatusSnapshot(java.util.Arrays.asList(playerOrder))));
         out.put("selfType", selfType.toString());
 
         JSONObject botControlled = new JSONObject();

@@ -112,6 +112,7 @@ type PlayerDisplayProps = {
   showBusy?: boolean;
   includeUser?: boolean;
   onBotControlToggle?: (playerName: string, enabled: boolean) => void;
+  onOpenModeratorPrompt?: (playerName: string) => void;
 };
 
 const defaultProps: Partial<PlayerDisplayProps> = {
@@ -295,9 +296,17 @@ export default function PlayerDisplay(
         const isTemporaryBotControlled = Boolean(
           props.gameState.botControlled?.[playerName]
         );
+        const isOffline = props.gameState.connected?.[playerName] === false;
         const isBuiltInBot = playerData.type === UserType.BOT;
         const isBotControlled = isTemporaryBotControlled || isBuiltInBot;
         const userIsCreator = props.gameState.creator === props.user;
+        const userIsModerator = Boolean(
+          props.gameState.moderators?.includes(props.user)
+        );
+        const playerIsCreator = props.gameState.creator === playerName;
+        const playerIsModerator = Boolean(
+          props.gameState.moderators?.includes(playerName)
+        );
         const gameIsActive =
           props.gameState.state !== STATE_SETUP &&
           !isVictoryState(props.gameState.state);
@@ -317,21 +326,59 @@ export default function PlayerDisplay(
           playerData.alive &&
           isTemporaryBotControlled;
 
-        let cornerActionLabel = "";
-        let cornerActionTitle = "";
-        let onCornerAction: (() => void) | undefined = undefined;
+        const canOpenModeratorPrompt =
+          Boolean(props.onOpenModeratorPrompt) &&
+          gameIsActive &&
+          playerName !== props.user &&
+          !playerIsCreator &&
+          (userIsCreator || userIsModerator) &&
+          ((!playerIsModerator && (userIsCreator || userIsModerator)) ||
+            (playerIsModerator && userIsCreator));
+
+        const actionButtons: {
+          label: string;
+          title: string;
+          onClick: () => void;
+          variant?: string;
+        }[] = [];
         if (showBotToggleForCreator) {
-          cornerActionLabel = isTemporaryBotControlled ? "HUM" : "BOT";
-          cornerActionTitle = isTemporaryBotControlled
-            ? `Set ${playerName} to human control`
-            : `Set ${playerName} to bot control`;
-          onCornerAction = () =>
-            props.onBotControlToggle?.(playerName, !isTemporaryBotControlled);
+          actionButtons.push({
+            label: isTemporaryBotControlled ? "HUM" : "BOT",
+            title: isTemporaryBotControlled
+              ? `Set ${playerName} to human control`
+              : `Set ${playerName} to bot control`,
+            onClick: () =>
+              props.onBotControlToggle?.(playerName, !isTemporaryBotControlled),
+            variant: isTemporaryBotControlled ? "secondary" : "primary",
+          });
         } else if (showSelfReclaimToggle) {
-          cornerActionLabel = "ME";
-          cornerActionTitle = "Reclaim your controls";
-          onCornerAction = () => props.onBotControlToggle?.(playerName, false);
+          actionButtons.push({
+            label: "ME",
+            title: "Reclaim your controls",
+            onClick: () => props.onBotControlToggle?.(playerName, false),
+            variant: "secondary",
+          });
         }
+
+        if (canOpenModeratorPrompt) {
+          actionButtons.push({
+            label: playerIsModerator ? "DEM" : "MOD",
+            title: playerIsModerator
+              ? `Open moderator actions for ${playerName}`
+              : `Promote ${playerName} to moderator`,
+            onClick: () => props.onOpenModeratorPrompt?.(playerName),
+            variant: playerIsModerator ? "danger" : "secondary",
+          });
+        }
+
+        const statusBadges = [
+          isOffline ? { label: "OFFLINE", variant: "offline" } : null,
+          playerIsCreator ? { label: "CREATOR", variant: "creator" } : null,
+          !playerIsCreator && playerIsModerator
+            ? { label: "MOD", variant: "moderator" }
+            : null,
+          isBotControlled ? { label: "BOT", variant: "bot" } : null,
+        ].filter(Boolean) as { label: string; variant?: string }[];
 
         // Skip votes for players that are not alive.
         const showVote = index + start < playerVotesVisible && playerData.alive;
@@ -361,10 +408,8 @@ export default function PlayerDisplay(
               showVote={showVote}
               vote={props.gameState.userVotes[playerName]}
               icon={props.gameState.icon[playerName]}
-              isBotControlled={isBotControlled}
-              cornerActionLabel={cornerActionLabel}
-              cornerActionTitle={cornerActionTitle}
-              onCornerAction={onCornerAction}
+              statusBadges={statusBadges}
+              actionButtons={actionButtons}
             />
           </div>
         );

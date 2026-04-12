@@ -79,6 +79,11 @@ public class SecretHitlerServer {
 
     public static final String COMMAND_END_TERM = "end-term";
     public static final String COMMAND_SET_BOT_STATUS = "set-bot-status";
+    public static final String COMMAND_LEAVE_LOBBY = "leave-lobby";
+    public static final String COMMAND_SET_MODERATOR_STATUS = "set-moderator-status";
+    public static final String COMMAND_KICK_USER = "kick-user";
+    public static final String COMMAND_BAN_USER = "ban-user";
+    public static final String COMMAND_RESET_BANS = "reset-bans";
 
     private static final String CODE_CHARACTERS = "ABCDEFGHIJKLMNOPQRSTWXYZ"; // u,v characters can look ambiguous
     private static final int CODE_LENGTH = 4;
@@ -462,6 +467,12 @@ public class SecretHitlerServer {
         } else { // the lobby exists
             Lobby lobby = codeToLobby.get(lobbyCode);
 
+            if (lobby.isTokenBanned(token)) {
+                ctx.status(490);
+                ctx.result("This session has been banned from the lobby.");
+                return;
+            }
+
             if (!lobby.canUseNameWithToken(name, token)) {
                 ctx.status(403);
                 ctx.result("This name is protected by another session token.");
@@ -482,9 +493,9 @@ public class SecretHitlerServer {
                     ctx.status(488);
                     ctx.result("The lobby is currently in a game.");
                 }
-            } else if (lobby.hasUserWithName(name)) {
+            } else if (lobby.hasLobbyMember(name)) {
                 ctx.status(200);
-                ctx.result("Login request valid (replacing active session).");
+                ctx.result("Login request valid (rejoining the setup lobby).");
             } else if (lobby.isFull()) {
                 ctx.status(489);
                 ctx.result("The lobby is currently full.");
@@ -620,6 +631,12 @@ public class SecretHitlerServer {
 
         Lobby lobby = codeToLobby.get(code);
         synchronized (lobby) {
+            if (lobby.isTokenBanned(token)) {
+                logger.debug("FAILED (Banned token)");
+                ctx.session.close(StatusCode.PROTOCOL, "This session has been banned from the lobby.");
+                return;
+            }
+
             if (!lobby.canUseNameWithToken(name, token)) {
                 logger.debug("FAILED (Invalid token for username)");
                 ctx.session.close(StatusCode.PROTOCOL, "This name is protected by another session token.");
@@ -647,7 +664,11 @@ public class SecretHitlerServer {
                     forceAttachUsingToken = true;
                 }
             } else {
-                if (!replacingActiveConnection && lobby.isFull()) {
+                boolean rejoiningSetupLobby = lobby.hasLobbyMember(name)
+                        && (lobby.hasMatchingAuthToken(name, token) || !lobby.hasKnownName(name));
+                forceAttachUsingToken = forceAttachUsingToken || rejoiningSetupLobby;
+
+                if (!replacingActiveConnection && !rejoiningSetupLobby && lobby.isFull()) {
                     logger.debug("FAILED (Lobby is full)");
                     ctx.session.close(StatusCode.PROTOCOL, "The lobby " + code + " is currently full.");
                     return;
@@ -732,6 +753,8 @@ public class SecretHitlerServer {
 
             boolean updateUsers = true; // this flag can be disabled by certain commands.
             boolean sendOKMessage = true;
+            boolean closeCurrentSocketAfterCommand = false;
+            String closeCurrentSocketReason = null;
             try {
                 String command = message.getString(PARAM_COMMAND);
                 switch (command) {
@@ -744,7 +767,20 @@ public class SecretHitlerServer {
                         break;
 
                     case COMMAND_START_GAME: // Starts the game.
+                        verifyIsModerator(name, lobby);
                         lobby.startNewGame();
+                        break;
+
+                    case COMMAND_LEAVE_LOBBY:
+                        if (lobby.isInGame()) {
+                            throw new RuntimeException("Cannot leave the setup lobby during an active game.");
+                        }
+                        lobby.leaveLobby(name);
+                        lobby.removeUserImmediately(ctx);
+                        userToLobby.remove(ctx);
+                        sendOKMessage = false;
+                        closeCurrentSocketAfterCommand = true;
+                        closeCurrentSocketReason = "Left lobby.";
                         break;
 
                     case COMMAND_GET_STATE: // Requests the updated state of the game.
@@ -855,6 +891,43 @@ public class SecretHitlerServer {
                         lobby.setTemporaryBotControl(target, enabled);
                         break;
 
+                    case COMMAND_SET_MODERATOR_STATUS:
+                        String moderatorTarget = message.getString(PARAM_TARGET);
+                        boolean moderatorEnabled = message.getBoolean(PARAM_ENABLED);
+                        verifyCanChangeModeratorStatus(name, moderatorTarget, moderatorEnabled, lobby);
+                        lobby.setModeratorStatus(moderatorTarget, moderatorEnabled);
+                        break;
+
+                    case COMMAND_KICK_USER:
+                        if (lobby.isInGame()) {
+                            throw new RuntimeException("Players can only be removed from the setup lobby.");
+                        }
+                        verifyIsModerator(name, lobby);
+                        String kickTarget = message.getString(PARAM_TARGET);
+                        verifyCanRemoveFromLobby(name, kickTarget, lobby);
+                        disconnectUserFromLobby(kickTarget, lobby, "Kicked from the lobby.");
+                        lobby.kickUser(kickTarget, false);
+                        break;
+
+                    case COMMAND_BAN_USER:
+                        if (lobby.isInGame()) {
+                            throw new RuntimeException("Players can only be removed from the setup lobby.");
+                        }
+                        verifyIsModerator(name, lobby);
+                        String banTarget = message.getString(PARAM_TARGET);
+                        verifyCanRemoveFromLobby(name, banTarget, lobby);
+                        disconnectUserFromLobby(banTarget, lobby, "Banned from the lobby.");
+                        lobby.kickUser(banTarget, true);
+                        break;
+
+                    case COMMAND_RESET_BANS:
+                        if (lobby.isInGame()) {
+                            throw new RuntimeException("Ban management is only available in the setup lobby.");
+                        }
+                        verifyIsModerator(name, lobby);
+                        lobby.clearBannedTokens();
+                        break;
+
                     default: // This is an invalid command.
                         throw new RuntimeException("unrecognized command " + message.get(PARAM_COMMAND));
                 } // End switch
@@ -868,6 +941,11 @@ public class SecretHitlerServer {
                     JSONObject msg = new JSONObject();
                     msg.put(PARAM_PACKET_TYPE, PACKET_OK);
                     ctx.send(msg.toString());
+                }
+
+                if (closeCurrentSocketAfterCommand) {
+                    ctx.session.close(StatusCode.NORMAL, closeCurrentSocketReason == null ? "Connection closed."
+                            : closeCurrentSocketReason);
                 }
 
             } catch (NullPointerException e) {
@@ -919,6 +997,54 @@ public class SecretHitlerServer {
     private static void verifyIsChancellor(String name, Lobby lobby) {
         if (!lobby.game().getCurrentChancellor().equals(name)) {
             throw new RuntimeException("The player '" + name + "' is not currently chancellor.");
+        }
+    }
+
+    private static void verifyIsModerator(String name, Lobby lobby) {
+        if (!lobby.hasModeratorPrivileges(name)) {
+            throw new RuntimeException("Only the creator or a moderator can do that.");
+        }
+    }
+
+    private static void verifyCanChangeModeratorStatus(String actor, String target, boolean enabled, Lobby lobby) {
+        if (target == null || target.isBlank()) {
+            throw new RuntimeException("Target player must be specified.");
+        }
+        if (!lobby.canManageModeratorsTarget(target)) {
+            throw new RuntimeException("Player '" + target + "' is not eligible for moderator status.");
+        }
+        if (lobby.isCreator(target)) {
+            throw new RuntimeException("The creator cannot be promoted or demoted.");
+        }
+        if (enabled) {
+            verifyIsModerator(actor, lobby);
+            return;
+        }
+        if (!lobby.isCreator(actor)) {
+            throw new RuntimeException("Only the creator can demote moderators.");
+        }
+    }
+
+    private static void verifyCanRemoveFromLobby(String actor, String target, Lobby lobby) {
+        if (target == null || target.isBlank()) {
+            throw new RuntimeException("Target player must be specified.");
+        }
+        if (target.equals(actor)) {
+            throw new RuntimeException("Use leave-lobby to remove yourself from the setup lobby.");
+        }
+        if (!lobby.hasLobbyMember(target)) {
+            throw new RuntimeException("Player '" + target + "' is not in the setup lobby.");
+        }
+        if (lobby.isCreator(target)) {
+            throw new RuntimeException("The creator cannot be kicked or banned.");
+        }
+    }
+
+    private static void disconnectUserFromLobby(String target, Lobby lobby, String reason) {
+        for (WsContext targetCtx : lobby.getConnectionsForName(target)) {
+            targetCtx.session.close(StatusCode.NORMAL, reason);
+            lobby.removeUserImmediately(targetCtx);
+            userToLobby.remove(targetCtx);
         }
     }
 

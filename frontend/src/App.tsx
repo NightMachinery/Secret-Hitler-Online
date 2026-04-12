@@ -93,6 +93,7 @@ import {
   HistoryConfig,
   HistoryRoundsToShow,
   LobbyState,
+  PlayerState,
   Role,
   ServerRequestPayload,
   UserType,
@@ -134,6 +135,8 @@ const DEFAULT_GAME_STATE: GameState = {
   history: [],
   historyConfig: DEFAULT_HISTORY_CONFIG,
   creator: "",
+  moderators: [],
+  connected: {},
   botControlled: {},
   icon: {},
   selfType: UserType.OBSERVER,
@@ -191,6 +194,9 @@ type AppState = {
   lobbyFromURL: boolean;
   usernames: string[];
   icons: { [key: string]: string };
+  lobbyCreator: string;
+  lobbyModerators: string[];
+  lobbyConnected: Record<string, boolean>;
   gameState: GameState;
   /* Stores the last gameState[PARAM_STATE] value to check for changes. */
   lastState: any;
@@ -227,6 +233,9 @@ const defaultAppState: AppState = {
   lobbyFromURL: false,
   usernames: [],
   icons: {},
+  lobbyCreator: "",
+  lobbyModerators: [],
+  lobbyConnected: {},
   gameState: DEFAULT_GAME_STATE,
   lastState: {},
   liberalPolicies: 0,
@@ -437,6 +446,9 @@ class App extends Component<{}, AppState> {
         name: name,
         lobby: lobby,
         usernames: [],
+        lobbyCreator: "",
+        lobbyModerators: [],
+        lobbyConnected: {},
         joinName: "",
         joinLobby: "",
         joinError: "",
@@ -444,7 +456,7 @@ class App extends Component<{}, AppState> {
         createLobbyError: "",
       });
       ws.onmessage = (msg) => this.onWebSocketMessage(msg);
-      ws.onclose = () => this.onWebSocketClose();
+      ws.onclose = (event) => this.onWebSocketClose(event);
 
       // Ping the web server at a set interval.
       if (this.pingInterval) {
@@ -467,10 +479,36 @@ class App extends Component<{}, AppState> {
    *          ({@code MAX_FAILED_CONNECTIONS}), does not reopen the websocket connection and returns the user to the
    *          login screen with a relevant error message.
    */
-  onWebSocketClose() {
+  onWebSocketClose(event?: CloseEvent) {
     // Clear the server ping interval when the socket is closed.
     if (this.pingInterval) {
       clearInterval(this.pingInterval);
+    }
+
+    const closeReason = event?.reason || "";
+    const closedBecauseLobbyRemoval =
+      closeReason === "Kicked from the lobby." ||
+      closeReason === "Banned from the lobby." ||
+      closeReason === "Left lobby." ||
+      closeReason === "Replaced by a newer session.";
+
+    if (closedBecauseLobbyRemoval) {
+      this.reconnectOnConnectionClosed = false;
+      this.setState({
+        page: PAGE.LOGIN,
+        joinName: this.state.name,
+        joinLobby: this.state.lobby,
+        joinError:
+          closeReason === "Banned from the lobby."
+            ? "You have been banned from this lobby."
+            : closeReason === "Kicked from the lobby."
+              ? "You were kicked from this lobby."
+              : closeReason === "Replaced by a newer session."
+                ? "This tab was replaced by a newer session."
+                : "",
+      });
+      this.clearAnimationQueue();
+      return;
     }
 
     console.log(
@@ -502,7 +540,14 @@ class App extends Component<{}, AppState> {
       this.setState({
         joinName: this.state.name,
         joinLobby: this.state.lobby,
-        joinError: "Disconnected from the lobby.",
+        joinError:
+          closeReason === "Banned from the lobby."
+            ? "You have been banned from this lobby."
+            : closeReason === "Kicked from the lobby."
+              ? "You were kicked from this lobby."
+              : closeReason === "Replaced by a newer session."
+                ? "This tab was replaced by a newer session."
+                : "Disconnected from the lobby.",
         page: PAGE.LOGIN,
       });
       ReactGA.event({
@@ -536,9 +581,21 @@ class App extends Component<{}, AppState> {
     }
     switch (message[PARAM_PACKET_TYPE]) {
       case PACKET_LOBBY:
+        if (typeof message.creator !== "string") {
+          message.creator = "";
+        }
+        if (!Array.isArray(message.moderators)) {
+          message.moderators = [];
+        }
+        if (!message.connected || typeof message.connected !== "object") {
+          message.connected = {};
+        }
         this.setState({
           usernames: message[PARAM_USERNAMES],
           icons: message[PARAM_ICON],
+          lobbyCreator: message.creator,
+          lobbyModerators: message.moderators,
+          lobbyConnected: message.connected,
           page: PAGE.LOBBY,
         });
         if (message[PARAM_ICON][this.state.name] === defaultPortrait) {
@@ -559,6 +616,12 @@ class App extends Component<{}, AppState> {
         }
         if (typeof message.creator !== "string") {
           message.creator = "";
+        }
+        if (!Array.isArray(message.moderators)) {
+          message.moderators = [];
+        }
+        if (!message.connected || typeof message.connected !== "object") {
+          message.connected = {};
         }
         if (message !== this.state.gameState) {
           this.onGameStateChanged(message);
@@ -740,6 +803,14 @@ class App extends Component<{}, AppState> {
             ReactGA.event({
               category: "Login Failed",
               action: "Lobby full - User unable to connect.",
+            });
+          } else if (response.status === 490) {
+            this.setState({
+              joinError: "You have been banned from this lobby.",
+            });
+            ReactGA.event({
+              category: "Login Failed",
+              action: "Lobby ban - User unable to connect.",
             });
           } else {
             this.setState({
@@ -996,19 +1067,128 @@ class App extends Component<{}, AppState> {
   //<editor-fold desc="Lobby Page">
 
   /**
-   * Renders the playerlist as a sequence of paragraph tags.
-   * Written as "{@literal <p>} - {@code username} {@literal </p>}".
+   * Returns whether the supplied user is a moderator in the setup lobby.
    */
-  renderPlayerList() {
-    return this.state.usernames.map((name: string, i: number) => {
+  isLobbyModerator(name: string) {
+    return this.state.lobbyModerators.includes(name);
+  }
+
+  isLobbyManager(name: string) {
+    return name === this.state.lobbyCreator || this.isLobbyModerator(name);
+  }
+
+  getOfflineLobbyPlayers() {
+    return this.state.usernames.filter(
+      (name) => this.state.lobbyConnected[name] === false
+    );
+  }
+
+  showConfirmStartOfflinePrompt(offlinePlayers: string[]) {
+    this.queueAlert(
+      <ButtonPrompt
+        label={"START WITH OFFLINE PLAYERS?"}
+        headerText={
+          offlinePlayers.length === 1
+            ? "This player is offline and will start disconnected:"
+            : "These players are offline and will start disconnected:"
+        }
+        footerText={"They can reconnect during the game with the same session."}
+        renderButton={() => (
+          <div className="prompt-button-row">
+            <button
+              id={"prompt-button"}
+              onClick={() => {
+                this.hideAlertAndFinish();
+              }}
+            >
+              CANCEL
+            </button>
+            <button
+              id={"prompt-button"}
+              onClick={() => {
+                this.hideAlertAndFinish();
+                this.startGame();
+              }}
+            >
+              START ANYWAY
+            </button>
+          </div>
+        )}
+      >
+        <PlayerDisplay
+          user={this.state.name}
+          gameState={{
+            ...DEFAULT_GAME_STATE,
+            state: LobbyState.SETUP,
+            playerOrder: offlinePlayers,
+            icon: offlinePlayers.reduce<Record<string, string>>((acc, player) => {
+              acc[player] = this.state.icons[player] || defaultPortrait;
+              return acc;
+            }, {}),
+            players: offlinePlayers.reduce((acc, player) => {
+              acc[player] = {
+                alive: true,
+                investigated: false,
+                type: UserType.HUMAN,
+              };
+              return acc;
+            }, {} as Record<string, PlayerState>),
+            connected: offlinePlayers.reduce<Record<string, boolean>>(
+              (acc, player) => {
+                acc[player] = false;
+                return acc;
+              },
+              {}
+            ),
+            creator: this.state.lobbyCreator,
+            moderators: this.state.lobbyModerators,
+          }}
+          showLabels={false}
+          players={offlinePlayers}
+        />
+      </ButtonPrompt>,
+      false
+    );
+  }
+
+  renderLobbyPlayerList() {
+    const userIsManager = this.isLobbyManager(this.state.name);
+    return this.state.usernames.map((name: string) => {
+      const isCreator = name === this.state.lobbyCreator;
+      const isModerator = this.isLobbyModerator(name);
+      const isOffline = this.state.lobbyConnected[name] === false;
+      const canManage =
+        userIsManager &&
+        name !== this.state.name &&
+        (!isCreator || this.state.name === this.state.lobbyCreator);
+
+      const statusBadges = [
+        isCreator ? { label: "CREATOR", variant: "creator" } : null,
+        !isCreator && isModerator ? { label: "MOD", variant: "moderator" } : null,
+        isOffline ? { label: "OFFLINE", variant: "offline" } : null,
+      ].filter(Boolean) as { label: string; variant?: string }[];
+
+      const actionButtons = canManage
+        ? [
+            {
+              label: "MANAGE",
+              title: `Manage ${name}`,
+              onClick: () => this.showLobbyManageUserPrompt(name),
+              variant: "secondary",
+            },
+          ]
+        : [];
+
       return (
         <Player
-          key={i}
-          name={i === 0 ? name : name + " [Host]"}
+          key={name}
+          name={name}
           showRole={false}
           icon={this.state.icons[name]}
           isBusy={this.state.icons[name] === defaultPortrait}
           highlight={name === this.state.name}
+          statusBadges={statusBadges}
+          actionButtons={actionButtons}
         />
       );
     });
@@ -1047,6 +1227,9 @@ class App extends Component<{}, AppState> {
    * Determines whether the 'Start Game' button in the lobby should be enabled.
    */
   shouldStartGameBeEnabled() {
+    if (!this.isLobbyManager(this.state.name)) {
+      return false;
+    }
     // Verify that all players have icons
     for (let i = 0; i < this.state.usernames.length; i++) {
       if (this.state.icons[this.state.usernames[i]] === defaultPortrait) {
@@ -1060,6 +1243,15 @@ class App extends Component<{}, AppState> {
    * Contacts the server and requests to start the game.
    */
   onClickStartGame() {
+    const offlinePlayers = this.getOfflineLobbyPlayers();
+    if (offlinePlayers.length > 0) {
+      this.showConfirmStartOfflinePrompt(offlinePlayers);
+      return;
+    }
+    this.startGame();
+  }
+
+  startGame() {
     ReactGA.event({
       category: "Starting Game",
       action: this.state.usernames.length + " players started game.",
@@ -1068,8 +1260,221 @@ class App extends Component<{}, AppState> {
   }
 
   onClickLeaveLobby() {
-    this.websocket?.close();
     this.reconnectOnConnectionClosed = false;
+    if (this.websocket) {
+      this.sendWSCommand({ command: WSCommandType.LEAVE_LOBBY });
+    } else {
+      this.setState({
+        page: PAGE.LOGIN,
+        joinName: this.state.name,
+        joinLobby: this.state.lobby,
+      });
+    }
+  }
+
+  onClickSetModeratorStatus(target: string, enabled: boolean) {
+    this.sendWSCommand({
+      command: WSCommandType.SET_MODERATOR_STATUS,
+      target,
+      enabled,
+    });
+  }
+
+  onClickKickUser(target: string) {
+    this.sendWSCommand({ command: WSCommandType.KICK_USER, target });
+  }
+
+  onClickBanUser(target: string) {
+    this.sendWSCommand({ command: WSCommandType.BAN_USER, target });
+  }
+
+  onClickResetBans() {
+    this.sendWSCommand({ command: WSCommandType.RESET_BANS });
+  }
+
+  showLobbyManageUserPrompt(target: string) {
+    const isCreator = target === this.state.lobbyCreator;
+    const isModerator = this.isLobbyModerator(target);
+    const viewerIsCreator = this.state.name === this.state.lobbyCreator;
+    const canDemote = isModerator && viewerIsCreator && !isCreator;
+    const canPromote = !isModerator && !isCreator && this.isLobbyManager(this.state.name);
+    const canKickOrBan = !isCreator;
+
+    this.queueAlert(
+      <ButtonPrompt
+        label={`MANAGE ${target.toUpperCase()}`}
+        footerText={"Changes apply immediately to this lobby."}
+        renderButton={() => (
+          <div className="prompt-button-grid">
+            {canPromote && (
+              <button
+                id={"prompt-button"}
+                onClick={() => {
+                  this.hideAlertAndFinish();
+                  this.onClickSetModeratorStatus(target, true);
+                }}
+              >
+                PROMOTE TO MOD
+              </button>
+            )}
+            {canDemote && (
+              <button
+                id={"prompt-button"}
+                onClick={() => {
+                  this.hideAlertAndFinish();
+                  this.onClickSetModeratorStatus(target, false);
+                }}
+              >
+                DEMOTE MOD
+              </button>
+            )}
+            {canKickOrBan && (
+              <button
+                id={"prompt-button"}
+                onClick={() => {
+                  this.hideAlertAndFinish();
+                  this.onClickKickUser(target);
+                }}
+              >
+                KICK
+              </button>
+            )}
+            {canKickOrBan && (
+              <button
+                id={"prompt-button"}
+                onClick={() => {
+                  this.hideAlertAndFinish();
+                  this.onClickBanUser(target);
+                }}
+              >
+                BAN
+              </button>
+            )}
+            <button
+              id={"prompt-button"}
+              onClick={() => {
+                this.hideAlertAndFinish();
+              }}
+            >
+              CLOSE
+            </button>
+          </div>
+        )}
+      >
+        <Player
+          name={target}
+          showRole={false}
+          icon={this.state.icons[target]}
+          highlight={target === this.state.name}
+          statusBadges={[
+            isCreator ? { label: "CREATOR", variant: "creator" } : null,
+            !isCreator && isModerator
+              ? { label: "MOD", variant: "moderator" }
+              : null,
+            this.state.lobbyConnected[target] === false
+              ? { label: "OFFLINE", variant: "offline" }
+              : null,
+          ].filter(Boolean) as { label: string; variant?: string }[]}
+        />
+      </ButtonPrompt>,
+      false
+    );
+  }
+
+  showGameModeratorPrompt(target: string) {
+    const isCreator = target === this.state.gameState.creator;
+    const moderators = this.state.gameState.moderators || [];
+    const isModerator = moderators.includes(target);
+    const viewerIsCreator = this.state.name === this.state.gameState.creator;
+    const canPromote =
+      !isCreator &&
+      !isModerator &&
+      (viewerIsCreator || moderators.includes(this.state.name));
+    const canDemote = !isCreator && isModerator && viewerIsCreator;
+
+    if (!canPromote && !canDemote) {
+      return;
+    }
+
+    this.queueAlert(
+      <ButtonPrompt
+        label={`MODERATION: ${target.toUpperCase()}`}
+        footerText={"Moderator changes apply immediately."}
+        renderButton={() => (
+          <div className="prompt-button-grid">
+            {canPromote && (
+              <button
+                id={"prompt-button"}
+                onClick={() => {
+                  this.hideAlertAndFinish();
+                  this.onClickSetModeratorStatus(target, true);
+                }}
+              >
+                PROMOTE TO MOD
+              </button>
+            )}
+            {canDemote && (
+              <button
+                id={"prompt-button"}
+                onClick={() => {
+                  this.hideAlertAndFinish();
+                  this.onClickSetModeratorStatus(target, false);
+                }}
+              >
+                DEMOTE MOD
+              </button>
+            )}
+            <button
+              id={"prompt-button"}
+              onClick={() => {
+                this.hideAlertAndFinish();
+              }}
+            >
+              CLOSE
+            </button>
+          </div>
+        )}
+      >
+        <PlayerDisplay
+          user={this.state.name}
+          gameState={this.state.gameState}
+          players={[target]}
+          showLabels={false}
+        />
+      </ButtonPrompt>,
+      false
+    );
+  }
+
+  showResetBansPrompt() {
+    this.queueAlert(
+      <ButtonPrompt
+        label={"RESET BAN LIST?"}
+        headerText={"This will clear all lobby bans for the current lobby."}
+        renderButton={() => (
+          <div className="prompt-button-row">
+            <button
+              id={"prompt-button"}
+              onClick={() => {
+                this.hideAlertAndFinish();
+              }}
+            >
+              CANCEL
+            </button>
+            <button
+              id={"prompt-button"}
+              onClick={() => {
+                this.hideAlertAndFinish();
+                this.onClickResetBans();
+              }}
+            >
+              RESET BANS
+            </button>
+          </div>
+        )}
+      />,
+      false
+    );
   }
 
   onClickCopy() {
@@ -1100,10 +1505,7 @@ class App extends Component<{}, AppState> {
   }
 
   renderLobbyPage() {
-    // The first player in the lobby is counted as the VIP.
-    let isVIP =
-      this.state.usernames.length > 0 &&
-      this.state.usernames[0] === this.state.name;
+    const isManager = this.isLobbyManager(this.state.name);
     return (
       <div className="App">
         <header className="App-header">SECRET-HITLER.ONLINE</header>
@@ -1160,19 +1562,28 @@ class App extends Component<{}, AppState> {
                   CHANGE ICON
                 </button>
               </div>
-              <div id={"lobby-player-container"}>{this.renderPlayerList()}</div>
+              <div id={"lobby-player-container"}>
+                {this.renderLobbyPlayerList()}
+              </div>
             </div>
 
             <div id={"lobby-button-container"}>
-              {!isVIP && (
-                <p id={"lobby-vip-text"}>Only the VIP can start the game.</p>
+              {!isManager && (
+                <p id={"lobby-vip-text"}>
+                  Only the creator or a moderator can start the game.
+                </p>
               )}
               <button
                 onClick={this.onClickStartGame}
-                disabled={!isVIP || !this.shouldStartGameBeEnabled()}
+                disabled={!this.shouldStartGameBeEnabled()}
               >
                 START GAME
               </button>
+              {isManager && (
+                <button onClick={() => this.showResetBansPrompt()}>
+                  RESET BAN LIST
+                </button>
+              )}
               <button onClick={this.onClickLeaveLobby}>LEAVE LOBBY</button>
             </div>
             <div id={"lobby-text-container"}>
@@ -2021,6 +2432,9 @@ class App extends Component<{}, AppState> {
             playerDisabledFilter={DISABLE_EXECUTED_PLAYERS}
             onBotControlToggle={(playerName, enabled) =>
               this.onClickSetBotStatus(playerName, enabled)
+            }
+            onOpenModeratorPrompt={(playerName) =>
+              this.showGameModeratorPrompt(playerName)
             }
           />
         </div>

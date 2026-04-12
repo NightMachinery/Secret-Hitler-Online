@@ -161,22 +161,29 @@ class Player extends Component {
                 </>
         }
 
-        let cornerAction;
-        if (this.props.cornerActionLabel && this.props.onCornerAction) {
-            cornerAction = (
-                <button
-                    className={"player-corner-action"}
-                    onClick={(event) => {
-                        event.preventDefault();
-                        event.stopPropagation();
-                        this.props.onCornerAction();
-                    }}
-                    title={this.props.cornerActionTitle}
-                >
-                    {this.props.cornerActionLabel}
-                </button>
-            );
-        }
+        const statusBadges = (this.props.statusBadges || []).map((badge, index) => (
+            <div
+                key={`${badge.label}-${index}`}
+                className={`player-status-badge ${badge.variant ? `player-status-badge-${badge.variant}` : ""}`}
+            >
+                {badge.label}
+            </div>
+        ));
+
+        const actionButtons = (this.props.actionButtons || []).map((action, index) => (
+            <button
+                key={`${action.label}-${index}`}
+                className={`player-corner-action ${action.variant ? `player-corner-action-${action.variant}` : ""}`}
+                onClick={(event) => {
+                    event.preventDefault();
+                    event.stopPropagation();
+                    action.onClick();
+                }}
+                title={action.title}
+            >
+                {action.label}
+            </button>
+        ));
 
         return (
             <div id="player-container"
@@ -196,11 +203,17 @@ class Player extends Component {
                      className={this.getClassName()}
                 />
 
-                {this.props.isBotControlled && (
-                    <div className={"player-bot-badge"}>BOT</div>
+                {statusBadges.length > 0 && (
+                    <div className={"player-status-badges"}>
+                        {statusBadges}
+                    </div>
                 )}
 
-                {cornerAction}
+                {actionButtons.length > 0 && (
+                    <div className={"player-corner-actions"}>
+                        {actionButtons}
+                    </div>
+                )}
 
                 <img id="player-busy-icon"
                      src={IconBusy}
@@ -253,10 +266,8 @@ Player.defaultProps = {
     showVote: false,
     vote: false,
     icon: "p_default",
-    isBotControlled: false,
-    cornerActionLabel: "",
-    cornerActionTitle: "",
-    onCornerAction: null,
+    statusBadges: [],
+    actionButtons: [],
 };
 
 Player.propTypes = {
@@ -273,10 +284,8 @@ Player.propTypes = {
     showVote: PropTypes.bool,
     vote: PropTypes.bool,
     icon: PropTypes.string,
-    isBotControlled: PropTypes.bool,
-    cornerActionLabel: PropTypes.string,
-    cornerActionTitle: PropTypes.string,
-    onCornerAction: PropTypes.func,
+    statusBadges: PropTypes.array,
+    actionButtons: PropTypes.array,
 };
 
 export default Player;

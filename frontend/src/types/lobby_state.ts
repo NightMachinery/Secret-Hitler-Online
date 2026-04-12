@@ -104,6 +104,8 @@ export type GameState = {
   history: RoundHistoryEntry[];
   historyConfig: HistoryConfig;
   creator?: string;
+  moderators?: string[];
+  connected?: Record<string, boolean>;
   botControlled?: Record<string, boolean>;
   selfType: UserType;
 

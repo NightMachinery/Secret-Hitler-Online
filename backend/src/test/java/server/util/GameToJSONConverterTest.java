@@ -99,6 +99,12 @@ public class GameToJSONConverterTest {
         botControlled.add("2");
         botControlledField.set(lobby, botControlled);
 
+        Field moderatorsField = Lobby.class.getDeclaredField("moderatorUsernames");
+        moderatorsField.setAccessible(true);
+        ConcurrentSkipListSet<String> moderators = new ConcurrentSkipListSet<>();
+        moderators.add("3");
+        moderatorsField.set(lobby, moderators);
+
         Field generatedBotField = Lobby.class.getDeclaredField("generatedBotPlayers");
         generatedBotField.setAccessible(true);
         ConcurrentSkipListSet<String> generatedBots = new ConcurrentSkipListSet<>();
@@ -108,6 +114,8 @@ public class GameToJSONConverterTest {
         JSONObject out = GameToJSONConverter.convert(game, "0", Lobby.HistoryDisplayConfig.defaultConfig(), lobby);
         assertEquals("0", out.getString("creator"));
         assertTrue(out.getJSONObject("botControlled").getBoolean("2"));
+        assertEquals("3", out.getJSONArray("moderators").getString(0));
+        assertEquals(false, out.getJSONObject("connected").getBoolean("0"));
         assertEquals("HUMAN", out.getJSONObject("players").getJSONObject("0").getString("type"));
         assertEquals("HUMAN", out.getJSONObject("players").getJSONObject("2").getString("type"));
         assertEquals("BOT", out.getJSONObject("players").getJSONObject("5").getString("type"));
