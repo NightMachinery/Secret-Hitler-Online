@@ -131,6 +131,7 @@ ensure_tree_owned_by_current_user () {
 repair_local_runtime_permissions () {
   ensure_tree_owned_by_current_user "$STATE_DIR"
   ensure_tree_owned_by_current_user "$BACKEND_DIR/.gradle"
+  ensure_tree_owned_by_current_user "$BACKEND_DIR/build"
   ensure_tree_owned_by_current_user "$FRONTEND_DIR/build"
   ensure_tree_owned_by_current_user "$FRONTEND_DIR/node_modules/.cache"
 }
