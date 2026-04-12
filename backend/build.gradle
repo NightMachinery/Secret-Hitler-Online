@@ -12,8 +12,6 @@ plugins {
 
     // Apply the application plugin to add support for building an application
     id 'application'
-
-    id "com.heroku.sdk.heroku-gradle" version "1.0.4"
 }
 
 repositories {
@@ -73,6 +71,3 @@ task runLocal(type: JavaExec) {
     mainClass = "game.ApplicationTest"
     classpath = sourceSets.test.runtimeClasspath
 }
-
-task stage(dependsOn: ['build', 'clean', 'jar'])
-build.mustRunAfter clean

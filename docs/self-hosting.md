@@ -2,6 +2,8 @@
 
 Use `./self_host.zsh` to run this project behind Caddy at a user-supplied public origin.
 
+The supported production path is the self-host flow in this document. Legacy Heroku-specific backend build artifacts have been removed, and Docker mode uses the normal Gradle application entrypoint.
+
 ## What it does
 
 - Saves your public origin once during `setup`
@@ -208,3 +210,5 @@ Then run the script normally:
 - API and websocket traffic use same-origin browser fallbacks behind Caddy.
 - Local self-hosting state is stored under `.local/self-hosting/`.
 - The script remembers the effective PostgreSQL role/database names under `.local/self-hosting/` so mode switches keep using the same app database identity.
+- If Docker mode already has a PostgreSQL volume, the script re-detects that role/database identity before starting the stack.
+- If you override `SELF_HOST_DOCKER_POSTGRES_VOLUME`, the Docker Compose stack uses that same volume name.

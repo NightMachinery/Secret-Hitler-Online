@@ -118,10 +118,10 @@ public class SecretHitlerServer {
         }
     }
 
-    private static int getHerokuAssignedPort() {
-        String herokuPort = System.getenv("PORT");
-        if (herokuPort != null) {
-            return Integer.parseInt(herokuPort);
+    private static int getPortFromEnvironment() {
+        String configuredPort = System.getenv("PORT");
+        if (configuredPort != null) {
+            return Integer.parseInt(configuredPort);
         }
         return DEFAULT_PORT_NUMBER;
     }
@@ -167,9 +167,9 @@ public class SecretHitlerServer {
 
         String bindHost = ApplicationConfig.BIND_HOST;
         if (bindHost != null && !bindHost.isBlank()) {
-            serverApp.start(bindHost.trim(), getHerokuAssignedPort());
+            serverApp.start(bindHost.trim(), getPortFromEnvironment());
         } else {
-            serverApp.start(getHerokuAssignedPort());
+            serverApp.start(getPortFromEnvironment());
         }
 
         serverApp.get("/check-login", SecretHitlerServer::checkLogin); // Checks if a login is valid.

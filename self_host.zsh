@@ -341,6 +341,32 @@ detect_docker_postgres_db () {
   print -r -- "$detected_db"
 }
 
+sync_postgres_identity_from_docker_volume () {
+  command -v docker >/dev/null 2>&1 || return 0
+  docker_postgres_volume_has_data || return 0
+
+  local volume_name
+  volume_name="$(docker_postgres_volume_name)"
+  local source_port
+  source_port="$(pick_free_tcp_port)"
+  local source_container="secret-hitler-postgres-detect-source-$$"
+  local detected_user detected_db
+
+  {
+    start_temp_docker_postgres "$volume_name" "$source_port" "$source_container"
+    detected_user="$(detect_docker_postgres_user "$source_container")" || die "Could not determine the PostgreSQL role used by the Docker volume."
+    detected_db="$(detect_docker_postgres_db "$source_container" "$detected_user")"
+  } always {
+    docker rm -f "$source_container" >/dev/null 2>&1 || true
+  }
+
+  if [[ "$POSTGRES_USER" != "$detected_user" || "$POSTGRES_DB" != "$detected_db" ]]; then
+    log "Using Docker PostgreSQL identity from existing volume: user=$detected_user db=$detected_db"
+  fi
+  POSTGRES_USER="$detected_user"
+  POSTGRES_DB="$detected_db"
+}
+
 ensure_dirs () {
   mkdir -p "$STATE_DIR" "$RUNTIME_DIR" "$POSTGRES_STATE_DIR" "$POSTGRES_DATA_DIR" "$POSTGRES_SOCKET_DIR"
 }
@@ -986,6 +1012,7 @@ switch_to_docker_mode () {
     migrate_local_postgres_to_docker
   fi
 
+  sync_postgres_identity_from_docker_volume
   save_postgres_identity
   write_mode "docker"
 }
@@ -1013,6 +1040,7 @@ export FRONTEND_PORT='${FRONTEND_PORT}'
 export POSTGRES_DB='${POSTGRES_DB}'
 export POSTGRES_USER='${POSTGRES_USER}'
 export POSTGRES_PASSWORD='${POSTGRES_PASSWORD}'
+export DOCKER_POSTGRES_VOLUME_NAME='$(docker_postgres_volume_name)'
 export DATABASE_URL='postgres://${POSTGRES_USER}:${POSTGRES_PASSWORD}@db:5432/${POSTGRES_DB}'
 docker compose -f '$DOCKER_COMPOSE_FILE' ${compose_args}
 EOF

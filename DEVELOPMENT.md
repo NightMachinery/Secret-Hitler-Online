@@ -16,6 +16,8 @@
 
 Preferred workflow: use `./self_host.zsh` as documented in `docs/self-hosting.md`. The legacy compose notes below are still useful as reference, but the script-based flow is the supported path.
 
+The backend no longer carries Heroku-specific Gradle/plugin wiring; public hosting should use the self-host or Fly.io flows documented in this repo.
+
 Use `docker-compose.prod.yml` when running a public instance.
 
 - Start the production stack:

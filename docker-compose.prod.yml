@@ -80,4 +80,5 @@ services:
 volumes:
   gradle-cache: {}
   npm-cache: {}
-  postgres-data: {}
+  postgres-data:
+    name: "${DOCKER_POSTGRES_VOLUME_NAME:-secret-hitler-online_postgres-data}"
