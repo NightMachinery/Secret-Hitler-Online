@@ -83,18 +83,18 @@ public class GameToJSONConverter {
         // Players should only be shown all roles under specific circumstances.
         // Observers (non-players) should not see hidden roles until the game has
         // finished.
-        boolean userIsPlayer = game.hasPlayer(userName);
-        Identity role = userIsPlayer ? game.getPlayer(userName).getIdentity() : null;
+        String perspectivePlayer = lobby == null
+                ? (game.hasPlayer(userName) ? userName : null)
+                : lobby.getControlledPlayerForUser(userName);
+        if (perspectivePlayer == null && game.hasPlayer(userName)) {
+            perspectivePlayer = userName;
+        }
+        boolean userIsPlayer = perspectivePlayer != null && game.hasPlayer(perspectivePlayer);
+        Identity role = userIsPlayer ? game.getPlayer(perspectivePlayer).getIdentity() : null;
         boolean showAllRoles = game.hasGameFinished() || role == Identity.FASCIST
                 || (role == Identity.HITLER && game.getPlayerList().size() <= 6);
-        Player.Type selfType;
-        if (!userIsPlayer) {
-            selfType = Player.Type.OBSERVER;
-        } else if (lobby != null && lobby.isGeneratedBotPlayer(userName)) {
-            selfType = Player.Type.BOT;
-        } else {
-            selfType = game.getPlayer(userName).getType();
-        }
+        Player.Type selfType = userIsPlayer ? Player.Type.HUMAN : Player.Type.OBSERVER;
+        boolean canAct = lobby == null ? userIsPlayer : (lobby.canUserAct(userName) || userName.equals(perspectivePlayer));
 
         System.out.println("Show all roles: " + showAllRoles);
 
@@ -105,13 +105,15 @@ public class GameToJSONConverter {
             playerObj.put("alive", player.isAlive());
 
             // Only include player role for self or under specific rules
-            if (player.getUsername().equals(userName) || showAllRoles) {
+            if (player.getUsername().equals(perspectivePlayer) || showAllRoles) {
                 String id = player.getIdentity().toString();
                 playerObj.put("id", id);
             }
             playerObj.put("investigated", player.hasBeenInvestigated());
             Player.Type playerType = player.getType();
-            if (lobby != null && lobby.isGeneratedBotPlayer(player.getUsername())) {
+            if (lobby != null && lobby.isSeatObserverControlled(player.getUsername())) {
+                playerType = Player.Type.HUMAN;
+            } else if (lobby != null && lobby.isGeneratedBotPlayer(player.getUsername())) {
                 playerType = Player.Type.BOT;
             }
             playerObj.put("type", playerType.toString());
@@ -148,8 +150,10 @@ public class GameToJSONConverter {
         out.put("moderators", lobby == null ? new JSONArray() : new JSONArray(lobby.getModeratorUsernamesSnapshot()));
         out.put("connected", lobby == null
                 ? new JSONObject()
-                : new JSONObject(lobby.getConnectedStatusSnapshot(java.util.Arrays.asList(playerOrder))));
+                : new JSONObject(lobby.getSeatControllerConnectedStatusSnapshot(java.util.Arrays.asList(playerOrder))));
         out.put("selfType", selfType.toString());
+        out.put("controlledPlayer", perspectivePlayer == null ? "" : perspectivePlayer);
+        out.put("canAct", canAct);
 
         JSONObject botControlled = new JSONObject();
         if (lobby != null) {
@@ -160,6 +164,13 @@ public class GameToJSONConverter {
             }
         }
         out.put("botControlled", botControlled);
+        out.put("observers", lobby == null ? new JSONArray() : new JSONArray(lobby.getObserverUsernamesSnapshot()));
+        out.put("observerConnected",
+                lobby == null ? new JSONObject() : new JSONObject(lobby.getObserverConnectedStatusSnapshot()));
+        out.put("observerAssignments",
+                lobby == null ? new JSONObject() : new JSONObject(lobby.getObserverAssignmentsSnapshot()));
+        out.put("observerAssignableTargets",
+                lobby == null ? new JSONObject() : new JSONObject(lobby.getObserverAssignableTargetTypesSnapshot()));
 
         if (game.getState() == GameState.LEGISLATIVE_PRESIDENT) {
             out.put("presidentChoices", convertPolicyListToStringArray(game.getPresidentLegislativeChoices()));

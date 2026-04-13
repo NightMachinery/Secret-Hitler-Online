@@ -90,6 +90,7 @@ import {
   HistoryConfig,
   HistoryRoundsToShow,
   LobbyState,
+  ObserverAssignableTargetType,
   PlayerState,
   Role,
   ServerRequestPayload,
@@ -135,6 +136,12 @@ const DEFAULT_GAME_STATE: GameState = {
   moderators: [],
   connected: {},
   botControlled: {},
+  controlledPlayer: "",
+  canAct: false,
+  observers: [],
+  observerConnected: {},
+  observerAssignments: {},
+  observerAssignableTargets: {},
   icon: {},
   selfType: UserType.OBSERVER,
 };
@@ -610,6 +617,33 @@ class App extends Component<{}, AppState> {
         }
         if (!message.botControlled || typeof message.botControlled !== "object") {
           message.botControlled = {};
+        }
+        if (typeof message.controlledPlayer !== "string") {
+          message.controlledPlayer = "";
+        }
+        if (typeof message.canAct !== "boolean") {
+          message.canAct = false;
+        }
+        if (!Array.isArray(message.observers)) {
+          message.observers = [];
+        }
+        if (
+          !message.observerConnected ||
+          typeof message.observerConnected !== "object"
+        ) {
+          message.observerConnected = {};
+        }
+        if (
+          !message.observerAssignments ||
+          typeof message.observerAssignments !== "object"
+        ) {
+          message.observerAssignments = {};
+        }
+        if (
+          !message.observerAssignableTargets ||
+          typeof message.observerAssignableTargets !== "object"
+        ) {
+          message.observerAssignableTargets = {};
         }
         if (typeof message.creator !== "string") {
           message.creator = "";
@@ -1443,6 +1477,132 @@ class App extends Component<{}, AppState> {
     );
   }
 
+  showObserverAssignmentPrompt(target: string) {
+    const assignmentByPlayer = this.getSeatObserverAssignmentsByPlayer();
+    const assignedObserver = assignmentByPlayer[target];
+    const targetType = this.state.gameState.observerAssignableTargets?.[target];
+    if (!targetType) {
+      return;
+    }
+
+    const availableObservers = (this.state.gameState.observers || []).filter(
+      (observer) =>
+        this.state.gameState.observerConnected?.[observer] !== false &&
+        (assignedObserver === observer ||
+          !this.state.gameState.observerAssignments?.[observer])
+    );
+
+    const clearLabel =
+      targetType === ObserverAssignableTargetType.GENERATED_BOT
+        ? "RETURN TO AI"
+        : "RETURN TO PLAYER";
+
+    this.queueAlert(
+      <ButtonPrompt
+        label={`ASSIGN OBSERVER: ${target.toUpperCase()}`}
+        headerText={
+          assignedObserver
+            ? `${assignedObserver} is currently controlling this seat.`
+            : "Choose a connected observer to control this seat."
+        }
+        footerText={
+          availableObservers.length === 0
+            ? "No connected unassigned observers are available right now."
+            : "Assignments apply immediately."
+        }
+        renderButton={() => (
+          <div className="prompt-button-grid">
+            {availableObservers.map((observer) => (
+              <button
+                id={"prompt-button"}
+                key={observer}
+                onClick={() => {
+                  this.hideAlertAndFinish();
+                  this.onClickSetObserverAssignment(target, observer);
+                }}
+              >
+                {assignedObserver === observer
+                  ? `KEEP ${observer.toUpperCase()}`
+                  : observer.toUpperCase()}
+              </button>
+            ))}
+            <button
+              id={"prompt-button"}
+              onClick={() => {
+                this.hideAlertAndFinish();
+                this.onClickSetObserverAssignment(target);
+              }}
+            >
+              {clearLabel}
+            </button>
+            <button
+              id={"prompt-button"}
+              onClick={() => {
+                this.hideAlertAndFinish();
+              }}
+            >
+              CLOSE
+            </button>
+          </div>
+        )}
+      >
+        <PlayerDisplay
+          user={this.state.name}
+          gameState={this.state.gameState}
+          players={[target]}
+          showLabels={false}
+        />
+      </ButtonPrompt>,
+      false
+    );
+  }
+
+  renderObserversPanel() {
+    const observers = this.state.gameState.observers || [];
+    if (observers.length === 0) {
+      return null;
+    }
+
+    return (
+      <div
+        style={{
+          margin: "12px auto 0",
+          padding: "12px",
+          width: "min(90vw, 720px)",
+          backgroundColor: "var(--backgroundDark)",
+          textAlign: "left",
+        }}
+      >
+        <h3 style={{ margin: "0 0 8px 0" }}>Observers</h3>
+        {observers.map((observer) => {
+          const seat = this.state.gameState.observerAssignments?.[observer];
+          const isOffline =
+            this.state.gameState.observerConnected?.[observer] === false;
+          return (
+            <div
+              key={observer}
+              style={{
+                display: "flex",
+                justifyContent: "space-between",
+                gap: "12px",
+                padding: "4px 0",
+                borderTop: "1px solid rgba(255,255,255,0.08)",
+              }}
+            >
+              <span>
+                {observer}
+                {seat ? ` → ${seat}` : ""}
+              </span>
+              <span style={{ opacity: 0.8 }}>
+                {isOffline ? "OFFLINE" : "ONLINE"}
+              </span>
+            </div>
+          );
+        })}
+      </div>
+    );
+  }
+
   showResetBansPrompt() {
     this.queueAlert(
       <ButtonPrompt
@@ -1666,10 +1826,12 @@ class App extends Component<{}, AppState> {
   onGameStateChanged(newState: GameState) {
     let oldState = this.state.gameState;
     let name = this.state.name;
+    const viewerSeat = this.getViewerSeat(newState);
     const isObserver = newState.selfType === UserType.OBSERVER;
-    const myPlayer = !isObserver ? newState.players[name] : undefined;
-    let isPresident = this.state.name === newState.president;
-    let isChancellor = this.state.name === newState.chancellor;
+    const myPlayer = viewerSeat ? newState.players[viewerSeat] : undefined;
+    let isPresident = viewerSeat === newState.president;
+    let isChancellor = viewerSeat === newState.chancellor;
+    const canAct = this.canViewerAct(newState);
     const wasSelfBotControlled = Boolean(oldState.botControlled?.[name]);
     const isSelfBotControlled = Boolean(newState.botControlled?.[name]);
     let state = newState.state;
@@ -1766,14 +1928,15 @@ class App extends Component<{}, AppState> {
             newState.electionTracker === 0 &&
             newState.liberalPolicies === 0 &&
             newState.fascistPolicies === 0 &&
-            !isObserver
+            !isObserver &&
+            myPlayer !== undefined
           ) {
             // If the game has just started (everything in default state), show the player's role.
             this.queueAlert(
               <RoleAlert
                 role={myPlayer!.id}
                 gameState={newState}
-                name={name}
+                name={viewerSeat}
                 onClick={() => {
                   this.hideAlertAndFinish();
                 }}
@@ -1787,7 +1950,7 @@ class App extends Component<{}, AppState> {
             "Waiting for president to nominate a chancellor."
           );
 
-          if (isPresident && !isSelfBotControlled) {
+          if (isPresident && canAct) {
             //Show the chancellor nomination window.
             this.queueAlert(
               SelectNominationPrompt(name, newState, this.sendWSCommand)
@@ -1803,9 +1966,9 @@ class App extends Component<{}, AppState> {
           // Check if the player is dead or has already voted-- if so, do not show the voting prompt.
           if (
             !isObserver &&
-            !isSelfBotControlled &&
+            canAct &&
             myPlayer![PLAYER_IS_ALIVE] &&
-            !Object.keys(newState.userVotes).includes(name)
+            !Object.keys(newState.userVotes).includes(viewerSeat)
           ) {
             this.queueAlert(
               <VotingPrompt
@@ -1830,7 +1993,7 @@ class App extends Component<{}, AppState> {
             "Waiting for the president to choose a policy to discard."
           );
 
-          if (isPresident && !isSelfBotControlled) {
+          if (isPresident && canAct) {
             if (!newState.presidentChoices) {
               throw new Error("President choices not found.");
             }
@@ -1848,7 +2011,7 @@ class App extends Component<{}, AppState> {
           this.queueStatusMessage(
             "Waiting for the chancellor to choose a policy to enact."
           );
-          if (isChancellor && !isSelfBotControlled) {
+          if (isChancellor && canAct) {
             if (!newState.chancellorChoices) {
               throw new Error("Chancellor choices not found.");
             }
@@ -1873,7 +2036,7 @@ class App extends Component<{}, AppState> {
           this.queueStatusMessage(
             "Chancellor has motioned to veto the agenda. Waiting for the president to decide."
           );
-          if (isPresident && !isSelfBotControlled) {
+          if (isPresident && canAct) {
             this.queueAlert(
               <VetoPrompt
                 sendWSCommand={this.sendWSCommand}
@@ -1886,7 +2049,7 @@ class App extends Component<{}, AppState> {
 
         case STATE_PP_PEEK:
           this.queueEventUpdate("PRESIDENTIAL POWER");
-          if (isPresident && !isSelfBotControlled) {
+          if (isPresident && canAct) {
             if (!newState.peek) {
               throw new Error("Peek policies not found.");
             }
@@ -1906,7 +2069,7 @@ class App extends Component<{}, AppState> {
 
         case STATE_PP_ELECTION:
           this.queueEventUpdate("PRESIDENTIAL POWER");
-          if (isPresident && !isSelfBotControlled) {
+          if (isPresident && canAct) {
             this.queueAlert(
               SelectSpecialElectionPrompt(name, newState, this.sendWSCommand)
             );
@@ -1919,7 +2082,7 @@ class App extends Component<{}, AppState> {
 
         case STATE_PP_EXECUTION:
           this.queueEventUpdate("PRESIDENTIAL POWER");
-          if (isPresident && !isSelfBotControlled) {
+          if (isPresident && canAct) {
             this.queueAlert(
               SelectExecutionPrompt(name, newState, this.sendWSCommand),
               true
@@ -1933,7 +2096,7 @@ class App extends Component<{}, AppState> {
 
         case STATE_PP_INVESTIGATE:
           this.queueEventUpdate("PRESIDENTIAL POWER");
-          if (isPresident && !isSelfBotControlled) {
+          if (isPresident && canAct) {
             this.queueAlert(
               SelectInvestigationPrompt(name, newState, this.sendWSCommand)
             );
@@ -2112,6 +2275,36 @@ class App extends Component<{}, AppState> {
     return Boolean(this.state.gameState.botControlled?.[playerName]);
   }
 
+  getViewerSeat(gameState: GameState = this.state.gameState): string {
+    return gameState.controlledPlayer || this.state.name;
+  }
+
+  canViewerAct(gameState: GameState = this.state.gameState): boolean {
+    return Boolean(gameState.canAct);
+  }
+
+  isViewerReadOnlySeatOwner(gameState: GameState = this.state.gameState): boolean {
+    return (
+      gameState.selfType === UserType.HUMAN &&
+      gameState.controlledPlayer === this.state.name &&
+      !this.canViewerAct(gameState)
+    );
+  }
+
+  getSeatObserverAssignmentsByPlayer(
+    gameState: GameState = this.state.gameState
+  ): Record<string, string> {
+    const byPlayer: Record<string, string> = {};
+    Object.entries(gameState.observerAssignments || {}).forEach(
+      ([observer, player]) => {
+        if (typeof player === "string" && player !== "") {
+          byPlayer[player] = observer;
+        }
+      }
+    );
+    return byPlayer;
+  }
+
   handleBotControlTransition(
     wasSelfBotControlled: boolean,
     isSelfBotControlled: boolean
@@ -2138,6 +2331,14 @@ class App extends Component<{}, AppState> {
       command: WSCommandType.SET_BOT_STATUS,
       target,
       enabled,
+    });
+  }
+
+  onClickSetObserverAssignment(target: string, observer?: string) {
+    this.sendWSCommand({
+      command: WSCommandType.SET_OBSERVER_ASSIGNMENT,
+      target,
+      observer,
     });
   }
 
@@ -2364,8 +2565,28 @@ class App extends Component<{}, AppState> {
             onOpenModeratorPrompt={(playerName) =>
               this.showGameModeratorPrompt(playerName)
             }
+            onOpenObserverPrompt={(playerName) =>
+              this.showObserverAssignmentPrompt(playerName)
+            }
           />
         </div>
+
+        {this.isViewerReadOnlySeatOwner() && (
+          <div
+            style={{
+              margin: "12px auto 0",
+              padding: "10px 12px",
+              width: "min(90vw, 720px)",
+              backgroundColor: "var(--backgroundDark)",
+              textAlign: "left",
+            }}
+          >
+            An observer is currently controlling your seat. You are in read-only
+            mode until a moderator returns control.
+          </div>
+        )}
+
+        {this.renderObserversPanel()}
 
         <StatusBar>{this.state.statusBarText}</StatusBar>
 
@@ -2394,8 +2615,8 @@ class App extends Component<{}, AppState> {
                   disabled={
                     this.state.gameState[PARAM_STATE] !==
                       STATE_POST_LEGISLATIVE ||
-                    this.state.name !== this.state.gameState[PARAM_PRESIDENT] ||
-                    this.isPlayerBotControlled(this.state.name)
+                    this.getViewerSeat() !== this.state.gameState[PARAM_PRESIDENT] ||
+                    !this.canViewerAct()
                   }
                   onClick={() => {
                     this.sendWSCommand({ command: WSCommandType.END_TERM });

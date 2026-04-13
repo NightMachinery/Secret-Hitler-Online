@@ -24,6 +24,11 @@ export enum UserType {
   OBSERVER = "OBSERVER",
 }
 
+export enum ObserverAssignableTargetType {
+  GENERATED_BOT = "GENERATED_BOT",
+  TEMPORARY_HUMAN_BOT = "TEMPORARY_HUMAN_BOT",
+}
+
 export type PlayerState = {
   id?: Role;
   alive: boolean;
@@ -107,6 +112,12 @@ export type GameState = {
   moderators?: string[];
   connected?: Record<string, boolean>;
   botControlled?: Record<string, boolean>;
+  controlledPlayer?: string;
+  canAct?: boolean;
+  observers?: string[];
+  observerConnected?: Record<string, boolean>;
+  observerAssignments?: Record<string, string>;
+  observerAssignableTargets?: Record<string, ObserverAssignableTargetType>;
   selfType: UserType;
 
   usernames?: string[];

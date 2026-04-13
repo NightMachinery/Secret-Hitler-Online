@@ -93,6 +93,7 @@ export const COMMAND_GET_INVESTIGATION = "get-investigation";
 export const COMMAND_REGISTER_PEEK = "register-peek";
 export const COMMAND_END_TERM = "end-term";
 export const COMMAND_SET_BOT_STATUS = "set-bot-status";
+export const COMMAND_SET_OBSERVER_ASSIGNMENT = "set-observer-assignment";
 
 //</editor-fold>
 

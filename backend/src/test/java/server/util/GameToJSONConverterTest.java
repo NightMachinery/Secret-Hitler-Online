@@ -9,6 +9,7 @@ import org.junit.Test;
 
 import java.lang.reflect.Field;
 import java.util.ArrayList;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentSkipListSet;
 
 import static junit.framework.TestCase.assertEquals;
@@ -89,6 +90,10 @@ public class GameToJSONConverterTest {
         SecretHitlerGame game = new SecretHitlerGame(makePlayers(6));
         Lobby lobby = new Lobby();
 
+        Field gameField = Lobby.class.getDeclaredField("game");
+        gameField.setAccessible(true);
+        gameField.set(lobby, game);
+
         Field creatorField = Lobby.class.getDeclaredField("creatorUsername");
         creatorField.setAccessible(true);
         creatorField.set(lobby, "0");
@@ -111,18 +116,33 @@ public class GameToJSONConverterTest {
         generatedBots.add("5");
         generatedBotField.set(lobby, generatedBots);
 
+        Field observerAssignmentsField = Lobby.class.getDeclaredField("observerToAssignedPlayer");
+        observerAssignmentsField.setAccessible(true);
+        ConcurrentHashMap<String, String> observerAssignments = new ConcurrentHashMap<>();
+        observerAssignments.put("observer", "5");
+        observerAssignmentsField.set(lobby, observerAssignments);
+
         JSONObject out = GameToJSONConverter.convert(game, "0", Lobby.HistoryDisplayConfig.defaultConfig(), lobby);
         assertEquals("0", out.getString("creator"));
         assertTrue(out.getJSONObject("botControlled").getBoolean("2"));
         assertEquals("3", out.getJSONArray("moderators").getString(0));
         assertEquals(false, out.getJSONObject("connected").getBoolean("0"));
+        assertEquals("0", out.getString("controlledPlayer"));
+        assertEquals(true, out.getBoolean("canAct"));
         assertEquals("HUMAN", out.getJSONObject("players").getJSONObject("0").getString("type"));
         assertEquals("HUMAN", out.getJSONObject("players").getJSONObject("2").getString("type"));
-        assertEquals("BOT", out.getJSONObject("players").getJSONObject("5").getString("type"));
+        assertEquals("HUMAN", out.getJSONObject("players").getJSONObject("5").getString("type"));
         assertEquals("HUMAN", out.getString("selfType"));
+        assertEquals("GENERATED_BOT", out.getJSONObject("observerAssignableTargets").getString("5"));
+        assertEquals("5", out.getJSONObject("observerAssignments").getString("observer"));
+        assertEquals(false, out.getJSONObject("observerConnected").getBoolean("observer"));
+        assertEquals("observer", out.getJSONArray("observers").getString(0));
 
         JSONObject observerView = GameToJSONConverter.convert(game, "observer", Lobby.HistoryDisplayConfig.defaultConfig(),
                 lobby);
-        assertEquals("OBSERVER", observerView.getString("selfType"));
+        assertEquals("HUMAN", observerView.getString("selfType"));
+        assertEquals("5", observerView.getString("controlledPlayer"));
+        assertEquals(true, observerView.getBoolean("canAct"));
+        assertEquals(false, observerView.getJSONObject("connected").getBoolean("5"));
     }
 }

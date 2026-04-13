@@ -17,7 +17,12 @@ import {
   STATE_CHANCELLOR_VOTING,
 } from "../constants";
 import "./PlayerDisplay.css";
-import { GameState, Role, UserType } from "../types";
+import {
+  GameState,
+  ObserverAssignableTargetType,
+  Role,
+  UserType,
+} from "../types";
 import { doesHitlerKnowFascists, isVictoryState } from "../utils";
 
 // <editor-fold desc="Player Filters">
@@ -113,6 +118,7 @@ type PlayerDisplayProps = {
   includeUser?: boolean;
   onBotControlToggle?: (playerName: string, enabled: boolean) => void;
   onOpenModeratorPrompt?: (playerName: string) => void;
+  onOpenObserverPrompt?: (playerName: string) => void;
 };
 
 const defaultProps: Partial<PlayerDisplayProps> = {
@@ -141,6 +147,16 @@ export default function PlayerDisplay(
   const [playerVotesVisible, setPlayerVotesVisible] = useState<number>(0);
   /** Timeouts for each player animation. Will be destroyed on reset. */
   const playerVoteAnimations = useRef<NodeJS.Timeout[]>([]);
+  const viewerSeat = props.gameState.controlledPlayer || props.user;
+  const viewerCanAct = Boolean(props.gameState.canAct);
+  const observerAssignmentsBySeat = Object.entries(
+    props.gameState.observerAssignments || {}
+  ).reduce<Record<string, string>>((acc, [observer, player]) => {
+    if (player) {
+      acc[player] = observer;
+    }
+    return acc;
+  }, {});
 
   /**
    * Returns an array representing the player order.
@@ -156,7 +172,7 @@ export default function PlayerDisplay(
 
     if (!props.includeUser) {
       // Remove the user from the players.
-      return basePlayers.filter((player) => player !== props.user);
+      return basePlayers.filter((player) => player !== viewerSeat);
     }
     return basePlayers;
   };
@@ -186,8 +202,11 @@ export default function PlayerDisplay(
       case STATE_CHANCELLOR_VOTING:
         let playerOrder = getPlayerOrder();
         let i = 0;
-        for (i; i < game.playerOrder.length; i++) {
+        for (i; i < playerOrder.length; i++) {
           let name = playerOrder[i];
+          if (!name) {
+            continue;
+          }
           let isAlive = game.players[name].alive;
           if (!game.userVotes.hasOwnProperty(name) && isAlive) {
             // player has not voted (is not in the map of votes) and is alive
@@ -210,7 +229,7 @@ export default function PlayerDisplay(
     gameState: GameState,
     playerName: string
   ): boolean => {
-    const myPlayerState = gameState.players[props.user];
+    const myPlayerState = gameState.players[viewerSeat];
     const otherPlayerState = gameState.players[playerName];
     const otherRole = otherPlayerState?.id;
 
@@ -293,12 +312,21 @@ export default function PlayerDisplay(
         const onClick = () => {
           onPlayerSelected(playerName);
         };
+        const observerAssignment = observerAssignmentsBySeat[playerName];
+        const observerAssignableType =
+          props.gameState.observerAssignableTargets?.[playerName];
         const isTemporaryBotControlled = Boolean(
           props.gameState.botControlled?.[playerName]
         );
         const isOffline = props.gameState.connected?.[playerName] === false;
-        const isBuiltInBot = playerData.type === UserType.BOT;
-        const isBotControlled = isTemporaryBotControlled || isBuiltInBot;
+        const isBuiltInBot =
+          playerData.type === UserType.BOT &&
+          !observerAssignment &&
+          observerAssignableType ===
+            ObserverAssignableTargetType.GENERATED_BOT;
+        const isObserverControlled = Boolean(observerAssignment);
+        const isBotControlled =
+          !isObserverControlled && (isTemporaryBotControlled || isBuiltInBot);
         const userIsCreator = props.gameState.creator === props.user;
         const userIsModerator = Boolean(
           props.gameState.moderators?.includes(props.user)
@@ -316,12 +344,14 @@ export default function PlayerDisplay(
           userIsCreator &&
           gameIsActive &&
           playerData.alive &&
-          !isBuiltInBot;
+          observerAssignableType !==
+            ObserverAssignableTargetType.GENERATED_BOT;
 
         const showSelfReclaimToggle =
           Boolean(props.onBotControlToggle) &&
           !userIsCreator &&
           gameIsActive &&
+          viewerCanAct &&
           playerName === props.user &&
           playerData.alive &&
           isTemporaryBotControlled;
@@ -329,11 +359,20 @@ export default function PlayerDisplay(
         const canOpenModeratorPrompt =
           Boolean(props.onOpenModeratorPrompt) &&
           gameIsActive &&
-          playerName !== props.user &&
+          playerName !== viewerSeat &&
           !playerIsCreator &&
+          observerAssignableType !==
+            ObserverAssignableTargetType.GENERATED_BOT &&
           (userIsCreator || userIsModerator) &&
           ((!playerIsModerator && (userIsCreator || userIsModerator)) ||
             (playerIsModerator && userIsCreator));
+
+        const canOpenObserverPrompt =
+          Boolean(props.onOpenObserverPrompt) &&
+          gameIsActive &&
+          playerData.alive &&
+          Boolean(observerAssignableType) &&
+          (userIsCreator || userIsModerator);
 
         const actionButtons: {
           label: string;
@@ -371,12 +410,24 @@ export default function PlayerDisplay(
           });
         }
 
+        if (canOpenObserverPrompt) {
+          actionButtons.push({
+            label: "OBS",
+            title: observerAssignment
+              ? `Manage observer control for ${playerName}`
+              : `Assign an observer to ${playerName}`,
+            onClick: () => props.onOpenObserverPrompt?.(playerName),
+            variant: isObserverControlled ? "secondary" : "primary",
+          });
+        }
+
         const statusBadges = [
           isOffline ? { label: "OFFLINE", variant: "offline" } : null,
           playerIsCreator ? { label: "CREATOR", variant: "creator" } : null,
           !playerIsCreator && playerIsModerator
             ? { label: "MOD", variant: "moderator" }
             : null,
+          isObserverControlled ? { label: "OBS", variant: "observer" } : null,
           isBotControlled ? { label: "BOT", variant: "bot" } : null,
         ].filter(Boolean) as { label: string; variant?: string }[];
 
@@ -398,7 +449,7 @@ export default function PlayerDisplay(
               } // Do not show while voting.
               role={playerData[PLAYER_IDENTITY]}
               showRole={shouldShowRole(props.gameState, playerName)}
-              highlight={playerName === props.user}
+              highlight={playerName === viewerSeat}
               disabled={disabled}
               disabledText={disabledText}
               name={playerName}

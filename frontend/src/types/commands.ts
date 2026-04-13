@@ -17,6 +17,7 @@ export const enum WSCommandType {
   // Voting action
   REGISTER_VOTE = "register-vote",
   SET_BOT_STATUS = "set-bot-status",
+  SET_OBSERVER_ASSIGNMENT = "set-observer-assignment",
   LEAVE_LOBBY = "leave-lobby",
   SET_MODERATOR_STATUS = "set-moderator-status",
   KICK_USER = "kick-user",
@@ -43,6 +44,11 @@ export type ServerRequestPayload =
   | { command: WSCommandType.GET_INVESTIGATION; target: string }
   | { command: WSCommandType.REGISTER_VOTE; vote: boolean }
   | { command: WSCommandType.SET_BOT_STATUS; target: string; enabled: boolean }
+  | {
+      command: WSCommandType.SET_OBSERVER_ASSIGNMENT;
+      target: string;
+      observer?: string;
+    }
   | { command: WSCommandType.LEAVE_LOBBY }
   | { command: WSCommandType.SET_MODERATOR_STATUS; target: string; enabled: boolean }
   | { command: WSCommandType.KICK_USER; target: string }

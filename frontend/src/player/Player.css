@@ -165,6 +165,10 @@
     background: rgba(24, 64, 131, 0.92);
 }
 
+.player-status-badge-observer {
+    background: rgba(76, 67, 131, 0.92);
+}
+
 .player-status-badge-creator {
     background: rgba(112, 72, 14, 0.95);
 }

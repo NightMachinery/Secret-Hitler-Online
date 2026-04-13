@@ -41,6 +41,7 @@ public class SecretHitlerServer {
     public static final String PARAM_CHOICE = "choice"; // the index of the chosen policy.
     public static final String PARAM_ICON = "icon";
     public static final String PARAM_ENABLED = "enabled";
+    public static final String PARAM_OBSERVER = "observer";
     public static final String PARAM_HISTORY_SHOW = "history-show";
     public static final String PARAM_HISTORY_SHOW_PRESIDENTIAL_ACTIONS = "history-show-presidential-actions";
     public static final String PARAM_HISTORY_SHOW_VOTE_BREAKDOWN = "history-show-vote-breakdown";
@@ -79,6 +80,7 @@ public class SecretHitlerServer {
 
     public static final String COMMAND_END_TERM = "end-term";
     public static final String COMMAND_SET_BOT_STATUS = "set-bot-status";
+    public static final String COMMAND_SET_OBSERVER_ASSIGNMENT = "set-observer-assignment";
     public static final String COMMAND_LEAVE_LOBBY = "leave-lobby";
     public static final String COMMAND_SET_MODERATOR_STATUS = "set-moderator-status";
     public static final String COMMAND_KICK_USER = "kick-user";
@@ -788,50 +790,50 @@ public class SecretHitlerServer {
                         break;
 
                     case COMMAND_NOMINATE_CHANCELLOR: // params: PARAM_TARGET (String)
-                        verifyIsPresident(name, lobby);
+                        verifyIsPresident(requireActingPlayer(name, lobby), lobby);
                         lobby.game().nominateChancellor(message.getString(PARAM_TARGET));
                         break;
 
                     case COMMAND_REGISTER_VOTE: // params: PARAM_VOTE (boolean)
                         boolean vote = message.getBoolean(PARAM_VOTE);
-                        lobby.game().registerVote(name, vote);
+                        lobby.game().registerVote(requireActingPlayer(name, lobby), vote);
                         break;
 
                     case COMMAND_REGISTER_PRESIDENT_CHOICE: // params: PARAM_CHOICE (int)
-                        verifyIsPresident(name, lobby);
+                        verifyIsPresident(requireActingPlayer(name, lobby), lobby);
                         int discard = message.getInt(PARAM_CHOICE);
                         lobby.game().presidentDiscardPolicy(discard);
                         break;
 
                     case COMMAND_REGISTER_CHANCELLOR_CHOICE: // params: PARAM_CHOICE (int)
-                        verifyIsChancellor(name, lobby);
+                        verifyIsChancellor(requireActingPlayer(name, lobby), lobby);
                         int enact = message.getInt(PARAM_CHOICE);
                         lobby.game().chancellorEnactPolicy(enact);
                         break;
 
                     case COMMAND_REGISTER_CHANCELLOR_VETO:
-                        verifyIsChancellor(name, lobby);
+                        verifyIsChancellor(requireActingPlayer(name, lobby), lobby);
                         lobby.game().chancellorVeto();
                         break;
 
                     case COMMAND_REGISTER_PRESIDENT_VETO: // params: PARAM_VETO (boolean)
-                        verifyIsPresident(name, lobby);
+                        verifyIsPresident(requireActingPlayer(name, lobby), lobby);
                         boolean veto = message.getBoolean(PARAM_VETO);
                         lobby.game().presidentialVeto(veto);
                         break;
 
                     case COMMAND_REGISTER_EXECUTION: // params: PARAM_TARGET (String)
-                        verifyIsPresident(name, lobby);
+                        verifyIsPresident(requireActingPlayer(name, lobby), lobby);
                         lobby.game().executePlayer(message.getString(PARAM_TARGET));
                         break;
 
                     case COMMAND_REGISTER_SPECIAL_ELECTION: // params: PARAM_TARGET (String)
-                        verifyIsPresident(name, lobby);
+                        verifyIsPresident(requireActingPlayer(name, lobby), lobby);
                         lobby.game().electNextPresident(message.getString(PARAM_TARGET));
                         break;
 
                     case COMMAND_GET_INVESTIGATION: // params: PARAM_TARGET (String)
-                        verifyIsPresident(name, lobby);
+                        verifyIsPresident(requireActingPlayer(name, lobby), lobby);
                         Identity id = lobby.game().investigatePlayer(message.getString(PARAM_TARGET));
                         // Construct and send a JSONObject.
                         JSONObject obj = new JSONObject();
@@ -846,12 +848,12 @@ public class SecretHitlerServer {
                         break;
 
                     case COMMAND_REGISTER_PEEK:
-                        verifyIsPresident(name, lobby);
+                        verifyIsPresident(requireActingPlayer(name, lobby), lobby);
                         lobby.game().endPeek();
                         break;
 
                     case COMMAND_END_TERM:
-                        verifyIsPresident(name, lobby);
+                        verifyIsPresident(requireActingPlayer(name, lobby), lobby);
                         lobby.game().endPresidentialTerm();
                         break;
 
@@ -885,10 +887,25 @@ public class SecretHitlerServer {
                             if (!actorIsCreator) {
                                 throw new RuntimeException("Only the creator can enable bot control for players.");
                             }
+                        } else if (lobby.isSeatObserverControlled(target) && !actorIsCreator) {
+                            throw new RuntimeException(
+                                    "Only the creator can return an observer-controlled player to manual control.");
                         } else if (!actorIsCreator && !name.equals(target)) {
                             throw new RuntimeException("Only the creator or the target player can disable bot control.");
                         }
                         lobby.setTemporaryBotControl(target, enabled);
+                        break;
+
+                    case COMMAND_SET_OBSERVER_ASSIGNMENT:
+                        if (!lobby.isInGame()) {
+                            throw new RuntimeException("Observer control can only be changed during an active game.");
+                        }
+                        verifyIsModerator(name, lobby);
+                        String observerTarget = message.getString(PARAM_TARGET);
+                        String observer = message.has(PARAM_OBSERVER) && !message.isNull(PARAM_OBSERVER)
+                                ? message.getString(PARAM_OBSERVER)
+                                : null;
+                        lobby.setObserverAssignment(observerTarget, observer);
                         break;
 
                     case COMMAND_SET_MODERATOR_STATUS:
@@ -968,7 +985,8 @@ public class SecretHitlerServer {
         return !COMMAND_PING.equals(command)
                 && !COMMAND_GET_STATE.equals(command)
                 && !COMMAND_SELECT_ICON.equals(command)
-                && !COMMAND_SET_BOT_STATUS.equals(command);
+                && !COMMAND_SET_BOT_STATUS.equals(command)
+                && !COMMAND_SET_OBSERVER_ASSIGNMENT.equals(command);
     }
 
     // TODO: This is bad. This is bad code practice. Exceptions should not be
@@ -1004,6 +1022,17 @@ public class SecretHitlerServer {
         if (!lobby.hasModeratorPrivileges(name)) {
             throw new RuntimeException("Only the creator or a moderator can do that.");
         }
+    }
+
+    private static String requireActingPlayer(String name, Lobby lobby) {
+        String actingPlayer = lobby.getControlledPlayerForUser(name);
+        if (actingPlayer == null) {
+            throw new RuntimeException("Observers must be assigned to a seat to do that.");
+        }
+        if (!lobby.canUserAct(name)) {
+            throw new RuntimeException("Your seat is currently being controlled by an observer.");
+        }
+        return actingPlayer;
     }
 
     private static void verifyCanChangeModeratorStatus(String actor, String target, boolean enabled, Lobby lobby) {

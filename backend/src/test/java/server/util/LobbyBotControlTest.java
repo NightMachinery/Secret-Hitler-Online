@@ -2,9 +2,13 @@ package server.util;
 
 import game.SecretHitlerGame;
 import game.GameState;
+import io.javalin.websocket.WsContext;
+import org.eclipse.jetty.websocket.api.Session;
 import org.junit.Test;
 
 import java.lang.reflect.Field;
+import java.lang.reflect.Proxy;
+import java.util.Arrays;
 import java.util.ArrayList;
 import java.util.Set;
 import java.util.concurrent.ConcurrentSkipListSet;
@@ -32,6 +36,39 @@ public class LobbyBotControlTest {
         gameField.setAccessible(true);
         gameField.set(lobby, game);
         return lobby;
+    }
+
+    private WsContext createContext() {
+        Session session = (Session) Proxy.newProxyInstance(
+                Session.class.getClassLoader(),
+                new Class[] { Session.class },
+                (proxy, method, args) -> {
+                    Class<?> returnType = method.getReturnType();
+                    if (returnType.equals(boolean.class)) {
+                        return false;
+                    }
+                    if (returnType.equals(int.class)) {
+                        return 0;
+                    }
+                    if (returnType.equals(long.class)) {
+                        return 0L;
+                    }
+                    if (returnType.equals(double.class)) {
+                        return 0d;
+                    }
+                    if (returnType.equals(float.class)) {
+                        return 0f;
+                    }
+                    return null;
+                });
+        return new WsContext("/", session) {
+        };
+    }
+
+    private WsContext addConnectedObserver(Lobby lobby, String observerName) {
+        WsContext context = createContext();
+        lobby.addUser(context, observerName);
+        return context;
     }
 
     private Lobby createLobbyWithPostLegislativeGame() throws Exception {
@@ -106,5 +143,48 @@ public class LobbyBotControlTest {
 
         assertTrue(lobby.isBotControlled(currentPresident));
         assertEquals(GameState.CHANCELLOR_VOTING, lobby.game().getState());
+    }
+
+    @Test
+    public void testConnectedObserverCanTakeOverGeneratedBotSeat() throws Exception {
+        Lobby lobby = createLobbyWithGame();
+        addConnectedObserver(lobby, "observer");
+
+        Field generatedBotField = Lobby.class.getDeclaredField("generatedBotPlayers");
+        generatedBotField.setAccessible(true);
+        Set<String> generated = new ConcurrentSkipListSet<>();
+        generated.add("1");
+        generatedBotField.set(lobby, generated);
+
+        lobby.setObserverAssignment("1", "observer");
+
+        assertEquals("1", lobby.getAssignedSeatForObserver("observer"));
+        assertTrue(lobby.isSeatObserverControlled("1"));
+        assertTrue(lobby.canUserAct("observer"));
+        assertTrue(lobby.getSeatControllerConnectedStatusSnapshot(Arrays.asList("1")).get("1"));
+        assertFalse(lobby.game().getPlayer("1").isCpu());
+    }
+
+    @Test
+    public void testObserverAssignmentOnTemporaryHumanBotSeatMakesOwnerReadOnly() throws Exception {
+        Lobby lobby = createLobbyWithGame();
+        WsContext observerContext = addConnectedObserver(lobby, "observer");
+
+        lobby.enableTemporaryBotControl("1");
+        lobby.setObserverAssignment("1", "observer");
+
+        assertTrue(lobby.isSeatObserverControlled("1"));
+        assertTrue(lobby.canUserAct("observer"));
+        assertFalse(lobby.canUserAct("1"));
+        assertFalse(lobby.game().getPlayer("1").isCpu());
+
+        lobby.removeUserImmediately(observerContext);
+        assertFalse(lobby.getSeatControllerConnectedStatusSnapshot(Arrays.asList("1")).get("1"));
+        assertEquals("1", lobby.getAssignedSeatForObserver("observer"));
+
+        lobby.setObserverAssignment("1", null);
+        assertFalse(lobby.isSeatObserverControlled("1"));
+        assertFalse(lobby.isBotControlled("1"));
+        assertTrue(lobby.canUserAct("1"));
     }
 }

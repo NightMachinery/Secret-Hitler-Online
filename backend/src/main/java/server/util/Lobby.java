@@ -107,6 +107,7 @@ public class Lobby implements Serializable {
     private Set<String> bannedTokens;
     private Set<String> botControlledPlayers;
     private Set<String> generatedBotPlayers;
+    private ConcurrentHashMap<String, String> observerToAssignedPlayer;
     private ConcurrentHashMap<String, CpuPlayer> cpuControllersByName;
 
     private HistoryDisplayConfig historyDisplayConfig;
@@ -143,6 +144,7 @@ public class Lobby implements Serializable {
         bannedTokens = new ConcurrentSkipListSet<>();
         botControlledPlayers = new ConcurrentSkipListSet<>();
         generatedBotPlayers = new ConcurrentSkipListSet<>();
+        observerToAssignedPlayer = new ConcurrentHashMap<>();
         cpuControllersByName = new ConcurrentHashMap<>();
         usernameToPreferredIcon = new ConcurrentHashMap<>();
         this.historyDisplayConfig = historyDisplayConfig == null ? HistoryDisplayConfig.defaultConfig() : historyDisplayConfig;
@@ -244,6 +246,27 @@ public class Lobby implements Serializable {
 
     synchronized public Map<String, Boolean> getLobbyConnectedStatusSnapshot() {
         return getConnectedStatusSnapshot(lobbyUsernames);
+    }
+
+    synchronized public List<String> getObserverUsernamesSnapshot() {
+        LinkedHashSet<String> observers = new LinkedHashSet<>(observerToAssignedPlayer.keySet());
+        if (game == null) {
+            ArrayList<String> out = new ArrayList<>(observers);
+            Collections.sort(out);
+            return out;
+        }
+        for (String username : userToUsername.values()) {
+            if (!game.hasPlayer(username)) {
+                observers.add(username);
+            }
+        }
+        ArrayList<String> out = new ArrayList<>(observers);
+        Collections.sort(out);
+        return out;
+    }
+
+    synchronized public Map<String, Boolean> getObserverConnectedStatusSnapshot() {
+        return getConnectedStatusSnapshot(getObserverUsernamesSnapshot());
     }
 
     synchronized public boolean isTokenBanned(String token) {
@@ -364,6 +387,105 @@ public class Lobby implements Serializable {
         return lobbyUsernames.contains(target) || usersInGame.contains(target);
     }
 
+    synchronized public Map<String, String> getObserverAssignmentsSnapshot() {
+        return new HashMap<>(observerToAssignedPlayer);
+    }
+
+    synchronized public String getAssignedSeatForObserver(String observer) {
+        if (observer == null || observer.isBlank()) {
+            return null;
+        }
+        return observerToAssignedPlayer.get(observer);
+    }
+
+    synchronized public String getAssignedObserverForSeat(String seat) {
+        if (seat == null || seat.isBlank()) {
+            return null;
+        }
+        for (Map.Entry<String, String> entry : observerToAssignedPlayer.entrySet()) {
+            if (seat.equals(entry.getValue())) {
+                return entry.getKey();
+            }
+        }
+        return null;
+    }
+
+    synchronized public boolean isSeatObserverControlled(String seat) {
+        return getAssignedObserverForSeat(seat) != null;
+    }
+
+    synchronized public String getControlledPlayerForUser(String username) {
+        if (username == null || username.isBlank() || !isInGame() || game == null) {
+            return null;
+        }
+        if (game.hasPlayer(username)) {
+            return username;
+        }
+        return observerToAssignedPlayer.get(username);
+    }
+
+    synchronized public boolean canUserAct(String username) {
+        String controlledPlayer = getControlledPlayerForUser(username);
+        if (controlledPlayer == null) {
+            return false;
+        }
+        if (controlledPlayer.equals(username)) {
+            return !isSeatObserverControlled(controlledPlayer);
+        }
+        return controlledPlayer.equals(observerToAssignedPlayer.get(username));
+    }
+
+    synchronized public String getObserverAssignableTargetType(String seat) {
+        if (seat == null || seat.isBlank()) {
+            return null;
+        }
+        if (generatedBotPlayers.contains(seat)) {
+            return "GENERATED_BOT";
+        }
+        if (botControlledPlayers.contains(seat)) {
+            return "TEMPORARY_HUMAN_BOT";
+        }
+        return null;
+    }
+
+    synchronized public Map<String, String> getObserverAssignableTargetTypesSnapshot() {
+        Map<String, String> out = new HashMap<>();
+        if (game == null) {
+            return out;
+        }
+        for (Player player : game.getPlayerList()) {
+            if (!player.isAlive()) {
+                continue;
+            }
+            String type = getObserverAssignableTargetType(player.getUsername());
+            if (type != null) {
+                out.put(player.getUsername(), type);
+            }
+        }
+        return out;
+    }
+
+    synchronized public Map<String, Boolean> getSeatControllerConnectedStatusSnapshot(Collection<String> seats) {
+        Map<String, Boolean> connected = new HashMap<>();
+        if (seats == null) {
+            return connected;
+        }
+        for (String seat : seats) {
+            if (seat == null || seat.isBlank()) {
+                continue;
+            }
+            String assignedObserver = getAssignedObserverForSeat(seat);
+            if (assignedObserver != null) {
+                connected.put(seat, isConnected(assignedObserver));
+            } else if (generatedBotPlayers.contains(seat) || botControlledPlayers.contains(seat)) {
+                connected.put(seat, true);
+            } else {
+                connected.put(seat, isConnected(seat));
+            }
+        }
+        return connected;
+    }
+
     /**
      * Returns all currently connected sockets for the provided username.
      */
@@ -399,7 +521,7 @@ public class Lobby implements Serializable {
     }
 
     private boolean shouldCpuActForPlayer(String name) {
-        return generatedBotPlayers.contains(name) || botControlledPlayers.contains(name);
+        return !isSeatObserverControlled(name) && (generatedBotPlayers.contains(name) || botControlledPlayers.contains(name));
     }
 
     /**
@@ -448,10 +570,14 @@ public class Lobby implements Serializable {
         if (generatedBotPlayers.contains(name)) {
             throw new IllegalArgumentException("Cannot modify built-in bot player '" + name + "'.");
         }
+        if (isSeatObserverControlled(name)) {
+            clearObserverAssignmentTarget(name);
+        }
         botControlledPlayers.remove(name);
         cpuControllersByName.remove(name);
         if (game != null && game.hasPlayer(name)) {
             game.getPlayer(name).markAsHuman();
+            game.getPlayer(name).setType(Player.Type.HUMAN);
         }
     }
 
@@ -473,6 +599,7 @@ public class Lobby implements Serializable {
         }
         botControlledPlayers.clear();
         generatedBotPlayers.clear();
+        observerToAssignedPlayer.clear();
         cpuControllersByName.clear();
     }
 
@@ -490,7 +617,112 @@ public class Lobby implements Serializable {
         if (name == null || name.isBlank()) {
             return false;
         }
-        return isInGame() && !usersInGame.contains(name);
+        return isInGame() && game != null && !game.hasPlayer(name);
+    }
+
+    private void pauseAutomatedControlForSeat(String seat) {
+        if (game == null || !game.hasPlayer(seat)) {
+            return;
+        }
+        Player player = game.getPlayer(seat);
+        player.markAsHuman();
+        player.setType(Player.Type.HUMAN);
+    }
+
+    private void resumeGeneratedBotControl(String seat) {
+        if (game == null || !generatedBotPlayers.contains(seat) || !game.hasPlayer(seat)) {
+            return;
+        }
+        Player player = game.getPlayer(seat);
+        player.setType(Player.Type.BOT);
+
+        CpuPlayer cpu = cpuControllersByName.get(seat);
+        if (cpu == null) {
+            cpu = new CpuPlayer(seat);
+            cpuControllersByName.put(seat, cpu);
+            cpu.initialize(game);
+        } else {
+            cpu.synchronizeWithGame(game);
+        }
+    }
+
+    synchronized public void setObserverAssignment(String seat, String observer) {
+        if (seat == null || seat.isBlank()) {
+            throw new IllegalArgumentException("Target player must be specified.");
+        }
+        if (!isInGame() || game == null) {
+            throw new IllegalStateException("Observer control can only be changed during an active game.");
+        }
+        if (!game.hasPlayer(seat)) {
+            throw new IllegalArgumentException("Player '" + seat + "' is not in the current game.");
+        }
+
+        String targetType = getObserverAssignableTargetType(seat);
+        if (targetType == null) {
+            throw new IllegalArgumentException("Player '" + seat + "' is not eligible for observer control.");
+        }
+
+        if (observer == null || observer.isBlank()) {
+            clearObserverAssignmentTarget(seat);
+            return;
+        }
+
+        if (!game.getPlayer(seat).isAlive()) {
+            throw new IllegalArgumentException("Cannot assign observer control for dead player '" + seat + "'.");
+        }
+        if (game.hasPlayer(observer)) {
+            throw new IllegalArgumentException("Player '" + observer + "' is already a seat in this game.");
+        }
+        if (!isConnected(observer)) {
+            throw new IllegalArgumentException("Observer '" + observer + "' must be connected.");
+        }
+
+        String existingSeat = observerToAssignedPlayer.get(observer);
+        if (existingSeat != null && !existingSeat.equals(seat)) {
+            throw new IllegalArgumentException("Observer '" + observer + "' is already assigned to '" + existingSeat + "'.");
+        }
+
+        String previousObserver = getAssignedObserverForSeat(seat);
+        if (previousObserver != null && !previousObserver.equals(observer)) {
+            observerToAssignedPlayer.remove(previousObserver);
+        }
+
+        observerToAssignedPlayer.put(observer, seat);
+        pauseAutomatedControlForSeat(seat);
+    }
+
+    synchronized public void clearObserverAssignmentTarget(String seat) {
+        if (seat == null || seat.isBlank()) {
+            throw new IllegalArgumentException("Target player must be specified.");
+        }
+        String assignedObserver = getAssignedObserverForSeat(seat);
+        if (assignedObserver != null) {
+            observerToAssignedPlayer.remove(assignedObserver);
+        }
+        String targetType = getObserverAssignableTargetType(seat);
+        if ("GENERATED_BOT".equals(targetType)) {
+            resumeGeneratedBotControl(seat);
+        } else if ("TEMPORARY_HUMAN_BOT".equals(targetType)) {
+            disableTemporaryBotControl(seat);
+        }
+    }
+
+    private void pruneInvalidObserverAssignments() {
+        if (game == null) {
+            observerToAssignedPlayer.clear();
+            return;
+        }
+
+        List<String> seatsToClear = new ArrayList<>();
+        for (String seat : observerToAssignedPlayer.values()) {
+            if (!game.hasPlayer(seat) || !game.getPlayer(seat).isAlive() || getObserverAssignableTargetType(seat) == null) {
+                seatsToClear.add(seat);
+            }
+        }
+
+        for (String seat : seatsToClear) {
+            clearObserverAssignmentTarget(seat);
+        }
     }
 
     /**
@@ -635,6 +867,7 @@ public class Lobby implements Serializable {
      * Sends a message to every connected user with the current game state.
      */
     synchronized public void updateAllUsers() {
+        pruneInvalidObserverAssignments();
         for (Map.Entry<WsContext, String> entry : userToUsername.entrySet()) {
             updateUser(entry.getKey(), entry.getValue());
         }
@@ -765,6 +998,9 @@ public class Lobby implements Serializable {
         }
         if (generatedBotPlayers == null) {
             generatedBotPlayers = new ConcurrentSkipListSet<>();
+        }
+        if (observerToAssignedPlayer == null) {
+            observerToAssignedPlayer = new ConcurrentHashMap<>();
         }
         if (cpuControllersByName == null) {
             cpuControllersByName = new ConcurrentHashMap<>();

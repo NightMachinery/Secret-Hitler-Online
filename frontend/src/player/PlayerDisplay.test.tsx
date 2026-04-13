@@ -5,6 +5,7 @@ import {
   GameState,
   HistoryRoundsToShow,
   LobbyState,
+  ObserverAssignableTargetType,
   PlayerState,
   Role,
   UserType,
@@ -65,6 +66,12 @@ const buildGameState = (playerOrder: string[]): GameState => ({
     }),
     {}
   ),
+  controlledPlayer: playerOrder[0],
+  canAct: true,
+  observers: [],
+  observerConnected: {},
+  observerAssignments: {},
+  observerAssignableTargets: {},
   icon: playerOrder.reduce<Record<string, string>>(
     (acc, playerName) => ({
       ...acc,
@@ -114,5 +121,28 @@ describe("PlayerDisplay", () => {
 
     expect(screen.getByText("OFFLINE")).toBeInTheDocument();
     expect(screen.getByTitle("Promote Bob to moderator")).toBeInTheDocument();
+  });
+
+  test("shows observer badge and observer action for assignable seats", () => {
+    const gameState = buildGameState(["Alice", "Bot 1", "Cara"]);
+    gameState.players["Bot 1"].type = UserType.HUMAN;
+    gameState.observerAssignments = { Dana: "Bot 1" };
+    gameState.observerAssignableTargets = {
+      "Bot 1": ObserverAssignableTargetType.GENERATED_BOT,
+    };
+
+    render(
+      <PlayerDisplay
+        user={"Alice"}
+        gameState={gameState}
+        showLabels={false}
+        onOpenObserverPrompt={() => {}}
+      />
+    );
+
+    expect(screen.getAllByText("OBS")).toHaveLength(2);
+    expect(
+      screen.getByTitle("Manage observer control for Bot 1")
+    ).toBeInTheDocument();
   });
 });
