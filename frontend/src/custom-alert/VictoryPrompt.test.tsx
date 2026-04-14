@@ -58,6 +58,11 @@ const buildGameState = (
     showVoteBreakdown: true,
     roundsToShow: HistoryRoundsToShow.ALL,
   },
+  discussionReactions: {},
+  discussionReactionConfig: {
+    durationSeconds: 15,
+    allowDeadPlayers: true,
+  },
   selfType: UserType.HUMAN,
   creator: playerOrder[0] || "",
   moderators: [],

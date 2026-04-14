@@ -79,6 +79,22 @@ export type HistoryConfig = {
   roundsToShow: HistoryRoundsToShow;
 };
 
+export const enum DiscussionReactionType {
+  LIKE = "LIKE",
+  DISLIKE = "DISLIKE",
+  CLEAR = "CLEAR",
+}
+
+export type DiscussionReaction = {
+  type: DiscussionReactionType.LIKE | DiscussionReactionType.DISLIKE;
+  expiresAt: number;
+};
+
+export type DiscussionReactionConfig = {
+  durationSeconds: number;
+  allowDeadPlayers: boolean;
+};
+
 export type GameState = {
   state: LobbyState;
   lastState: LobbyState;
@@ -108,6 +124,8 @@ export type GameState = {
   peek?: PolicyType[];
   history: RoundHistoryEntry[];
   historyConfig: HistoryConfig;
+  discussionReactions: Record<string, DiscussionReaction>;
+  discussionReactionConfig: DiscussionReactionConfig;
   creator?: string;
   moderators?: string[];
   connected?: Record<string, boolean>;

@@ -1,0 +1,220 @@
+@import "../variables.css";
+
+#discussion-reaction-dock-wrap {
+  position: fixed;
+  right: 16px;
+  bottom: 16px;
+  z-index: 74;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 8px;
+}
+
+#discussion-reaction-dock {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px;
+  border-radius: 999px;
+  background: rgba(20, 20, 20, 0.94);
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  box-shadow: 0 10px 28px rgba(0, 0, 0, 0.34);
+}
+
+.discussion-reaction-button {
+  margin: 0;
+  padding: 0;
+  width: 3rem;
+  height: 3rem;
+  min-width: 3rem;
+  border-radius: 999px;
+  border: 1px solid rgba(255, 255, 255, 0.18);
+  box-shadow: none;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(42, 42, 42, 0.96);
+  color: var(--textColorWhite);
+}
+
+.discussion-reaction-button:hover,
+.discussion-reaction-button:focus,
+.discussion-reaction-button:focus-visible {
+  background: rgba(61, 61, 61, 0.98);
+  border-color: rgba(255, 255, 255, 0.34);
+}
+
+.discussion-reaction-button:not(:disabled):active {
+  top: 0;
+  box-shadow: none;
+}
+
+.discussion-reaction-button:disabled {
+  box-shadow: none;
+  background: rgba(73, 65, 60, 0.9);
+  border-color: rgba(255, 255, 255, 0.08);
+  opacity: 0.6;
+}
+
+.discussion-reaction-button-like {
+  color: #dce9ff;
+}
+
+.discussion-reaction-button-dislike {
+  color: #ffe6c4;
+}
+
+.discussion-reaction-button-clear {
+  color: #f4d1cd;
+}
+
+.discussion-reaction-button-settings {
+  color: #d8d8d8;
+}
+
+.discussion-reaction-button-active {
+  border-color: rgba(255, 255, 255, 0.72);
+  box-shadow: 0 0 0 2px rgba(255, 255, 255, 0.18);
+}
+
+.discussion-reaction-button-like.discussion-reaction-button-active {
+  background: linear-gradient(
+    180deg,
+    rgba(80, 124, 216, 0.98),
+    rgba(45, 78, 148, 0.98)
+  );
+}
+
+.discussion-reaction-button-dislike.discussion-reaction-button-active {
+  background: linear-gradient(
+    180deg,
+    rgba(232, 155, 67, 0.98),
+    rgba(171, 99, 26, 0.98)
+  );
+}
+
+.discussion-reaction-button-settings.discussion-reaction-button-active {
+  background: linear-gradient(
+    180deg,
+    rgba(96, 96, 96, 0.98),
+    rgba(54, 54, 54, 0.98)
+  );
+}
+
+.discussion-reaction-icon {
+  width: 1.4rem;
+  height: 1.4rem;
+}
+
+#discussion-reaction-settings-panel {
+  width: min(92vw, 300px);
+  padding: 12px;
+  border-radius: 14px;
+  background: rgba(20, 20, 20, 0.96);
+  border: 1px solid rgba(255, 255, 255, 0.16);
+  box-shadow: 0 12px 30px rgba(0, 0, 0, 0.34);
+  color: var(--textColorWhite);
+}
+
+.discussion-reaction-settings-title {
+  font-family: var(--headerFont);
+  font-size: calc(8px + 1.4vmin);
+  color: var(--headerTextColor);
+  text-align: left;
+  margin-bottom: 10px;
+}
+
+.discussion-reaction-settings-field,
+.discussion-reaction-settings-toggle {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  text-align: left;
+  color: var(--textColorOnDark);
+  font-family: var(--textFont);
+  font-size: calc(8px + 0.6vmin);
+}
+
+.discussion-reaction-settings-field {
+  margin-bottom: 10px;
+}
+
+.discussion-reaction-settings-field input[type="number"] {
+  width: 88px;
+  min-width: 88px;
+  font-size: calc(8px + 0.5vmin);
+  padding: 4px 8px;
+}
+
+.discussion-reaction-settings-toggle input[type="checkbox"] {
+  width: 16px;
+  min-width: 16px;
+  margin: 0 6px 0 0;
+}
+
+.discussion-reaction-settings-toggle span {
+  flex: 1;
+}
+
+.discussion-reaction-settings-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+  margin-top: 12px;
+}
+
+.discussion-reaction-mini-button {
+  margin: 0;
+  padding: 8px 12px;
+  font-size: calc(6px + 1.1vmin);
+  box-shadow: none;
+}
+
+.discussion-reaction-mini-button:not(:disabled):active {
+  top: 0;
+}
+
+.discussion-reaction-mini-button-primary {
+  background: var(--buttonAltFill);
+}
+
+.discussion-reaction-mini-button-primary:hover,
+.discussion-reaction-mini-button-primary:focus,
+.discussion-reaction-mini-button-primary:focus-visible {
+  background: var(--buttonAltHoverFill);
+}
+
+#discussion-reaction-disabled-note {
+  max-width: min(92vw, 300px);
+  padding: 8px 12px;
+  border-radius: 12px;
+  background: rgba(20, 20, 20, 0.92);
+  color: var(--textColorOnDark);
+  font-family: var(--textFont);
+  font-size: calc(8px + 0.55vmin);
+  text-align: left;
+}
+
+@media (max-width: 700px) {
+  #discussion-reaction-dock-wrap {
+    right: 12px;
+    left: 12px;
+    bottom: 12px;
+    align-items: stretch;
+  }
+
+  #discussion-reaction-dock {
+    justify-content: center;
+    width: 100%;
+    box-sizing: border-box;
+  }
+
+  #discussion-reaction-settings-panel,
+  #discussion-reaction-disabled-note {
+    width: 100%;
+    box-sizing: border-box;
+    max-width: none;
+  }
+}

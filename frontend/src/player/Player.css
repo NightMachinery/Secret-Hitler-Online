@@ -215,6 +215,43 @@
     background: linear-gradient(180deg, rgba(116, 43, 28, 0.97), rgba(77, 25, 16, 0.97));
 }
 
+.player-discussion-reaction-badge {
+    position: absolute;
+    top: -3%;
+    left: 50%;
+    transform: translateX(-50%);
+    width: 22%;
+    height: 22%;
+    min-width: 1.75rem;
+    min-height: 1.75rem;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 999px;
+    border: 1px solid rgba(255, 255, 255, 0.62);
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.28);
+    z-index: 8;
+    pointer-events: none;
+    animation-name: player-discussion-reaction-fade;
+    animation-timing-function: ease-out;
+    animation-fill-mode: forwards;
+}
+
+.player-discussion-reaction-like {
+    background: linear-gradient(180deg, rgba(75, 118, 208, 0.98), rgba(45, 75, 143, 0.96));
+    color: #e8f0ff;
+}
+
+.player-discussion-reaction-dislike {
+    background: linear-gradient(180deg, rgba(228, 153, 65, 0.98), rgba(170, 100, 28, 0.96));
+    color: #fff0d8;
+}
+
+.player-discussion-reaction-icon {
+    width: 70%;
+    height: 70%;
+}
+
 .darken {
     filter: brightness(var(--playerBrightnessFilter));
 }
@@ -253,4 +290,23 @@
 @keyframes player-icon-hide {
     0% {top: 43%; opacity: 1; visibility: visible}
     100% {top:43%; opacity: 0; visibility: hidden}
+}
+
+@keyframes player-discussion-reaction-fade {
+    0% {
+        opacity: 0;
+        transform: translateX(-50%) scale(0.7) translateY(0.35rem);
+    }
+    12% {
+        opacity: 1;
+        transform: translateX(-50%) scale(1.05) translateY(0);
+    }
+    78% {
+        opacity: 1;
+        transform: translateX(-50%) scale(1) translateY(0);
+    }
+    100% {
+        opacity: 0;
+        transform: translateX(-50%) scale(0.92) translateY(-0.2rem);
+    }
 }

@@ -312,6 +312,7 @@ export default function PlayerDisplay(
         const onClick = () => {
           onPlayerSelected(playerName);
         };
+        const discussionReaction = props.gameState.discussionReactions?.[playerName];
         const observerAssignment = observerAssignmentsBySeat[playerName];
         const observerAssignableType =
           props.gameState.observerAssignableTargets?.[playerName];
@@ -461,6 +462,7 @@ export default function PlayerDisplay(
               icon={props.gameState.icon[playerName]}
               statusBadges={statusBadges}
               actionButtons={actionButtons}
+              discussionReaction={discussionReaction}
             />
           </div>
         );

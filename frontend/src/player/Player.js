@@ -133,6 +133,42 @@ class Player extends Component {
         }
     }
 
+    renderDiscussionReactionIcon(type) {
+        if (type === "LIKE") {
+            return (
+                <svg
+                    className={"player-discussion-reaction-icon"}
+                    viewBox="0 0 24 24"
+                    fill="none"
+                    stroke="currentColor"
+                    strokeWidth="2.2"
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    aria-hidden="true"
+                >
+                    <path d="M7 10v12" />
+                    <path d="M15 5.88 14 10h5.83a2 2 0 0 1 1.95 2.57l-1.2 5A2 2 0 0 1 18.64 19H7a2 2 0 0 1-2-2v-7a2 2 0 0 1 2-2h2.76a2 2 0 0 0 1.79-1.11L13 4a2 2 0 0 1 2-1.12Z" />
+                </svg>
+            );
+        }
+
+        return (
+            <svg
+                className={"player-discussion-reaction-icon"}
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="2.2"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                aria-hidden="true"
+            >
+                <path d="M17 14V2" />
+                <path d="M9 18.12 10 14H4.17a2 2 0 0 1-1.95-2.57l1.2-5A2 2 0 0 1 5.36 5H17a2 2 0 0 1 2 2v7a2 2 0 0 1-2 2h-2.76a2 2 0 0 0-1.79 1.11L11 20a2 2 0 0 1-2 1.12Z" />
+            </svg>
+        );
+    }
+
     render() {
         // noinspection HtmlUnknownAttribute
         if (this.state.initialState && this.props.isBusy) {
@@ -185,6 +221,26 @@ class Player extends Component {
             </button>
         ));
 
+        const discussionReaction = this.props.discussionReaction;
+        const discussionReactionRemainingMs = discussionReaction
+            ? discussionReaction.expiresAt - Date.now()
+            : 0;
+        const discussionReactionBadge = discussionReaction && discussionReactionRemainingMs > 0 ? (
+            <div
+                key={`discussion-reaction-${discussionReaction.type}-${discussionReaction.expiresAt}`}
+                className={`player-discussion-reaction-badge ${
+                    discussionReaction.type === "LIKE"
+                        ? "player-discussion-reaction-like"
+                        : "player-discussion-reaction-dislike"
+                }`}
+                style={{ animationDuration: `${discussionReactionRemainingMs}ms` }}
+                role="img"
+                aria-label={discussionReaction.type === "LIKE" ? "Like reaction" : "Dislike reaction"}
+            >
+                {this.renderDiscussionReactionIcon(discussionReaction.type)}
+            </div>
+        ) : null;
+
         return (
             <div id="player-container"
                 className={this.getHighlight() + this.getClassName() + this.getButtonClass()}
@@ -214,6 +270,8 @@ class Player extends Component {
                         {actionButtons}
                     </div>
                 )}
+
+                {discussionReactionBadge}
 
                 <img id="player-busy-icon"
                      src={IconBusy}
@@ -268,6 +326,7 @@ Player.defaultProps = {
     icon: "p_default",
     statusBadges: [],
     actionButtons: [],
+    discussionReaction: undefined,
 };
 
 Player.propTypes = {
@@ -286,6 +345,7 @@ Player.propTypes = {
     icon: PropTypes.string,
     statusBadges: PropTypes.array,
     actionButtons: PropTypes.array,
+    discussionReaction: PropTypes.object,
 };
 
 export default Player;

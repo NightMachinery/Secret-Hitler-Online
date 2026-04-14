@@ -85,7 +85,10 @@ import LoginPageContent from "./LoginPageContent";
 import Cookies from "js-cookie";
 import AnnouncementBox from "./util/AnnouncementBox";
 import VictoryPrompt from "./custom-alert/VictoryPrompt";
+import DiscussionReactionDock from "./discussion-reaction/DiscussionReactionDock";
 import {
+  DiscussionReactionConfig,
+  DiscussionReactionType,
   GameState,
   HistoryConfig,
   HistoryRoundsToShow,
@@ -98,6 +101,7 @@ import {
   WSCommand,
   WSCommandType,
 } from "./types";
+import { isVictoryState } from "./utils";
 
 const EVENT_BAR_FADE_OUT_DURATION = 500;
 const CUSTOM_ALERT_FADE_DURATION = 1000;
@@ -106,6 +110,10 @@ const DEFAULT_HISTORY_CONFIG: HistoryConfig = {
   showPublicActions: true,
   showVoteBreakdown: true,
   roundsToShow: HistoryRoundsToShow.ALL,
+};
+const DEFAULT_DISCUSSION_REACTION_CONFIG: DiscussionReactionConfig = {
+  durationSeconds: 15,
+  allowDeadPlayers: true,
 };
 
 const DEFAULT_GAME_STATE: GameState = {
@@ -132,6 +140,8 @@ const DEFAULT_GAME_STATE: GameState = {
   peek: [],
   history: [],
   historyConfig: DEFAULT_HISTORY_CONFIG,
+  discussionReactions: {},
+  discussionReactionConfig: DEFAULT_DISCUSSION_REACTION_CONFIG,
   creator: "",
   moderators: [],
   connected: {},
@@ -614,6 +624,32 @@ class App extends Component<{}, AppState> {
         }
         if (!message.historyConfig) {
           message.historyConfig = { ...DEFAULT_HISTORY_CONFIG };
+        }
+        if (
+          !message.discussionReactions ||
+          typeof message.discussionReactions !== "object"
+        ) {
+          message.discussionReactions = {};
+        }
+        if (
+          !message.discussionReactionConfig ||
+          typeof message.discussionReactionConfig !== "object"
+        ) {
+          message.discussionReactionConfig = {
+            ...DEFAULT_DISCUSSION_REACTION_CONFIG,
+          };
+        }
+        if (
+          typeof message.discussionReactionConfig.durationSeconds !== "number"
+        ) {
+          message.discussionReactionConfig.durationSeconds =
+            DEFAULT_DISCUSSION_REACTION_CONFIG.durationSeconds;
+        }
+        if (
+          typeof message.discussionReactionConfig.allowDeadPlayers !== "boolean"
+        ) {
+          message.discussionReactionConfig.allowDeadPlayers =
+            DEFAULT_DISCUSSION_REACTION_CONFIG.allowDeadPlayers;
         }
         if (!message.botControlled || typeof message.botControlled !== "object") {
           message.botControlled = {};
@@ -1321,6 +1357,24 @@ class App extends Component<{}, AppState> {
 
   onClickResetBans() {
     this.sendWSCommand({ command: WSCommandType.RESET_BANS });
+  }
+
+  onClickSetDiscussionReaction(reaction: DiscussionReactionType) {
+    this.sendWSCommand({
+      command: WSCommandType.SET_DISCUSSION_REACTION,
+      reaction,
+    });
+  }
+
+  onClickUpdateDiscussionReactionConfig(
+    durationSeconds: number,
+    allowDeadPlayers: boolean
+  ) {
+    this.sendWSCommand({
+      command: WSCommandType.SET_DISCUSSION_REACTION_CONFIG,
+      durationSeconds,
+      allowDeadPlayers,
+    });
   }
 
   showLobbyManageUserPrompt(target: string) {
@@ -2283,6 +2337,55 @@ class App extends Component<{}, AppState> {
     return Boolean(gameState.canAct);
   }
 
+  isViewerGameModerator(gameState: GameState = this.state.gameState): boolean {
+    return (
+      gameState.creator === this.state.name ||
+      Boolean(gameState.moderators?.includes(this.state.name))
+    );
+  }
+
+  getViewerDiscussionReaction(
+    gameState: GameState = this.state.gameState
+  ) {
+    const viewerSeat = this.getViewerSeat(gameState);
+    const reaction = gameState.discussionReactions?.[viewerSeat];
+    if (!reaction || reaction.expiresAt <= Date.now()) {
+      return undefined;
+    }
+    return reaction;
+  }
+
+  canViewerUseDiscussionReactions(
+    gameState: GameState = this.state.gameState
+  ): boolean {
+    if (!this.canViewerAct(gameState)) {
+      return false;
+    }
+    const viewerSeat = this.getViewerSeat(gameState);
+    if (!viewerSeat || !gameState.players?.[viewerSeat]) {
+      return false;
+    }
+    if (gameState.players[viewerSeat].alive) {
+      return true;
+    }
+    return gameState.discussionReactionConfig.allowDeadPlayers;
+  }
+
+  shouldShowDiscussionReactionDock(
+    gameState: GameState = this.state.gameState
+  ): boolean {
+    const viewerSeat = this.getViewerSeat(gameState);
+    const viewerHasSeat = Boolean(viewerSeat) && Boolean(gameState.players?.[viewerSeat]);
+    return (
+      this.state.page === PAGE.GAME &&
+      gameState.state !== LobbyState.SETUP &&
+      !isVictoryState(gameState.state) &&
+      !this.state.showAlert &&
+      ((viewerHasSeat && this.canViewerAct(gameState)) ||
+        this.isViewerGameModerator(gameState))
+    );
+  }
+
   isViewerReadOnlySeatOwner(gameState: GameState = this.state.gameState): boolean {
     return (
       gameState.selfType === UserType.HUMAN &&
@@ -2570,6 +2673,28 @@ class App extends Component<{}, AppState> {
             }
           />
         </div>
+
+        {this.shouldShowDiscussionReactionDock() && (
+          <DiscussionReactionDock
+            activeReaction={this.getViewerDiscussionReaction()}
+            config={this.state.gameState.discussionReactionConfig}
+            canReact={this.canViewerUseDiscussionReactions()}
+            isModerator={this.isViewerGameModerator()}
+            isViewerDead={
+              Boolean(
+                this.state.gameState.players?.[this.getViewerSeat()] &&
+                  !this.state.gameState.players[this.getViewerSeat()].alive
+              )
+            }
+            onReact={(reaction) => this.onClickSetDiscussionReaction(reaction)}
+            onSaveConfig={(durationSeconds, allowDeadPlayers) =>
+              this.onClickUpdateDiscussionReactionConfig(
+                durationSeconds,
+                allowDeadPlayers
+              )
+            }
+          />
+        )}
 
         {this.isViewerReadOnlySeatOwner() && (
           <div

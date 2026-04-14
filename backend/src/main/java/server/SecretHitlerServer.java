@@ -42,6 +42,9 @@ public class SecretHitlerServer {
     public static final String PARAM_ICON = "icon";
     public static final String PARAM_ENABLED = "enabled";
     public static final String PARAM_OBSERVER = "observer";
+    public static final String PARAM_REACTION = "reaction";
+    public static final String PARAM_DURATION_SECONDS = "durationSeconds";
+    public static final String PARAM_ALLOW_DEAD_PLAYERS = "allowDeadPlayers";
     public static final String PARAM_HISTORY_SHOW = "history-show";
     public static final String PARAM_HISTORY_SHOW_PRESIDENTIAL_ACTIONS = "history-show-presidential-actions";
     public static final String PARAM_HISTORY_SHOW_VOTE_BREAKDOWN = "history-show-vote-breakdown";
@@ -81,6 +84,8 @@ public class SecretHitlerServer {
     public static final String COMMAND_END_TERM = "end-term";
     public static final String COMMAND_SET_BOT_STATUS = "set-bot-status";
     public static final String COMMAND_SET_OBSERVER_ASSIGNMENT = "set-observer-assignment";
+    public static final String COMMAND_SET_DISCUSSION_REACTION = "set-discussion-reaction";
+    public static final String COMMAND_SET_DISCUSSION_REACTION_CONFIG = "set-discussion-reaction-config";
     public static final String COMMAND_LEAVE_LOBBY = "leave-lobby";
     public static final String COMMAND_SET_MODERATOR_STATUS = "set-moderator-status";
     public static final String COMMAND_KICK_USER = "kick-user";
@@ -908,6 +913,26 @@ public class SecretHitlerServer {
                         lobby.setObserverAssignment(observerTarget, observer);
                         break;
 
+                    case COMMAND_SET_DISCUSSION_REACTION:
+                        if (!lobby.isInGame()) {
+                            throw new RuntimeException("Discussion reactions are only available during an active game.");
+                        }
+                        String reactingSeat = requireActingPlayer(name, lobby);
+                        Lobby.DiscussionReactionType reactionType = Lobby.DiscussionReactionType
+                                .fromString(message.getString(PARAM_REACTION));
+                        lobby.setDiscussionReaction(reactingSeat, reactionType);
+                        break;
+
+                    case COMMAND_SET_DISCUSSION_REACTION_CONFIG:
+                        if (!lobby.isInGame()) {
+                            throw new RuntimeException("Discussion reaction settings are only available during an active game.");
+                        }
+                        verifyIsModerator(name, lobby);
+                        int durationSeconds = message.getInt(PARAM_DURATION_SECONDS);
+                        boolean allowDeadPlayers = message.getBoolean(PARAM_ALLOW_DEAD_PLAYERS);
+                        lobby.setDiscussionReactionConfig(durationSeconds, allowDeadPlayers);
+                        break;
+
                     case COMMAND_SET_MODERATOR_STATUS:
                         String moderatorTarget = message.getString(PARAM_TARGET);
                         boolean moderatorEnabled = message.getBoolean(PARAM_ENABLED);
@@ -986,7 +1011,8 @@ public class SecretHitlerServer {
                 && !COMMAND_GET_STATE.equals(command)
                 && !COMMAND_SELECT_ICON.equals(command)
                 && !COMMAND_SET_BOT_STATUS.equals(command)
-                && !COMMAND_SET_OBSERVER_ASSIGNMENT.equals(command);
+                && !COMMAND_SET_OBSERVER_ASSIGNMENT.equals(command)
+                && !COMMAND_SET_DISCUSSION_REACTION_CONFIG.equals(command);
     }
 
     // TODO: This is bad. This is bad code practice. Exceptions should not be

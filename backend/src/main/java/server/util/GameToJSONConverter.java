@@ -146,6 +146,12 @@ public class GameToJSONConverter {
         out.put("vetoOccurred", game.didVetoOccurThisTurn());
         out.put("history", convertHistory(game.getHistory(), effectiveHistoryConfig));
         out.put("historyConfig", convertHistoryConfig(effectiveHistoryConfig));
+        Lobby.DiscussionReactionConfig reactionConfig = lobby == null
+                ? Lobby.DiscussionReactionConfig.defaultConfig()
+                : lobby.getDiscussionReactionConfig();
+        out.put("discussionReactionConfig", convertDiscussionReactionConfig(reactionConfig));
+        out.put("discussionReactions",
+                lobby == null ? new JSONObject() : convertDiscussionReactions(lobby.getDiscussionReactionsSnapshot()));
         out.put("creator", lobby == null || lobby.getCreatorUsername() == null ? "" : lobby.getCreatorUsername());
         out.put("moderators", lobby == null ? new JSONArray() : new JSONArray(lobby.getModeratorUsernamesSnapshot()));
         out.put("connected", lobby == null
@@ -207,6 +213,33 @@ public class GameToJSONConverter {
         out.put("showPublicActions", historyConfig.shouldShowPublicActions());
         out.put("showVoteBreakdown", historyConfig.shouldShowVoteBreakdown());
         out.put("roundsToShow", historyConfig.getRoundsToShow().toString());
+        return out;
+    }
+
+    private static JSONObject convertDiscussionReactionConfig(Lobby.DiscussionReactionConfig reactionConfig) {
+        JSONObject out = new JSONObject();
+        out.put("durationSeconds", reactionConfig.getDurationSeconds());
+        out.put("allowDeadPlayers", reactionConfig.shouldAllowDeadPlayers());
+        return out;
+    }
+
+    private static JSONObject convertDiscussionReactions(Map<String, Lobby.DiscussionReaction> reactions) {
+        JSONObject out = new JSONObject();
+        if (reactions == null) {
+            return out;
+        }
+
+        for (Map.Entry<String, Lobby.DiscussionReaction> entry : reactions.entrySet()) {
+            Lobby.DiscussionReaction reaction = entry.getValue();
+            if (reaction == null) {
+                continue;
+            }
+
+            JSONObject reactionJson = new JSONObject();
+            reactionJson.put("type", reaction.getType().toString());
+            reactionJson.put("expiresAt", reaction.getExpiresAtMillis());
+            out.put(entry.getKey(), reactionJson);
+        }
         return out;
     }
 

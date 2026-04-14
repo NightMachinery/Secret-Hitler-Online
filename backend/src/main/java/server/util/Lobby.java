@@ -94,6 +94,91 @@ public class Lobby implements Serializable {
         }
     }
 
+    public enum DiscussionReactionType {
+        LIKE,
+        DISLIKE,
+        CLEAR;
+
+        public static DiscussionReactionType fromString(String value) {
+            if (value == null) {
+                throw new IllegalArgumentException("Reaction must be specified.");
+            }
+
+            String normalized = value.trim().toUpperCase();
+            if ("LIKE".equals(normalized)) {
+                return LIKE;
+            } else if ("DISLIKE".equals(normalized)) {
+                return DISLIKE;
+            } else if ("CLEAR".equals(normalized)) {
+                return CLEAR;
+            }
+            throw new IllegalArgumentException("Unsupported discussion reaction '" + value + "'.");
+        }
+    }
+
+    public static class DiscussionReaction implements Serializable {
+        private final DiscussionReactionType type;
+        private final long createdAtMillis;
+        private final long expiresAtMillis;
+
+        public DiscussionReaction(DiscussionReactionType type, long createdAtMillis, long expiresAtMillis) {
+            if (type == null || type == DiscussionReactionType.CLEAR) {
+                throw new IllegalArgumentException("Active reactions must be LIKE or DISLIKE.");
+            }
+            this.type = type;
+            this.createdAtMillis = createdAtMillis;
+            this.expiresAtMillis = expiresAtMillis;
+        }
+
+        public DiscussionReactionType getType() {
+            return type;
+        }
+
+        public long getCreatedAtMillis() {
+            return createdAtMillis;
+        }
+
+        public long getExpiresAtMillis() {
+            return expiresAtMillis;
+        }
+
+        public boolean isExpired(long nowMillis) {
+            return expiresAtMillis <= nowMillis;
+        }
+
+        public DiscussionReaction withDurationSeconds(int durationSeconds) {
+            long newExpiresAt = createdAtMillis + (durationSeconds * 1000L);
+            return new DiscussionReaction(type, createdAtMillis, newExpiresAt);
+        }
+    }
+
+    public static class DiscussionReactionConfig implements Serializable {
+        public static final int DEFAULT_DURATION_SECONDS = 15;
+
+        private final int durationSeconds;
+        private final boolean allowDeadPlayers;
+
+        public DiscussionReactionConfig(int durationSeconds, boolean allowDeadPlayers) {
+            if (durationSeconds <= 0) {
+                throw new IllegalArgumentException("Reaction duration must be at least 1 second.");
+            }
+            this.durationSeconds = durationSeconds;
+            this.allowDeadPlayers = allowDeadPlayers;
+        }
+
+        public static DiscussionReactionConfig defaultConfig() {
+            return new DiscussionReactionConfig(DEFAULT_DURATION_SECONDS, true);
+        }
+
+        public int getDurationSeconds() {
+            return durationSeconds;
+        }
+
+        public boolean shouldAllowDeadPlayers() {
+            return allowDeadPlayers;
+        }
+    }
+
     private SecretHitlerGame game;
 
     transient private ConcurrentHashMap<WsContext, String> userToUsername;
@@ -111,6 +196,8 @@ public class Lobby implements Serializable {
     private ConcurrentHashMap<String, CpuPlayer> cpuControllersByName;
 
     private HistoryDisplayConfig historyDisplayConfig;
+    private DiscussionReactionConfig discussionReactionConfig;
+    private ConcurrentHashMap<String, DiscussionReaction> discussionReactions;
 
     /* Used to reassign users to previously chosen images if they disconnect */
     final private ConcurrentHashMap<String, String> usernameToPreferredIcon;
@@ -123,6 +210,8 @@ public class Lobby implements Serializable {
 
     private static final int MAX_TIMER_SCHEDULING_ATTEMPTS = 2;
     transient private Timer cpuTickTimer = new Timer();
+    transient private Timer discussionReactionTimer = new Timer();
+    transient private TimerTask discussionReactionCleanupTask;
 
     static String DEFAULT_ICON = "p_default";
 
@@ -148,6 +237,8 @@ public class Lobby implements Serializable {
         cpuControllersByName = new ConcurrentHashMap<>();
         usernameToPreferredIcon = new ConcurrentHashMap<>();
         this.historyDisplayConfig = historyDisplayConfig == null ? HistoryDisplayConfig.defaultConfig() : historyDisplayConfig;
+        this.discussionReactionConfig = DiscussionReactionConfig.defaultConfig();
+        this.discussionReactions = new ConcurrentHashMap<>();
         resetTimeout();
     }
 
@@ -156,6 +247,170 @@ public class Lobby implements Serializable {
             return HistoryDisplayConfig.defaultConfig();
         }
         return historyDisplayConfig;
+    }
+
+    public DiscussionReactionConfig getDiscussionReactionConfig() {
+        if (discussionReactionConfig == null) {
+            discussionReactionConfig = DiscussionReactionConfig.defaultConfig();
+        }
+        return discussionReactionConfig;
+    }
+
+    synchronized public Map<String, DiscussionReaction> getDiscussionReactionsSnapshot() {
+        pruneDiscussionReactions();
+        return new HashMap<>(discussionReactions);
+    }
+
+    synchronized public void setDiscussionReaction(String seat, DiscussionReactionType reactionType) {
+        if (seat == null || seat.isBlank()) {
+            throw new IllegalArgumentException("Target player must be specified.");
+        }
+        if (!isInGame() || game == null) {
+            throw new IllegalStateException("Discussion reactions are only available during an active game.");
+        }
+        if (!game.hasPlayer(seat)) {
+            throw new IllegalArgumentException("Player '" + seat + "' is not in the current game.");
+        }
+        if (reactionType == null) {
+            throw new IllegalArgumentException("Reaction must be specified.");
+        }
+
+        pruneDiscussionReactions();
+
+        if (reactionType == DiscussionReactionType.CLEAR) {
+            discussionReactions.remove(seat);
+            scheduleNextDiscussionReactionCleanup();
+            return;
+        }
+
+        if (!game.getPlayer(seat).isAlive() && !getDiscussionReactionConfig().shouldAllowDeadPlayers()) {
+            throw new IllegalStateException("Dead players cannot use discussion reactions right now.");
+        }
+
+        long nowMillis = System.currentTimeMillis();
+        long expiresAtMillis = nowMillis + (getDiscussionReactionConfig().getDurationSeconds() * 1000L);
+        discussionReactions.put(seat, new DiscussionReaction(reactionType, nowMillis, expiresAtMillis));
+        scheduleNextDiscussionReactionCleanup();
+    }
+
+    synchronized public void setDiscussionReactionConfig(int durationSeconds, boolean allowDeadPlayers) {
+        DiscussionReactionConfig nextConfig = new DiscussionReactionConfig(durationSeconds, allowDeadPlayers);
+        discussionReactionConfig = nextConfig;
+
+        if (discussionReactions == null) {
+            discussionReactions = new ConcurrentHashMap<>();
+        }
+
+        long nowMillis = System.currentTimeMillis();
+        for (Map.Entry<String, DiscussionReaction> entry : new ArrayList<>(discussionReactions.entrySet())) {
+            String seat = entry.getKey();
+            DiscussionReaction currentReaction = entry.getValue();
+            if (currentReaction == null) {
+                discussionReactions.remove(seat);
+                continue;
+            }
+            if (game == null || !game.hasPlayer(seat)) {
+                discussionReactions.remove(seat);
+                continue;
+            }
+            if (!allowDeadPlayers && !game.getPlayer(seat).isAlive()) {
+                discussionReactions.remove(seat);
+                continue;
+            }
+
+            DiscussionReaction updatedReaction = currentReaction.withDurationSeconds(durationSeconds);
+            if (updatedReaction.isExpired(nowMillis)) {
+                discussionReactions.remove(seat);
+            } else {
+                discussionReactions.put(seat, updatedReaction);
+            }
+        }
+
+        scheduleNextDiscussionReactionCleanup();
+    }
+
+    private void clearDiscussionReactions() {
+        if (discussionReactions == null) {
+            discussionReactions = new ConcurrentHashMap<>();
+        }
+        discussionReactions.clear();
+        scheduleNextDiscussionReactionCleanup();
+    }
+
+    private boolean pruneDiscussionReactions() {
+        if (discussionReactions == null) {
+            discussionReactions = new ConcurrentHashMap<>();
+            return false;
+        }
+
+        boolean changed = false;
+        long nowMillis = System.currentTimeMillis();
+        DiscussionReactionConfig config = getDiscussionReactionConfig();
+
+        for (Map.Entry<String, DiscussionReaction> entry : new ArrayList<>(discussionReactions.entrySet())) {
+            String seat = entry.getKey();
+            DiscussionReaction reaction = entry.getValue();
+            boolean remove = reaction == null
+                    || reaction.getType() == null
+                    || reaction.getType() == DiscussionReactionType.CLEAR
+                    || reaction.isExpired(nowMillis)
+                    || game == null
+                    || !game.hasPlayer(seat)
+                    || (!config.shouldAllowDeadPlayers() && !game.getPlayer(seat).isAlive());
+
+            if (remove) {
+                discussionReactions.remove(seat);
+                changed = true;
+            }
+        }
+
+        scheduleNextDiscussionReactionCleanup();
+        return changed;
+    }
+
+    private void scheduleNextDiscussionReactionCleanup() {
+        if (discussionReactionCleanupTask != null) {
+            discussionReactionCleanupTask.cancel();
+            discussionReactionCleanupTask = null;
+        }
+
+        if (discussionReactions == null || discussionReactions.isEmpty()) {
+            return;
+        }
+
+        long nextExpiry = Long.MAX_VALUE;
+        for (DiscussionReaction reaction : discussionReactions.values()) {
+            if (reaction == null) {
+                continue;
+            }
+            nextExpiry = Math.min(nextExpiry, reaction.getExpiresAtMillis());
+        }
+
+        if (nextExpiry == Long.MAX_VALUE) {
+            return;
+        }
+
+        long delayMillis = Math.max(0L, nextExpiry - System.currentTimeMillis());
+        discussionReactionCleanupTask = new TimerTask() {
+            @Override
+            public void run() {
+                synchronized (Lobby.this) {
+                    discussionReactionCleanupTask = null;
+                    boolean changed = pruneDiscussionReactions();
+                    if (changed) {
+                        updateAllUsers();
+                    }
+                }
+            }
+        };
+
+        try {
+            discussionReactionTimer.schedule(discussionReactionCleanupTask, delayMillis);
+        } catch (IllegalStateException e) {
+            discussionReactionTimer.cancel();
+            discussionReactionTimer = new Timer();
+            discussionReactionTimer.schedule(discussionReactionCleanupTask, delayMillis);
+        }
     }
 
     /**
@@ -868,6 +1123,7 @@ public class Lobby implements Serializable {
      */
     synchronized public void updateAllUsers() {
         pruneInvalidObserverAssignments();
+        pruneDiscussionReactions();
         for (Map.Entry<WsContext, String> entry : userToUsername.entrySet()) {
             updateUser(entry.getKey(), entry.getValue());
         }
@@ -875,6 +1131,7 @@ public class Lobby implements Serializable {
         if (game != null && game.hasGameFinished()) {
             game = null;
             clearBotControlForGame();
+            clearDiscussionReactions();
         }
 
         boolean didCpuUpdateState = false;
@@ -936,6 +1193,7 @@ public class Lobby implements Serializable {
     synchronized public void updateUser(WsContext ctx, String userName) {
         JSONObject message;
         if (isInGame()) {
+            pruneDiscussionReactions();
             message = GameToJSONConverter.convert(game, userName, getHistoryDisplayConfig(), this);
             message.put(SecretHitlerServer.PARAM_PACKET_TYPE, SecretHitlerServer.PACKET_GAME_STATE);
         } else {
@@ -979,6 +1237,8 @@ public class Lobby implements Serializable {
         in.defaultReadObject();
         userToUsername = new ConcurrentHashMap<>();
         cpuTickTimer = new Timer();
+        discussionReactionTimer = new Timer();
+        discussionReactionCleanupTask = null;
         if (lobbyUsernames == null) {
             lobbyUsernames = game == null
                     ? new ArrayList<>()
@@ -1037,6 +1297,13 @@ public class Lobby implements Serializable {
         if (historyDisplayConfig == null) {
             historyDisplayConfig = HistoryDisplayConfig.defaultConfig();
         }
+        if (discussionReactionConfig == null) {
+            discussionReactionConfig = DiscussionReactionConfig.defaultConfig();
+        }
+        if (discussionReactions == null) {
+            discussionReactions = new ConcurrentHashMap<>();
+        }
+        pruneDiscussionReactions();
     }
 
     /**
@@ -1096,6 +1363,7 @@ public class Lobby implements Serializable {
         usersInGame.clear();
         usersInGame.addAll(lobbyUsernames);
         clearBotControlForGame();
+        clearDiscussionReactions();
 
         List<String> cpuNames = new ArrayList<>();
         if (usersInGame.size() < SecretHitlerGame.MIN_PLAYERS) {

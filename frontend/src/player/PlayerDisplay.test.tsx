@@ -2,6 +2,7 @@ import React from "react";
 import { render, screen } from "@testing-library/react";
 import PlayerDisplay from "./PlayerDisplay";
 import {
+  DiscussionReactionType,
   GameState,
   HistoryRoundsToShow,
   LobbyState,
@@ -55,6 +56,11 @@ const buildGameState = (playerOrder: string[]): GameState => ({
     showPublicActions: true,
     showVoteBreakdown: true,
     roundsToShow: HistoryRoundsToShow.ALL,
+  },
+  discussionReactions: {},
+  discussionReactionConfig: {
+    durationSeconds: 15,
+    allowDeadPlayers: true,
   },
   selfType: UserType.HUMAN,
   creator: playerOrder[0],
@@ -144,5 +150,21 @@ describe("PlayerDisplay", () => {
     expect(
       screen.getByTitle("Manage observer control for Bot 1")
     ).toBeInTheDocument();
+  });
+
+  test("shows active discussion reaction on the reacting player's card", () => {
+    const gameState = buildGameState(["Alice", "Bob", "Cara"]);
+    gameState.discussionReactions = {
+      Bob: {
+        type: DiscussionReactionType.LIKE,
+        expiresAt: Date.now() + 5000,
+      },
+    };
+
+    render(
+      <PlayerDisplay user={"Alice"} gameState={gameState} showLabels={false} />
+    );
+
+    expect(screen.getByLabelText("Like reaction")).toBeInTheDocument();
   });
 });

@@ -94,6 +94,9 @@ export const COMMAND_REGISTER_PEEK = "register-peek";
 export const COMMAND_END_TERM = "end-term";
 export const COMMAND_SET_BOT_STATUS = "set-bot-status";
 export const COMMAND_SET_OBSERVER_ASSIGNMENT = "set-observer-assignment";
+export const COMMAND_SET_DISCUSSION_REACTION = "set-discussion-reaction";
+export const COMMAND_SET_DISCUSSION_REACTION_CONFIG =
+  "set-discussion-reaction-config";
 
 //</editor-fold>
 

@@ -1,3 +1,5 @@
+import { DiscussionReactionType } from "./lobby_state";
+
 // TODO: Change these all to camelCase
 export const enum WSCommandType {
   PING = "ping",
@@ -18,6 +20,8 @@ export const enum WSCommandType {
   REGISTER_VOTE = "register-vote",
   SET_BOT_STATUS = "set-bot-status",
   SET_OBSERVER_ASSIGNMENT = "set-observer-assignment",
+  SET_DISCUSSION_REACTION = "set-discussion-reaction",
+  SET_DISCUSSION_REACTION_CONFIG = "set-discussion-reaction-config",
   LEAVE_LOBBY = "leave-lobby",
   SET_MODERATOR_STATUS = "set-moderator-status",
   KICK_USER = "kick-user",
@@ -44,6 +48,15 @@ export type ServerRequestPayload =
   | { command: WSCommandType.GET_INVESTIGATION; target: string }
   | { command: WSCommandType.REGISTER_VOTE; vote: boolean }
   | { command: WSCommandType.SET_BOT_STATUS; target: string; enabled: boolean }
+  | {
+      command: WSCommandType.SET_DISCUSSION_REACTION;
+      reaction: DiscussionReactionType;
+    }
+  | {
+      command: WSCommandType.SET_DISCUSSION_REACTION_CONFIG;
+      durationSeconds: number;
+      allowDeadPlayers: boolean;
+    }
   | {
       command: WSCommandType.SET_OBSERVER_ASSIGNMENT;
       target: string;

@@ -122,6 +122,9 @@ public class GameToJSONConverterTest {
         observerAssignments.put("observer", "5");
         observerAssignmentsField.set(lobby, observerAssignments);
 
+        lobby.setDiscussionReactionConfig(12, false);
+        lobby.setDiscussionReaction("2", Lobby.DiscussionReactionType.LIKE);
+
         JSONObject out = GameToJSONConverter.convert(game, "0", Lobby.HistoryDisplayConfig.defaultConfig(), lobby);
         assertEquals("0", out.getString("creator"));
         assertTrue(out.getJSONObject("botControlled").getBoolean("2"));
@@ -137,6 +140,9 @@ public class GameToJSONConverterTest {
         assertEquals("5", out.getJSONObject("observerAssignments").getString("observer"));
         assertEquals(false, out.getJSONObject("observerConnected").getBoolean("observer"));
         assertEquals("observer", out.getJSONArray("observers").getString(0));
+        assertEquals(12, out.getJSONObject("discussionReactionConfig").getInt("durationSeconds"));
+        assertEquals(false, out.getJSONObject("discussionReactionConfig").getBoolean("allowDeadPlayers"));
+        assertEquals("LIKE", out.getJSONObject("discussionReactions").getJSONObject("2").getString("type"));
 
         JSONObject observerView = GameToJSONConverter.convert(game, "observer", Lobby.HistoryDisplayConfig.defaultConfig(),
                 lobby);
@@ -144,5 +150,6 @@ public class GameToJSONConverterTest {
         assertEquals("5", observerView.getString("controlledPlayer"));
         assertEquals(true, observerView.getBoolean("canAct"));
         assertEquals(false, observerView.getJSONObject("connected").getBoolean("5"));
+        assertEquals("LIKE", observerView.getJSONObject("discussionReactions").getJSONObject("2").getString("type"));
     }
 }
