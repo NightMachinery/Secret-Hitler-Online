@@ -233,11 +233,38 @@ class Player extends Component {
                         ? "player-discussion-reaction-like"
                         : "player-discussion-reaction-dislike"
                 }`}
-                style={{ animationDuration: `${discussionReactionRemainingMs}ms` }}
+                style={{ "--discussion-reaction-duration": `${discussionReactionRemainingMs}ms` }}
                 role="img"
                 aria-label={discussionReaction.type === "LIKE" ? "Like reaction" : "Dislike reaction"}
             >
-                {this.renderDiscussionReactionIcon(discussionReaction.type)}
+                <div className={"player-discussion-reaction-halo"} />
+                <div className={"player-discussion-reaction-burst"} />
+                <div className={"player-discussion-reaction-seal"}>
+                    <svg
+                        className={"player-discussion-reaction-ring"}
+                        viewBox="0 0 40 40"
+                        aria-hidden="true"
+                    >
+                        <circle
+                            className={"player-discussion-reaction-ring-track"}
+                            cx="20"
+                            cy="20"
+                            r="17"
+                        />
+                        <circle
+                            className={"player-discussion-reaction-ring-progress"}
+                            cx="20"
+                            cy="20"
+                            r="17"
+                        />
+                    </svg>
+                    <div className={"player-discussion-reaction-core"}>
+                        {this.renderDiscussionReactionIcon(discussionReaction.type)}
+                    </div>
+                </div>
+                <div className={"player-discussion-reaction-ribbon"}>
+                    {discussionReaction.type === "LIKE" ? "LIKE" : "DISLIKE"}
+                </div>
             </div>
         ) : null;
 

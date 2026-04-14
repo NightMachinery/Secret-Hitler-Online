@@ -8,128 +8,313 @@
   display: flex;
   flex-direction: column;
   align-items: flex-end;
-  gap: 8px;
+  gap: 10px;
+}
+
+#discussion-reaction-dock-frame {
+  position: relative;
+  min-width: min(92vw, 350px);
+  padding: 22px 14px 12px;
+  border-radius: 28px;
+  background:
+    linear-gradient(180deg, rgba(118, 90, 50, 0.94), rgba(69, 48, 25, 0.96)),
+    linear-gradient(180deg, rgba(20, 20, 20, 0.96), rgba(9, 9, 9, 0.98));
+  border: 1px solid rgba(228, 190, 127, 0.42);
+  box-shadow:
+    0 18px 40px rgba(0, 0, 0, 0.42),
+    inset 0 1px 0 rgba(255, 234, 203, 0.18),
+    inset 0 -2px 0 rgba(27, 15, 3, 0.45);
+  box-sizing: border-box;
+}
+
+#discussion-reaction-dock-frame::before {
+  content: "";
+  position: absolute;
+  inset: 7px;
+  border-radius: 22px;
+  background:
+    radial-gradient(circle at top, rgba(255, 227, 179, 0.08), transparent 40%),
+    linear-gradient(180deg, rgba(29, 22, 17, 0.96), rgba(15, 12, 10, 0.98));
+  border: 1px solid rgba(243, 211, 164, 0.08);
+  pointer-events: none;
+}
+
+#discussion-reaction-dock-badge {
+  position: absolute;
+  top: -10px;
+  left: 50%;
+  transform: translateX(-50%);
+  padding: 5px 14px 6px;
+  border-radius: 999px;
+  background:
+    linear-gradient(180deg, rgba(229, 190, 120, 0.96), rgba(146, 101, 45, 0.96));
+  color: #2d1708;
+  font-family: var(--headerFont);
+  font-size: calc(8px + 0.55vmin);
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  white-space: nowrap;
+  box-shadow:
+    0 6px 14px rgba(0, 0, 0, 0.26),
+    inset 0 1px 0 rgba(255, 246, 224, 0.42);
 }
 
 #discussion-reaction-dock {
+  position: relative;
+  z-index: 1;
   display: flex;
   align-items: center;
-  gap: 8px;
-  padding: 10px;
-  border-radius: 999px;
-  background: rgba(20, 20, 20, 0.94);
-  border: 1px solid rgba(255, 255, 255, 0.14);
-  box-shadow: 0 10px 28px rgba(0, 0, 0, 0.34);
+  gap: 12px;
+}
+
+.discussion-reaction-button-cluster {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.discussion-reaction-dock-divider {
+  width: 1px;
+  align-self: stretch;
+  background:
+    linear-gradient(180deg, transparent, rgba(244, 214, 168, 0.32), transparent);
 }
 
 .discussion-reaction-button {
+  position: relative;
   margin: 0;
   padding: 0;
-  width: 3rem;
-  height: 3rem;
-  min-width: 3rem;
+  width: 3.4rem;
+  height: 3.4rem;
+  min-width: 3.4rem;
   border-radius: 999px;
-  border: 1px solid rgba(255, 255, 255, 0.18);
-  box-shadow: none;
+  border: 1px solid rgba(255, 236, 204, 0.16);
+  box-shadow:
+    0 8px 16px rgba(0, 0, 0, 0.26),
+    inset 0 1px 0 rgba(255, 247, 233, 0.08);
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  background: rgba(42, 42, 42, 0.96);
+  background:
+    radial-gradient(circle at top, rgba(255, 255, 255, 0.04), transparent 48%),
+    linear-gradient(180deg, rgba(64, 53, 44, 0.98), rgba(28, 24, 20, 0.98));
   color: var(--textColorWhite);
+  overflow: hidden;
+  transition:
+    transform 0.16s ease,
+    filter 0.16s ease,
+    border-color 0.18s ease,
+    box-shadow 0.18s ease;
+}
+
+.discussion-reaction-button-shell {
+  position: relative;
+  width: calc(100% - 0.5rem);
+  height: calc(100% - 0.5rem);
+  border-radius: 999px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  background:
+    radial-gradient(circle at 35% 28%, rgba(255, 255, 255, 0.18), transparent 36%),
+    linear-gradient(180deg, rgba(96, 77, 60, 0.98), rgba(47, 38, 31, 0.98));
+  box-shadow:
+    inset 0 1px 0 rgba(255, 247, 233, 0.18),
+    inset 0 -3px 5px rgba(10, 8, 5, 0.3);
+}
+
+.discussion-reaction-button-shine {
+  position: absolute;
+  top: -28%;
+  left: -36%;
+  width: 70%;
+  height: 140%;
+  background: linear-gradient(
+    180deg,
+    rgba(255, 255, 255, 0.18),
+    rgba(255, 255, 255, 0)
+  );
+  transform: rotate(25deg);
+  opacity: 0.5;
+  pointer-events: none;
 }
 
 .discussion-reaction-button:hover,
 .discussion-reaction-button:focus,
 .discussion-reaction-button:focus-visible {
-  background: rgba(61, 61, 61, 0.98);
-  border-color: rgba(255, 255, 255, 0.34);
+  transform: translateY(-2px);
+  filter: brightness(1.06);
+  border-color: rgba(255, 236, 204, 0.28);
 }
 
 .discussion-reaction-button:not(:disabled):active {
   top: 0;
-  box-shadow: none;
+  transform: translateY(1px) scale(0.985);
+  box-shadow:
+    0 4px 10px rgba(0, 0, 0, 0.28),
+    inset 0 2px 4px rgba(0, 0, 0, 0.22);
+}
+
+.discussion-reaction-button:not(:disabled):active .discussion-reaction-button-shell {
+  box-shadow:
+    inset 0 2px 4px rgba(0, 0, 0, 0.34),
+    inset 0 1px 0 rgba(255, 247, 233, 0.08);
 }
 
 .discussion-reaction-button:disabled {
-  box-shadow: none;
-  background: rgba(73, 65, 60, 0.9);
-  border-color: rgba(255, 255, 255, 0.08);
-  opacity: 0.6;
+  box-shadow:
+    0 6px 14px rgba(0, 0, 0, 0.18),
+    inset 0 1px 0 rgba(255, 255, 255, 0.04);
+  background: linear-gradient(180deg, rgba(63, 54, 49, 0.92), rgba(39, 33, 30, 0.94));
+  border-color: rgba(255, 255, 255, 0.06);
+  opacity: 0.68;
+}
+
+.discussion-reaction-button:disabled .discussion-reaction-button-shell {
+  background: linear-gradient(180deg, rgba(77, 67, 61, 0.96), rgba(47, 41, 37, 0.96));
 }
 
 .discussion-reaction-button-like {
-  color: #dce9ff;
+  color: #d8e8ff;
+}
+
+.discussion-reaction-button-like.discussion-reaction-button-active {
+  border-color: rgba(180, 214, 255, 0.82);
+  box-shadow:
+    0 0 0 2px rgba(94, 145, 230, 0.22),
+    0 10px 24px rgba(35, 70, 135, 0.32);
+}
+
+.discussion-reaction-button-like.discussion-reaction-button-active .discussion-reaction-button-shell {
+  background:
+    radial-gradient(circle at 35% 28%, rgba(255, 255, 255, 0.24), transparent 38%),
+    linear-gradient(180deg, rgba(102, 152, 244, 0.98), rgba(43, 83, 166, 0.98));
 }
 
 .discussion-reaction-button-dislike {
   color: #ffe6c4;
 }
 
+.discussion-reaction-button-dislike.discussion-reaction-button-active {
+  border-color: rgba(255, 212, 158, 0.82);
+  box-shadow:
+    0 0 0 2px rgba(230, 150, 72, 0.2),
+    0 10px 24px rgba(117, 67, 16, 0.32);
+}
+
+.discussion-reaction-button-dislike.discussion-reaction-button-active .discussion-reaction-button-shell {
+  background:
+    radial-gradient(circle at 35% 28%, rgba(255, 247, 231, 0.26), transparent 40%),
+    linear-gradient(180deg, rgba(242, 174, 91, 0.98), rgba(168, 98, 27, 0.98));
+}
+
 .discussion-reaction-button-clear {
-  color: #f4d1cd;
+  color: #eadac4;
+}
+
+.discussion-reaction-button-clear-ready .discussion-reaction-button-shell {
+  background:
+    radial-gradient(circle at 35% 28%, rgba(255, 255, 255, 0.16), transparent 38%),
+    linear-gradient(180deg, rgba(130, 110, 79, 0.96), rgba(70, 55, 35, 0.96));
 }
 
 .discussion-reaction-button-settings {
-  color: #d8d8d8;
+  color: #eee1cc;
 }
 
-.discussion-reaction-button-active {
-  border-color: rgba(255, 255, 255, 0.72);
-  box-shadow: 0 0 0 2px rgba(255, 255, 255, 0.18);
-}
-
-.discussion-reaction-button-like.discussion-reaction-button-active {
-  background: linear-gradient(
-    180deg,
-    rgba(80, 124, 216, 0.98),
-    rgba(45, 78, 148, 0.98)
-  );
-}
-
-.discussion-reaction-button-dislike.discussion-reaction-button-active {
-  background: linear-gradient(
-    180deg,
-    rgba(232, 155, 67, 0.98),
-    rgba(171, 99, 26, 0.98)
-  );
+.discussion-reaction-button-settings .discussion-reaction-button-shell {
+  background:
+    radial-gradient(circle at 35% 28%, rgba(255, 255, 255, 0.12), transparent 38%),
+    linear-gradient(180deg, rgba(104, 89, 67, 0.98), rgba(54, 44, 31, 0.98));
 }
 
 .discussion-reaction-button-settings.discussion-reaction-button-active {
-  background: linear-gradient(
-    180deg,
-    rgba(96, 96, 96, 0.98),
-    rgba(54, 54, 54, 0.98)
-  );
+  border-color: rgba(255, 223, 171, 0.74);
+}
+
+.discussion-reaction-button-settings.discussion-reaction-button-active .discussion-reaction-button-shell {
+  background:
+    radial-gradient(circle at 35% 28%, rgba(255, 255, 255, 0.16), transparent 38%),
+    linear-gradient(180deg, rgba(156, 122, 78, 0.98), rgba(86, 60, 31, 0.98));
 }
 
 .discussion-reaction-icon {
-  width: 1.4rem;
-  height: 1.4rem;
+  width: 1.35rem;
+  height: 1.35rem;
+  position: relative;
+  z-index: 1;
+}
+
+.discussion-reaction-active-readout {
+  position: relative;
+  z-index: 1;
+  margin-top: 10px;
+  text-align: center;
+  color: rgba(236, 217, 188, 0.88);
+  font-family: var(--textFont);
+  font-size: calc(7px + 0.55vmin);
+  letter-spacing: 0.04em;
 }
 
 #discussion-reaction-settings-panel {
-  width: min(92vw, 300px);
-  padding: 12px;
-  border-radius: 14px;
-  background: rgba(20, 20, 20, 0.96);
-  border: 1px solid rgba(255, 255, 255, 0.16);
-  box-shadow: 0 12px 30px rgba(0, 0, 0, 0.34);
+  position: relative;
+  width: min(92vw, 330px);
+  padding: 14px;
+  border-radius: 18px;
+  background:
+    linear-gradient(180deg, rgba(111, 85, 49, 0.96), rgba(62, 44, 25, 0.96)),
+    linear-gradient(180deg, rgba(21, 18, 16, 0.98), rgba(11, 10, 9, 0.98));
+  border: 1px solid rgba(234, 200, 144, 0.34);
+  box-shadow:
+    0 16px 34px rgba(0, 0, 0, 0.4),
+    inset 0 1px 0 rgba(255, 236, 207, 0.18);
   color: var(--textColorWhite);
+  box-sizing: border-box;
+}
+
+#discussion-reaction-settings-panel::after {
+  content: "";
+  position: absolute;
+  right: 26px;
+  bottom: -9px;
+  width: 18px;
+  height: 18px;
+  transform: rotate(45deg);
+  background: linear-gradient(180deg, rgba(79, 56, 29, 0.98), rgba(40, 29, 18, 0.98));
+  border-right: 1px solid rgba(234, 200, 144, 0.24);
+  border-bottom: 1px solid rgba(234, 200, 144, 0.24);
+}
+
+.discussion-reaction-settings-eyebrow {
+  color: rgba(244, 214, 168, 0.88);
+  font-family: var(--textFont);
+  font-size: calc(7px + 0.38vmin);
+  text-transform: uppercase;
+  letter-spacing: 0.14em;
+  text-align: left;
+  margin-bottom: 4px;
 }
 
 .discussion-reaction-settings-title {
   font-family: var(--headerFont);
-  font-size: calc(8px + 1.4vmin);
+  font-size: calc(10px + 1.3vmin);
   color: var(--headerTextColor);
   text-align: left;
-  margin-bottom: 10px;
+  margin-bottom: 4px;
+}
+
+.discussion-reaction-settings-copy {
+  margin: 0 0 12px;
+  text-align: left;
+  font-weight: 500;
+  font-size: calc(8px + 0.45vmin);
+  color: rgba(233, 220, 204, 0.82);
 }
 
 .discussion-reaction-settings-field,
 .discussion-reaction-settings-toggle {
   display: flex;
   align-items: center;
-  justify-content: space-between;
   gap: 10px;
   text-align: left;
   color: var(--textColorOnDark);
@@ -138,24 +323,82 @@
 }
 
 .discussion-reaction-settings-field {
-  margin-bottom: 10px;
+  justify-content: space-between;
+  margin-bottom: 12px;
+}
+
+.discussion-reaction-settings-field span {
+  color: rgba(244, 229, 208, 0.9);
 }
 
 .discussion-reaction-settings-field input[type="number"] {
-  width: 88px;
-  min-width: 88px;
+  width: 96px;
+  min-width: 96px;
   font-size: calc(8px + 0.5vmin);
-  padding: 4px 8px;
+  padding: 6px 10px;
+  border-radius: 12px;
+  border: 1px solid rgba(233, 201, 155, 0.28);
+  background: rgba(20, 18, 16, 0.92);
+  color: #f6ebde;
+  text-align: center;
+  box-sizing: border-box;
+}
+
+.discussion-reaction-settings-toggle {
+  position: relative;
+  justify-content: flex-start;
+  padding: 10px 12px;
+  border-radius: 14px;
+  background: rgba(20, 18, 16, 0.42);
+  border: 1px solid rgba(244, 214, 168, 0.12);
 }
 
 .discussion-reaction-settings-toggle input[type="checkbox"] {
-  width: 16px;
-  min-width: 16px;
-  margin: 0 6px 0 0;
+  position: absolute;
+  opacity: 0;
+  pointer-events: none;
 }
 
-.discussion-reaction-settings-toggle span {
+.discussion-reaction-settings-switch {
+  position: relative;
+  width: 42px;
+  min-width: 42px;
+  height: 24px;
+  border-radius: 999px;
+  background: linear-gradient(180deg, rgba(93, 73, 55, 0.98), rgba(54, 43, 33, 0.98));
+  border: 1px solid rgba(255, 229, 189, 0.16);
+  box-shadow: inset 0 1px 2px rgba(0, 0, 0, 0.36);
+}
+
+.discussion-reaction-settings-switch::after {
+  content: "";
+  position: absolute;
+  top: 2px;
+  left: 2px;
+  width: 18px;
+  height: 18px;
+  border-radius: 999px;
+  background: linear-gradient(180deg, rgba(255, 241, 218, 0.98), rgba(191, 164, 123, 0.96));
+  box-shadow: 0 2px 5px rgba(0, 0, 0, 0.24);
+  transition: transform 0.18s ease;
+}
+
+.discussion-reaction-settings-toggle
+  input[type="checkbox"]:checked
+  + .discussion-reaction-settings-switch {
+  background: linear-gradient(180deg, rgba(83, 135, 214, 0.96), rgba(40, 79, 152, 0.96));
+  border-color: rgba(187, 214, 255, 0.32);
+}
+
+.discussion-reaction-settings-toggle
+  input[type="checkbox"]:checked
+  + .discussion-reaction-settings-switch::after {
+  transform: translateX(18px);
+}
+
+.discussion-reaction-settings-toggle span:last-child {
   flex: 1;
+  color: rgba(244, 229, 208, 0.9);
 }
 
 .discussion-reaction-settings-actions {
@@ -167,8 +410,8 @@
 
 .discussion-reaction-mini-button {
   margin: 0;
-  padding: 8px 12px;
-  font-size: calc(6px + 1.1vmin);
+  padding: 8px 13px;
+  font-size: calc(6px + 1.05vmin);
   box-shadow: none;
 }
 
@@ -187,14 +430,17 @@
 }
 
 #discussion-reaction-disabled-note {
-  max-width: min(92vw, 300px);
-  padding: 8px 12px;
-  border-radius: 12px;
-  background: rgba(20, 20, 20, 0.92);
-  color: var(--textColorOnDark);
+  max-width: min(92vw, 330px);
+  padding: 10px 13px;
+  border-radius: 14px;
+  background:
+    linear-gradient(180deg, rgba(89, 61, 39, 0.94), rgba(40, 27, 18, 0.96));
+  border: 1px solid rgba(234, 200, 144, 0.18);
+  color: rgba(242, 225, 201, 0.88);
   font-family: var(--textFont);
   font-size: calc(8px + 0.55vmin);
   text-align: left;
+  box-shadow: 0 10px 22px rgba(0, 0, 0, 0.24);
 }
 
 @media (max-width: 700px) {
@@ -205,10 +451,20 @@
     align-items: stretch;
   }
 
+  #discussion-reaction-dock-frame {
+    min-width: 0;
+    width: 100%;
+  }
+
   #discussion-reaction-dock {
     justify-content: center;
     width: 100%;
     box-sizing: border-box;
+  }
+
+  .discussion-reaction-button-cluster {
+    justify-content: center;
+    flex: 1;
   }
 
   #discussion-reaction-settings-panel,
