@@ -62,6 +62,7 @@ Usage:
   ./self_host.zsh setup <public-origin>
   ./self_host.zsh redeploy
   ./self_host.zsh start
+  ./self_host.zsh dev-start
   ./self_host.zsh stop
   ./self_host.zsh docker-setup <public-origin>
   ./self_host.zsh docker-redeploy
@@ -70,6 +71,7 @@ Usage:
 
 Examples:
   ./self_host.zsh setup https://example.com
+  ./self_host.zsh dev-start
   ./self_host.zsh docker-setup https://play.example.com
 USAGE
 }
@@ -638,7 +640,8 @@ write_runtime_scripts () {
   local postgres_boot_script="$RUNTIME_DIR/postgres_boot.sh"
   local backend_boot_script="$RUNTIME_DIR/backend_boot.sh"
   local frontend_build_script="$RUNTIME_DIR/frontend_build.zsh"
-  local frontend_boot_script="$RUNTIME_DIR/frontend_boot.zsh"
+  local frontend_prod_boot_script="$RUNTIME_DIR/frontend_prod_boot.zsh"
+  local frontend_dev_boot_script="$RUNTIME_DIR/frontend_dev_boot.zsh"
 
   {
     print '#!/usr/bin/env bash'
@@ -701,6 +704,7 @@ EOF
 : "${POSTGRES_PORT:?POSTGRES_PORT is required}"
 : "${POSTGRES_USER:?POSTGRES_USER is required}"
 : "${BACKEND_PORT:?BACKEND_PORT is required}"
+: "${BACKEND_GRADLE_TASK:?BACKEND_GRADLE_TASK is required}"
 : "${BACKEND_GRADLE_ARGS:?BACKEND_GRADLE_ARGS is required}"
 : "${PUBLIC_ORIGIN:?PUBLIC_ORIGIN is required}"
 
@@ -748,9 +752,9 @@ printf 'Starting backend with ./gradlew'
 for arg in "${gradle_args[@]}"; do
   printf ' %q' "$arg"
 done
-printf ' run\n'
+printf ' %q\n' "$BACKEND_GRADLE_TASK"
 
-exec ./gradlew "${gradle_args[@]}" run
+exec ./gradlew "${gradle_args[@]}" "$BACKEND_GRADLE_TASK"
 EOF
   } > "$backend_boot_script"
   chmod +x "$backend_boot_script"
@@ -821,13 +825,60 @@ nvm use "$NODE_VERSION"
 }
 exec node scripts/serve-build.js --host 127.0.0.1 --port "$FRONTEND_PORT"
 EOF
-  } > "$frontend_boot_script"
-  chmod +x "$frontend_boot_script"
+  } > "$frontend_prod_boot_script"
+  chmod +x "$frontend_prod_boot_script"
+
+  {
+    print '#!/usr/bin/env zsh'
+    print 'set -euo pipefail'
+    [[ -n "$PROXY_EXPORTS" ]] && print -r -- "$PROXY_EXPORTS"
+    cat <<'EOF'
+: "${FRONTEND_DIR:?FRONTEND_DIR is required}"
+: "${NODE_VERSION:?NODE_VERSION is required}"
+: "${FRONTEND_PORT:?FRONTEND_PORT is required}"
+: "${PUBLIC_ORIGIN:?PUBLIC_ORIGIN is required}"
+: "${UNLOCK_ALL_P:?UNLOCK_ALL_P is required}"
+
+cd "$FRONTEND_DIR"
+if command -v nvm-load >/dev/null 2>&1; then
+  nvm-load
+fi
+if ! command -v nvm >/dev/null 2>&1; then
+  export NVM_DIR="${NVM_DIR:-$HOME/.nvm}"
+  if [[ -s "$NVM_DIR/nvm.sh" ]]; then
+    . "$NVM_DIR/nvm.sh"
+  fi
+fi
+command -v nvm >/dev/null 2>&1 || {
+  echo "nvm is required. Install it, then rerun this command." >&2
+  exit 1
+}
+nvm use "$NODE_VERSION"
+if [[ ! -d node_modules ]]; then
+  echo "frontend/node_modules is missing; installing frontend dependencies"
+  npm ci --include=dev
+fi
+
+export HOST=127.0.0.1
+export PORT="$FRONTEND_PORT"
+export BROWSER=none
+export DANGEROUSLY_DISABLE_HOST_CHECK=true
+export REACT_APP_UNLOCK_ALL_P="$UNLOCK_ALL_P"
+export REACT_APP_CLIENT_ORIGIN="$PUBLIC_ORIGIN"
+export REACT_APP_SERVER_ADDRESS=''
+export REACT_APP_SERVER_ADDRESS_HTTP=''
+export REACT_APP_WEBSOCKET_HEADER=''
+
+exec npm start
+EOF
+  } > "$frontend_dev_boot_script"
+  chmod +x "$frontend_dev_boot_script"
 
   POSTGRES_BOOT_SCRIPT="$postgres_boot_script"
   BACKEND_BOOT_SCRIPT="$backend_boot_script"
   FRONTEND_BUILD_SCRIPT="$frontend_build_script"
-  FRONTEND_BOOT_SCRIPT="$frontend_boot_script"
+  FRONTEND_PROD_BOOT_SCRIPT="$frontend_prod_boot_script"
+  FRONTEND_DEV_BOOT_SCRIPT="$frontend_dev_boot_script"
 }
 
 write_caddy_block () {
@@ -940,11 +991,27 @@ start_postgres_session () {
 }
 
 start_backend_session () {
-  tmuxnew "$BACKEND_SESSION" "env BACKEND_DIR='$BACKEND_DIR' PG_BIN_DIR='$PG_BIN_DIR' DATABASE_URL_LOCAL='$DATABASE_URL_LOCAL' POSTGRES_PORT='$POSTGRES_PORT' POSTGRES_USER='$POSTGRES_USER' BACKEND_PORT='$BACKEND_PORT' BACKEND_GRADLE_ARGS='$BACKEND_GRADLE_ARGS' BACKEND_GRADLE_PROXY_OPTS='$BACKEND_GRADLE_PROXY_OPTS' PUBLIC_ORIGIN='$PUBLIC_ORIGIN' bash '$BACKEND_BOOT_SCRIPT'"
+  local gradle_task="${1:-run}"
+  tmuxnew "$BACKEND_SESSION" "env BACKEND_DIR='$BACKEND_DIR' PG_BIN_DIR='$PG_BIN_DIR' DATABASE_URL_LOCAL='$DATABASE_URL_LOCAL' POSTGRES_PORT='$POSTGRES_PORT' POSTGRES_USER='$POSTGRES_USER' BACKEND_PORT='$BACKEND_PORT' BACKEND_GRADLE_TASK='$gradle_task' BACKEND_GRADLE_ARGS='$BACKEND_GRADLE_ARGS' BACKEND_GRADLE_PROXY_OPTS='$BACKEND_GRADLE_PROXY_OPTS' PUBLIC_ORIGIN='$PUBLIC_ORIGIN' bash '$BACKEND_BOOT_SCRIPT'"
 }
 
 start_frontend_session () {
-  tmuxnew "$FRONTEND_SESSION" "env FRONTEND_DIR='$FRONTEND_DIR' NODE_VERSION='$NODE_VERSION' FRONTEND_PORT='$FRONTEND_PORT' zsh '$FRONTEND_BOOT_SCRIPT'"
+  local mode="${1:-prod}"
+  local frontend_boot_script="$FRONTEND_PROD_BOOT_SCRIPT"
+
+  case "$mode" in
+    prod)
+      frontend_boot_script="$FRONTEND_PROD_BOOT_SCRIPT"
+      ;;
+    dev)
+      frontend_boot_script="$FRONTEND_DEV_BOOT_SCRIPT"
+      ;;
+    *)
+      die "Unknown local frontend mode: $mode"
+      ;;
+  esac
+
+  tmuxnew "$FRONTEND_SESSION" "env FRONTEND_DIR='$FRONTEND_DIR' NODE_VERSION='$NODE_VERSION' FRONTEND_PORT='$FRONTEND_PORT' PUBLIC_ORIGIN='$PUBLIC_ORIGIN' UNLOCK_ALL_P='$UNLOCK_ALL_P' zsh '$frontend_boot_script'"
 }
 
 print_local_attach_help () {
@@ -967,16 +1034,44 @@ run_frontend_build () {
 }
 
 start_local_stack () {
-  log "Starting self-hosted services in tmux"
+  local mode="${1:-prod}"
+  local backend_task="run"
+
+  case "$mode" in
+    prod)
+      backend_task="run"
+      ;;
+    dev)
+      backend_task="runLocal"
+      ;;
+    *)
+      die "Unknown local runtime mode: $mode"
+      ;;
+  esac
+
+  log "Starting self-hosted services in tmux ($mode mode)"
   start_postgres_session
-  start_backend_session
-  start_frontend_session
+  start_backend_session "$backend_task"
+  start_frontend_session "$mode"
   print_local_attach_help
 }
 
-stop_local_stack () {
-  load_config
-  load_runtime_values
+stop_local_stack_internal () {
+  local had_runtime=0
+
+  if tmux has-session -t "$FRONTEND_SESSION" &>/dev/null \
+    || tmux has-session -t "$BACKEND_SESSION" &>/dev/null \
+    || tmux has-session -t "$POSTGRES_SESSION" &>/dev/null; then
+    had_runtime=1
+  fi
+
+  if [[ -f "$POSTGRES_DATA_DIR/PG_VERSION" ]] && "$PG_BIN_DIR/pg_ctl" -D "$POSTGRES_DATA_DIR" status >/dev/null 2>&1; then
+    had_runtime=1
+  fi
+
+  if (( had_runtime )); then
+    log "Stopping existing local self-host stack"
+  fi
 
   tmux kill-session -t "$FRONTEND_SESSION" &>/dev/null || true
   tmux kill-session -t "$BACKEND_SESSION" &>/dev/null || true
@@ -986,6 +1081,12 @@ stop_local_stack () {
     log "Stopping PostgreSQL"
     "$PG_BIN_DIR/pg_ctl" -D "$POSTGRES_DATA_DIR" stop
   fi
+}
+
+stop_local_stack () {
+  load_config
+  load_runtime_values
+  stop_local_stack_internal
 }
 
 stop_docker_stack_internal () {
@@ -1166,17 +1267,11 @@ handle_setup () {
   require_command caddy
   require_command python3
   save_config "$origin"
-  load_config
-  ensure_dirs
-  load_postgres_identity
-  load_runtime_values
-  switch_to_local_mode
-  load_runtime_values
-  write_runtime_scripts
+  prepare_local_runtime
   write_caddy_block
   run_frontend_build
   if ! is_truthy "$SKIP_START"; then
-    start_local_stack
+    start_local_stack prod
   else
     log "Skipping service start because SELF_HOST_SKIP_START=$SKIP_START"
   fi
@@ -1185,16 +1280,10 @@ handle_setup () {
 handle_redeploy () {
   require_command tmux
   require_command python3
-  load_config
-  ensure_dirs
-  load_postgres_identity
-  load_runtime_values
-  switch_to_local_mode
-  load_runtime_values
-  write_runtime_scripts
+  prepare_local_runtime
   run_frontend_build
   if ! is_truthy "$SKIP_START"; then
-    start_local_stack
+    start_local_stack prod
   else
     log "Skipping service start because SELF_HOST_SKIP_START=$SKIP_START"
   fi
@@ -1202,6 +1291,26 @@ handle_redeploy () {
 
 handle_start () {
   require_command tmux
+  prepare_local_runtime
+  [[ -d "$FRONTEND_DIR/build" ]] || die "Missing frontend build output. Run ./self_host.zsh redeploy first."
+  if ! is_truthy "$SKIP_START"; then
+    start_local_stack prod
+  else
+    log "Skipping service start because SELF_HOST_SKIP_START=$SKIP_START"
+  fi
+}
+
+handle_dev_start () {
+  require_command tmux
+  prepare_local_runtime
+  if ! is_truthy "$SKIP_START"; then
+    start_local_stack dev
+  else
+    log "Skipping service start because SELF_HOST_SKIP_START=$SKIP_START"
+  fi
+}
+
+prepare_local_runtime () {
   load_config
   ensure_dirs
   load_postgres_identity
@@ -1209,8 +1318,7 @@ handle_start () {
   switch_to_local_mode
   load_runtime_values
   write_runtime_scripts
-  [[ -d "$FRONTEND_DIR/build" ]] || die "Missing frontend build output. Run ./self_host.zsh redeploy first."
-  start_local_stack
+  stop_local_stack_internal
 }
 
 handle_docker_setup () {
@@ -1287,6 +1395,10 @@ main () {
     start)
       [[ $# -eq 1 ]] || die "start takes no additional arguments"
       handle_start
+      ;;
+    dev-start)
+      [[ $# -eq 1 ]] || die "dev-start takes no additional arguments"
+      handle_dev_start
       ;;
     stop)
       [[ $# -eq 1 ]] || die "stop takes no additional arguments"

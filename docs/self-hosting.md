@@ -12,6 +12,8 @@ The supported production path is the self-host flow in this document. Legacy Her
   - PostgreSQL on `127.0.0.1:54339`
   - backend on `127.0.0.1:4040`
   - frontend on `127.0.0.1:6010`
+  - production-style local mode (`start` / `redeploy`) serves the built frontend with `serve-build.js` and runs backend Gradle `run`
+  - development local mode (`dev-start`) serves the frontend with the React dev server and runs backend Gradle `runLocal`
 - Provides separate Docker-only commands when you explicitly want Docker
 - Automatically switches modes:
   - starting local mode stops the Docker stack first
@@ -68,6 +70,7 @@ After setup:
 ```bash
 ./self_host.zsh redeploy
 ./self_host.zsh start
+./self_host.zsh dev-start
 ./self_host.zsh stop
 ```
 
@@ -79,18 +82,37 @@ Behavior:
   - validates the Caddyfile with the Caddyfile adapter
   - reloads Caddy
   - installs frontend dependencies and builds the frontend
-  - starts tmux sessions
+  - stops any currently running local tmux stack first
+  - starts the production-style tmux sessions
   - if a Docker-based self-host already exists, stops it and migrates its PostgreSQL data into local mode
 - `redeploy`
   - rebuilds from current local source
-  - restarts the tmux-managed services
+  - stops any currently running local tmux stack first
+  - restarts the production-style tmux-managed services
   - if the previous active mode was Docker, stops it and migrates PostgreSQL first
 - `start`
-  - starts services from the saved config without rebuilding
+  - stops any currently running local tmux stack first
+  - starts production-style services from the saved config without rebuilding
+  - frontend must already have `frontend/build`
+  - if the previous active mode was Docker, stops it and migrates PostgreSQL first
+- `dev-start`
+  - stops any currently running local tmux stack first
+  - starts the backend with `./gradlew runLocal`
+  - starts the frontend with the React dev server behind Caddy at the saved public origin
+  - does not require an existing `frontend/build`
+  - installs frontend dependencies first only when `frontend/node_modules` is missing
+  - backend Java changes still require a manual restart
   - if the previous active mode was Docker, stops it and migrates PostgreSQL first
 - `stop`
-  - stops tmux sessions
+  - stops tmux sessions for whichever local mode is active (`start` or `dev-start`)
   - stops the local PostgreSQL server with `pg_ctl`
+
+`setup`, `redeploy`, `start`, and `dev-start` all stop the current local stack before continuing. That means switching between production-style local mode and development local mode is deterministic:
+
+- `start` after `dev-start` replaces the React dev server with the static built frontend
+- `dev-start` after `start` replaces the static frontend/backend runtime with the dev server + `runLocal`
+- `redeploy` after `dev-start` stops the dev stack, rebuilds the frontend, then brings the production-style local stack back up
+- if `SELF_HOST_SKIP_START=1`, the command still does its prep/build work but leaves the local stack stopped
 
 ### tmux sessions
 
@@ -217,6 +239,7 @@ export SELF_HOST_BACKEND_GRADLE_ARGS="--console=plain --debug"
 
 - The frontend build bakes in `REACT_APP_CLIENT_ORIGIN` for public metadata.
 - API and websocket traffic use same-origin browser fallbacks behind Caddy.
+- `dev-start` keeps that same-origin/Caddy routing, but serves the frontend from the React dev server for hot reload.
 - Local self-hosting state is stored under `.local/self-hosting/`.
 - The script remembers the effective PostgreSQL role/database names under `.local/self-hosting/` so mode switches keep using the same app database identity.
 - If Docker mode already has a PostgreSQL volume, the script re-detects that role/database identity before starting the stack.
