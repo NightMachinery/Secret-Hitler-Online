@@ -225,6 +225,7 @@ class Player extends Component {
         const discussionReactionRemainingMs = discussionReaction
             ? discussionReaction.expiresAt - Date.now()
             : 0;
+        const discussionReactionLabel = discussionReaction?.type === "LIKE" ? "LIKE" : "DISLIKE";
         const discussionReactionBadge = discussionReaction && discussionReactionRemainingMs > 0 ? (
             <div
                 key={`discussion-reaction-${discussionReaction.type}-${discussionReaction.expiresAt}`}
@@ -237,9 +238,7 @@ class Player extends Component {
                 role="img"
                 aria-label={discussionReaction.type === "LIKE" ? "Like reaction" : "Dislike reaction"}
             >
-                <div className={"player-discussion-reaction-halo"} />
-                <div className={"player-discussion-reaction-burst"} />
-                <div className={"player-discussion-reaction-seal"}>
+                <div className={"player-discussion-reaction-medallion"}>
                     <svg
                         className={"player-discussion-reaction-ring"}
                         viewBox="0 0 40 40"
@@ -261,9 +260,9 @@ class Player extends Component {
                     <div className={"player-discussion-reaction-core"}>
                         {this.renderDiscussionReactionIcon(discussionReaction.type)}
                     </div>
-                </div>
-                <div className={"player-discussion-reaction-ribbon"}>
-                    {discussionReaction.type === "LIKE" ? "LIKE" : "DISLIKE"}
+                    <div className={"player-discussion-reaction-word"}>
+                        {discussionReactionLabel}
+                    </div>
                 </div>
             </div>
         ) : null;

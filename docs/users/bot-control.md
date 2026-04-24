@@ -26,9 +26,9 @@ On the first successful manual game action, bot mode is automatically disabled f
 
 ## Visibility
 
-Bot players are shown with a small `BOT` badge on the player card.
+Bot players are shown with a small `BOT` status tag on the player card.
 
-Bot controls are shown as small corner buttons on player cards in the top player row:
+Bot controls are shown as small beveled control tabs on player cards in the top player row:
 
 - creator sees per-player toggle buttons (`BOT` / `HUM`) for eligible human players
 - a bot-controlled user can reclaim control from their own card

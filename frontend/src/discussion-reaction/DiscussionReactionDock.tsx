@@ -182,7 +182,17 @@ const DiscussionReactionDock = ({
       )}
 
       <div id="discussion-reaction-dock-frame">
-        <div id="discussion-reaction-dock-badge">DISCUSSION CUES</div>
+        <div className="discussion-reaction-dock-summary">
+          <div id="discussion-reaction-dock-badge">DISCUSSION CUES</div>
+          <div
+            className="discussion-reaction-active-readout"
+            aria-live="polite"
+            aria-atomic="true"
+          >
+            {activeReactionLabel}
+          </div>
+        </div>
+        <div className="discussion-reaction-dock-summary-divider" />
         <div id="discussion-reaction-dock">
           <div className="discussion-reaction-button-cluster">
             <button
@@ -198,7 +208,6 @@ const DiscussionReactionDock = ({
               title="Like"
             >
               <span className="discussion-reaction-button-shell">
-                <span className="discussion-reaction-button-shine" />
                 <ReactionIcon type={DiscussionReactionType.LIKE} />
               </span>
             </button>
@@ -215,7 +224,6 @@ const DiscussionReactionDock = ({
               title="Dislike"
             >
               <span className="discussion-reaction-button-shell">
-                <span className="discussion-reaction-button-shine" />
                 <ReactionIcon type={DiscussionReactionType.DISLIKE} />
               </span>
             </button>
@@ -230,14 +238,13 @@ const DiscussionReactionDock = ({
               title="Clear"
             >
               <span className="discussion-reaction-button-shell">
-                <span className="discussion-reaction-button-shine" />
                 <ReactionIcon type={DiscussionReactionType.CLEAR} />
               </span>
             </button>
           </div>
           {isModerator && (
             <>
-              <div className="discussion-reaction-dock-divider" />
+              <div className="discussion-reaction-button-divider" />
               <button
                 type="button"
                 className={`discussion-reaction-button discussion-reaction-button-settings ${
@@ -248,19 +255,11 @@ const DiscussionReactionDock = ({
                 title="Reaction settings"
               >
                 <span className="discussion-reaction-button-shell">
-                  <span className="discussion-reaction-button-shine" />
                   <SettingsIcon />
                 </span>
               </button>
             </>
           )}
-        </div>
-        <div
-          className="discussion-reaction-active-readout"
-          aria-live="polite"
-          aria-atomic="true"
-        >
-          {activeReactionLabel}
         </div>
       </div>
 
