@@ -77,8 +77,27 @@ USAGE
 }
 
 tmuxnew () {
-	tmux kill-session -t "$1" &> /dev/null || true
-	tmux new -d -s "$@"
+  local session="$1"
+  shift
+
+  tmux kill-session -t "$session" &>/dev/null || true
+  tmux new-session -d -s "$session" "$@"
+}
+
+tmuxnew_with_env () {
+  local session="$1"
+  shift
+  local command="$1"
+  shift
+  local -a tmux_args=(-d -s "$session")
+  local env_assignment
+
+  for env_assignment in "$@"; do
+    tmux_args+=(-e "$env_assignment")
+  done
+
+  tmux kill-session -t "$session" &>/dev/null || true
+  tmux new-session "${tmux_args[@]}" "$command"
 }
 
 require_command () {
@@ -987,12 +1006,34 @@ PY2
 }
 
 start_postgres_session () {
-  tmuxnew "$POSTGRES_SESSION" "env PG_BIN_DIR='$PG_BIN_DIR' POSTGRES_STATE_DIR='$POSTGRES_STATE_DIR' POSTGRES_DATA_DIR='$POSTGRES_DATA_DIR' POSTGRES_SOCKET_DIR='$POSTGRES_SOCKET_DIR' POSTGRES_PASSWORD_FILE='$POSTGRES_PASSWORD_FILE' POSTGRES_LOG_FILE='$POSTGRES_LOG_FILE' POSTGRES_PORT='$POSTGRES_PORT' POSTGRES_DB='$POSTGRES_DB' POSTGRES_USER='$POSTGRES_USER' bash '$POSTGRES_BOOT_SCRIPT'"
+  tmuxnew_with_env "$POSTGRES_SESSION" "bash '$POSTGRES_BOOT_SCRIPT'" \
+    "PG_BIN_DIR=$PG_BIN_DIR" \
+    "POSTGRES_STATE_DIR=$POSTGRES_STATE_DIR" \
+    "POSTGRES_DATA_DIR=$POSTGRES_DATA_DIR" \
+    "POSTGRES_SOCKET_DIR=$POSTGRES_SOCKET_DIR" \
+    "POSTGRES_PASSWORD_FILE=$POSTGRES_PASSWORD_FILE" \
+    "POSTGRES_LOG_FILE=$POSTGRES_LOG_FILE" \
+    "POSTGRES_PORT=$POSTGRES_PORT" \
+    "POSTGRES_DB=$POSTGRES_DB" \
+    "POSTGRES_USER=$POSTGRES_USER"
 }
 
 start_backend_session () {
   local gradle_task="${1:-run}"
-  tmuxnew "$BACKEND_SESSION" "env BACKEND_DIR='$BACKEND_DIR' PG_BIN_DIR='$PG_BIN_DIR' DATABASE_URL_LOCAL='$DATABASE_URL_LOCAL' POSTGRES_PORT='$POSTGRES_PORT' POSTGRES_USER='$POSTGRES_USER' BACKEND_PORT='$BACKEND_PORT' BACKEND_GRADLE_TASK='$gradle_task' BACKEND_GRADLE_ARGS='$BACKEND_GRADLE_ARGS' BACKEND_GRADLE_PROXY_OPTS='$BACKEND_GRADLE_PROXY_OPTS' PUBLIC_ORIGIN='$PUBLIC_ORIGIN' bash '$BACKEND_BOOT_SCRIPT'"
+  # BACKEND_GRADLE_PROXY_OPTS may contain literal shell quotes (for NO_PROXY-derived
+  # nonProxyHosts), so pass it via tmux environment injection instead of embedding it
+  # into the shell command string.
+  tmuxnew_with_env "$BACKEND_SESSION" "bash '$BACKEND_BOOT_SCRIPT'" \
+    "BACKEND_DIR=$BACKEND_DIR" \
+    "PG_BIN_DIR=$PG_BIN_DIR" \
+    "DATABASE_URL_LOCAL=$DATABASE_URL_LOCAL" \
+    "POSTGRES_PORT=$POSTGRES_PORT" \
+    "POSTGRES_USER=$POSTGRES_USER" \
+    "BACKEND_PORT=$BACKEND_PORT" \
+    "BACKEND_GRADLE_TASK=$gradle_task" \
+    "BACKEND_GRADLE_ARGS=$BACKEND_GRADLE_ARGS" \
+    "BACKEND_GRADLE_PROXY_OPTS=$BACKEND_GRADLE_PROXY_OPTS" \
+    "PUBLIC_ORIGIN=$PUBLIC_ORIGIN"
 }
 
 start_frontend_session () {
@@ -1011,7 +1052,12 @@ start_frontend_session () {
       ;;
   esac
 
-  tmuxnew "$FRONTEND_SESSION" "env FRONTEND_DIR='$FRONTEND_DIR' NODE_VERSION='$NODE_VERSION' FRONTEND_PORT='$FRONTEND_PORT' PUBLIC_ORIGIN='$PUBLIC_ORIGIN' UNLOCK_ALL_P='$UNLOCK_ALL_P' zsh '$frontend_boot_script'"
+  tmuxnew_with_env "$FRONTEND_SESSION" "zsh '$frontend_boot_script'" \
+    "FRONTEND_DIR=$FRONTEND_DIR" \
+    "NODE_VERSION=$NODE_VERSION" \
+    "FRONTEND_PORT=$FRONTEND_PORT" \
+    "PUBLIC_ORIGIN=$PUBLIC_ORIGIN" \
+    "UNLOCK_ALL_P=$UNLOCK_ALL_P"
 }
 
 print_local_attach_help () {

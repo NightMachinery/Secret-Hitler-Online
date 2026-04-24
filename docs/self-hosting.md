@@ -228,6 +228,8 @@ Then run the script normally:
 
 For local backend startup, `self_host.zsh` also translates `HTTP_PROXY` / `HTTPS_PROXY` / `NO_PROXY` into JVM proxy flags for Gradle automatically, so Gradle dependency downloads use the same proxy path.
 
+Those proxy values are handed into the tmux-managed local sessions as literal environment values, so `start` / `dev-start` also work with `NO_PROXY` lists such as `127.0.0.1,localhost,::1`.
+
 For backend startup visibility, self-hosting runs Gradle with verbose logging by default (`--console=plain --info`). You can override that with `SELF_HOST_BACKEND_GRADLE_ARGS`, for example:
 
 ```bash
