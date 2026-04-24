@@ -1,16 +1,16 @@
 import React from "react";
 import { Helmet } from "react-helmet";
-import { CLIENT_ORIGIN } from "../constants";
+import { CURRENT_ORIGIN } from "../constants";
 
 export default function HelmetMetaData(props) {
 	let pathname = "/";
 	if (typeof window !== "undefined") {
 		pathname = window.location.pathname || "/";
 	}
-	let currentUrl = CLIENT_ORIGIN ? CLIENT_ORIGIN + pathname : pathname;
+	let normalizedOrigin = CURRENT_ORIGIN ? CURRENT_ORIGIN.replace(/\/+$/, "") : "";
+	let currentUrl = normalizedOrigin ? normalizedOrigin + pathname : pathname;
 	let defaultImagePath = `${process.env.PUBLIC_URL || ""}/assets/social-preview.jpg`;
-	if (CLIENT_ORIGIN) {
-		const normalizedOrigin = CLIENT_ORIGIN.replace(/\/+$/, "");
+	if (normalizedOrigin) {
 		const normalizedPath = defaultImagePath.replace(/^\.?\//, "");
 		defaultImagePath = `${normalizedOrigin}/${normalizedPath}`;
 	}
@@ -23,8 +23,8 @@ export default function HelmetMetaData(props) {
 	let description =
 		props.description !== undefined
 			? props.description
-			: "Secret Hitler Online is a free hidden-identity game for up to 20 players, elegantly adapted from the original Secret Hitler. " +
-			  "Play for free in your browser with no ads ever. Can you find and stop the Secret Hitler?";
+			: "Secret Hitler Online is a browser-based hidden-identity game for up to 20 players. " +
+			  "Open a lobby, share the invite link, and play in your current deployment.";
 	let hashtag =
 		props.hashtag !== undefined ? props.hashtag : "#SecretHitlerOnline";
 	return (

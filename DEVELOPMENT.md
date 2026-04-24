@@ -60,7 +60,7 @@ Notes:
 - Your host proxy must listen on `0.0.0.0:1087`; containers use `host.docker.internal:1087`.
 - If `ufw` is enabled, allow Docker bridge subnets to reach the proxy port:
   - `sudo ufw allow from 172.16.0.0/12 to any port 1087 proto tcp`
-- Frontend invite/share/meta links use `REACT_APP_CLIENT_ORIGIN` (or browser origin fallback)
+- Frontend invite/share/meta links use the current browser origin at runtime
 - Frontend API/websocket targets use `REACT_APP_SERVER_ADDRESS*`
 - Backend CORS allow-list uses `CORS_ALLOWED_ORIGINS` (comma-separated, `*` supported)
 
@@ -107,10 +107,13 @@ Follow these instructions if you are only making changes to the frontend. These 
 Open a terminal window and run the following commands to clone the project and set up the frontend dependencies:
 
 ```bash
-git clone git@github.com:ShrimpCryptid/Secret-Hitler-Online.git
+git clone git@github.com:NightMachinery/Secret-Hitler-Online.git
 cd Secret-Hitler-Online/frontend
 
 npm install
+REACT_APP_SERVER_ADDRESS=your-backend.example.com \
+REACT_APP_SERVER_ADDRESS_HTTP=https://your-backend.example.com \
+REACT_APP_WEBSOCKET_HEADER=wss:// \
 npm run devServer
 ```
 
@@ -125,7 +128,7 @@ If you're modifying the backend, you'll need to run the server locally. You'll n
 In your first terminal, clone the repo if you haven't yet. Navigate to the `backend` subdirectory, then use gradle to start the server.
 
 ```bash
-git clone git@github.com:ShrimpCryptid/Secret-Hitler-Online.git
+git clone git@github.com:NightMachinery/Secret-Hitler-Online.git
 cd Secret-Hitler-Online/backend
 
 ./gradlew runLocal

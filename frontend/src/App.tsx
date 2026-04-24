@@ -1,5 +1,4 @@
 import React, { Component } from "react";
-import ReactGA from "react-ga";
 import "./App.css";
 import "./Lobby.css";
 import "./fonts.css";
@@ -10,13 +9,14 @@ import EventBar from "./event-bar/EventBar";
 
 // TODO: replace constants with enums from types
 import {
+  APP_HEADER_TEXT,
+  CURRENT_ORIGIN,
   PAGE,
   MAX_FAILED_CONNECTIONS,
   SERVER_ADDRESS_HTTP,
   NEW_LOBBY,
   CHECK_LOGIN,
   SERVER_ADDRESS,
-  CLIENT_ORIGIN,
   WEBSOCKET,
   PARAM_USERNAMES,
   LOBBY_CODE_LENGTH,
@@ -52,6 +52,8 @@ import {
   PARAM_ICON,
   PARAM_INVESTIGATION,
   MAX_PLAYERS,
+  REPO_ISSUES_URL,
+  REPO_README_URL,
 } from "./constants";
 
 import PlayerDisplay, {
@@ -333,10 +335,6 @@ class App extends Component<{}, AppState> {
     };
     this.getOrCreateAuthToken();
 
-    // The website uses Google Analytics!
-    ReactGA.initialize("UA-166327773-1");
-    ReactGA.pageview("/");
-
     // These are necessary for handling class fields safely (ex: websocket)
     this.onWebSocketClose = this.onWebSocketClose.bind(this);
     this.tryOpenWebSocket = this.tryOpenWebSocket.bind(this);
@@ -391,10 +389,6 @@ class App extends Component<{}, AppState> {
    * @return {Promise<Response>} The response from the server.
    */
   async tryLogin(name: string, lobby: string) {
-    ReactGA.event({
-      category: "Login Attempt",
-      action: "User attempted to provide login credentials to the server.",
-    });
     const token = this.getOrCreateAuthToken();
     return await fetch(
       SERVER_ADDRESS_HTTP +
@@ -540,10 +534,6 @@ class App extends Component<{}, AppState> {
       if (this.failedConnections >= 1) {
         // Only show the error bar if the first attempt has failed.
         this.showSnackBar("Lost connection to the server: retrying...");
-        ReactGA.event({
-          category: "Lost Server Connection",
-          action: "User lost connection to the server. (>1 attempts)",
-        });
       }
       this.failedConnections += 1;
       this.tryOpenWebSocket(this.state.name, this.state.lobby);
@@ -563,11 +553,6 @@ class App extends Component<{}, AppState> {
                 ? "This tab was replaced by a newer session."
                 : "Disconnected from the lobby.",
         page: PAGE.LOGIN,
-      });
-      ReactGA.event({
-        category: "Lost Server Connection (Terminal)",
-        action:
-          "User was unable to reconnect to the server. (max attempts reached)",
       });
       this.clearAnimationQueue();
     } else {
@@ -846,47 +831,23 @@ class App extends Component<{}, AppState> {
           }
           if (response.status === 404) {
             this.setState({ joinError: "The lobby could not be found." });
-            ReactGA.event({
-              category: "Login Failed",
-              action: "Lobby not found - User unable to connect.",
-            });
           } else if (response.status === 403) {
             this.setState({
               joinError:
                 "This name is already in use or protected in this lobby.",
             });
-            ReactGA.event({
-              category: "Login Failed",
-              action: "Name conflict/token mismatch - User unable to connect.",
-            });
           } else if (response.status === 488) {
             this.setState({ joinError: "The lobby is currently in a game." });
-            ReactGA.event({
-              category: "Login Failed",
-              action: "Ongoing game - User unable to connect.",
-            });
           } else if (response.status === 489) {
             this.setState({ joinError: "The lobby is currently full." });
-            ReactGA.event({
-              category: "Login Failed",
-              action: "Lobby full - User unable to connect.",
-            });
           } else if (response.status === 490) {
             this.setState({
               joinError: "You have been banned from this lobby.",
-            });
-            ReactGA.event({
-              category: "Login Failed",
-              action: "Lobby ban - User unable to connect.",
             });
           } else {
             this.setState({
               joinError:
                 "There was an error connecting to the server. Please try again.",
-            });
-            ReactGA.event({
-              category: "Login Failed",
-              action: "Misc - User was unable to connect.",
             });
           }
         } else {
@@ -933,15 +894,7 @@ class App extends Component<{}, AppState> {
                 createLobbyError:
                   "There was an error connecting to the server. Please try again.",
               });
-              ReactGA.event({
-                category: "Lobby Creation Failed",
-                action: "Failed to create a new lobby.",
-              });
             } else {
-              ReactGA.event({
-                category: "Lobby Created",
-                action: "Successfully created new lobby.",
-              });
               // Save the username and lobby login
               Cookies.set(COOKIE_NAME, this.state.name, { expires: 7 });
               Cookies.set(COOKIE_LOBBY, lobbyCode);
@@ -952,10 +905,6 @@ class App extends Component<{}, AppState> {
             createLobbyError:
               "There was an error connecting to the server. Please try again.",
           });
-          ReactGA.event({
-            category: "Lobby Creation Failed",
-            action: "Failed to create a new lobby.",
-          });
         }
       })
       .catch(() => {
@@ -963,24 +912,20 @@ class App extends Component<{}, AppState> {
           createLobbyError:
             "There was an error connecting to the server. Please try again.",
         });
-        ReactGA.event({
-          category: "Lobby Creation Failed",
-          action: "Failed to create a new lobby.",
-        });
       });
   };
 
   renderLoginPage() {
     return (
       <div className="App">
-        <header className="App-header">SECRET-HITLER.ONLINE</header>
+        <header className="App-header">{APP_HEADER_TEXT}</header>
         <br />
         <div style={{ textAlign: "center" }}>
           {/** TODO: Add reusable announcement component. 
                     <div style={{backgroundColor: "#222222", width: "50vmin", margin: "0 auto", padding: "20px"}}>
                         <p>
                             Hello! Secret Hitler Online is currently undergoing some maintenance.
-                            Sorry for the interruption and please check back in in a few hours! -Shrimp
+                            Sorry for the interruption and please check back in in a few hours.
                         </p>
                         <p style={{fontStyle: "italic", fontSize: "calc(8px + 1vmin)"}}>(DATE TIME PM PT)</p>
 
@@ -1107,16 +1052,8 @@ class App extends Component<{}, AppState> {
             filled by bots.
           </p>
           <p>
-            Bots are still in beta, so{" "}
-            <a
-              href={
-                "https://github.com/ShrimpCryptid/Secret-Hitler-Online/issues/44"
-              }
-              target={"_blank"}
-              rel="noreferrer"
-            >
-              leave feedback on GitHub!
-            </a>
+            Bots are still in beta, so expect a few rough edges while they
+            continue to improve.
           </p>
           <p style={{ fontStyle: "italic", fontSize: "calc(8px + 1vmin)" }}>
             (Please be nice, they are trying their best.)
@@ -1277,9 +1214,6 @@ class App extends Component<{}, AppState> {
           playerToIcon={this.state.icons}
           players={this.state.usernames}
           user={this.state.name}
-          onClickTweet={() => {
-            ReactGA.event({ category: "Sharing", action: "User shared tweet" });
-          }}
         />
       ),
     });
@@ -1319,10 +1253,6 @@ class App extends Component<{}, AppState> {
   }
 
   startGame() {
-    ReactGA.event({
-      category: "Starting Game",
-      action: this.state.usernames.length + " players started game.",
-    });
     this.sendWSCommand({ command: WSCommandType.START_GAME });
   }
 
@@ -1719,7 +1649,7 @@ class App extends Component<{}, AppState> {
     const isManager = this.isLobbyManager(this.state.name);
     return (
       <div className="App">
-        <header className="App-header">SECRET-HITLER.ONLINE</header>
+        <header className="App-header">{APP_HEADER_TEXT}</header>
 
         <CustomAlert show={this.state.showAlert}>
           {this.state.alertContent}
@@ -1751,11 +1681,7 @@ class App extends Component<{}, AppState> {
             <textarea
               id="linkText"
               readOnly={true}
-              value={
-                (CLIENT_ORIGIN || SERVER_ADDRESS_HTTP) +
-                "/?lobby=" +
-                this.state.lobby
-              }
+              value={(CURRENT_ORIGIN || SERVER_ADDRESS_HTTP) + "/?lobby=" + this.state.lobby}
             />
             <button onClick={this.onClickCopy}>COPY</button>
           </div>
@@ -1800,9 +1726,7 @@ class App extends Component<{}, AppState> {
             <div id={"lobby-text-container"}>
               <p id={"lobby-about-text"}>
                 <a
-                  href={
-                    "https://github.com/ShrimpCryptid/Secret-Hitler-Online/blob/main/README.md"
-                  }
+                  href={REPO_README_URL}
                   target={"_blank"}
                   rel="noopener noreferrer"
                 >
@@ -1813,9 +1737,7 @@ class App extends Component<{}, AppState> {
               <p id={"lobby-warning-text"}>
                 You can report bugs on the{" "}
                 <a
-                  href={
-                    "https://github.com/ShrimpCryptid/Secret-Hitler-Online/issues"
-                  }
+                  href={REPO_ISSUES_URL}
                   rel="noopener noreferrer"
                   target={"_blank"}
                 >
@@ -2255,29 +2177,7 @@ class App extends Component<{}, AppState> {
           let liberalVictoryPolicy = state === STATE_LIBERAL_VICTORY_POLICY;
           let liberalVictoryExecution =
             state === STATE_LIBERAL_VICTORY_EXECUTION;
-          let playerID = myPlayer?.id;
-          let playerWon =
-            (playerID === Role.LIBERAL &&
-              (liberalVictoryExecution || liberalVictoryPolicy)) ||
-            (playerID !== Role.LIBERAL &&
-              (fascistVictoryElection || fascistVictoryPolicy));
 
-          // Register player victory/loss with analytics.
-          // TODO: Only register if player is host, or if player is the only
-          // non-bot player in the game.
-          if (!isObserver && playerID !== undefined) {
-            if (playerWon) {
-              ReactGA.event({
-                category: "Victory",
-                action: playerID + " team won the game.",
-              });
-            } else {
-              ReactGA.event({
-                category: "Loss",
-                action: playerID + " team lost the game.",
-              });
-            }
-          }
           this.addAnimationToQueue(() => {
             this.setState({
               alertContent: (
@@ -2638,7 +2538,7 @@ class App extends Component<{}, AppState> {
   renderGamePage() {
     return (
       <div className="App" style={{ textAlign: "center" }}>
-        <header className="App-header">SECRET-HITLER.ONLINE</header>
+        <header className="App-header">{APP_HEADER_TEXT}</header>
 
         <CustomAlert
           show={this.state.showAlert}
@@ -2796,10 +2696,6 @@ class App extends Component<{}, AppState> {
     let url = window.location.search;
     let lobby = new URLSearchParams(url).get("lobby");
     if (lobby !== null && !this.state.lobbyFromURL) {
-      ReactGA.event({
-        category: "Lobby Link",
-        action: "User is using a lobby link.",
-      });
       this.setState({
         joinLobby: lobby.toUpperCase().substr(0, 4),
         lobbyFromURL: true,

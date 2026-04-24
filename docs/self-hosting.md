@@ -8,6 +8,7 @@ The supported production path is the self-host flow in this document. Legacy Her
 
 - Saves your public origin once during `setup`
 - Manages a marked Secret-Hitler block in `~/Caddyfile`
+- Uses the browser's current origin for invite/share URLs in the shipped frontend, so no public app URL is hardcoded into tracked frontend source files
 - Runs normal self-hosting with tmux-managed local processes:
   - PostgreSQL on `127.0.0.1:54339`
   - backend on `127.0.0.1:4040`

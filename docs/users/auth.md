@@ -45,7 +45,6 @@ The frontend also uses cookies for convenience/UI state:
 
 - `name` — remember last entered username
 - `lobby` — remember last lobby code
-- `_unlock_icons` — cosmetic icon unlock state
 
 ### sessionStorage: no
 

@@ -1,7 +1,3 @@
-/**
- * Copyright 2023, Peyton Lee (@ShrimpCryptid)
- */
-
 package game;
 
 import java.io.IOException;

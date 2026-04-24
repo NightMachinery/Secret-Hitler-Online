@@ -15,10 +15,7 @@ import java.util.*;
 /**
  * Keeps track of the state of a game of Secret Hitler.
  *
- * Secret Hitler is a social deduction game for 5-10 players, originally
- * created by Goat, Wolf {@literal &} Cabbage (c) 2016. You can find more
- * details on their
- * website, or order the physical game, at https://www.secrethitler.com/.
+ * Secret Hitler is a social deduction game for 5-10 players.
  * <p>
  * This implementation supports 5-20 players.
  *

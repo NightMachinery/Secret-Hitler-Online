@@ -38,10 +38,21 @@ const envClientOrigin = process.env.REACT_APP_CLIENT_ORIGIN || "";
 export const CLIENT_ORIGIN =
   stripTrailingSlash(envClientOrigin || "") ||
   (typeof window !== "undefined" ? browserOrigin : SERVER_ADDRESS_HTTP);
-export const UNLOCK_ALL_P =
-  (process.env.REACT_APP_UNLOCK_ALL_P || process.env.UNLOCK_ALL_P || "")
-    .toLowerCase()
-    .trim() === "true";
+export const CURRENT_ORIGIN =
+  typeof window !== "undefined"
+    ? browserOrigin
+    : CLIENT_ORIGIN || SERVER_ADDRESS_HTTP;
+export const CURRENT_HOST =
+  typeof window !== "undefined"
+    ? browserHost
+    : stripProtocol(CURRENT_ORIGIN || SERVER_ADDRESS_HTTP);
+export const APP_HEADER_TEXT = CURRENT_HOST
+  ? CURRENT_HOST.toUpperCase()
+  : "SECRET HITLER ONLINE";
+export const REPO_URL =
+  "https://github.com/NightMachinery/Secret-Hitler-Online";
+export const REPO_ISSUES_URL = `${REPO_URL}/issues`;
+export const REPO_README_URL = `${REPO_URL}#readme`;
 
 export const CHECK_LOGIN = "/check-login";
 export const NEW_LOBBY = "/new-lobby";

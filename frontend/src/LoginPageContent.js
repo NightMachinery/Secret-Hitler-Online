@@ -1,27 +1,13 @@
 import React, {Component} from "react";
-import ReactGA from "react-ga";
 import "./LoginPageContent.css";
 import "./util/CustomAliceCarousel.css";
 import placePolicyGif from "./assets/login-media/place-policy.gif";
 import showPolicyGif from "./assets/login-media/show-policy.gif";
 import showVotesGif from "./assets/login-media/show-votes.gif";
+import { REPO_ISSUES_URL, REPO_URL } from "./constants";
 
 
 class LoginPageContent extends Component {
-
-    onClickAbout = () => {
-        ReactGA.event({
-            category: "Clicked About",
-            action: "User clicked the link for the about page."
-        });
-    };
-
-    onClickGameWebsite = () => {
-        ReactGA.event({
-            category: "Clicked Game Website",
-            action: "User clicked the link for the board game website."
-        });
-    };
 
     render() {
         let handleDragStart = (e) => e.preventDefault();
@@ -36,11 +22,9 @@ class LoginPageContent extends Component {
                     <div id={"login-page-description-text-container"}>
                         <h2 id={"login-page-description-text-header"}>What is Secret Hitler Online?</h2>
                         <p id={"login-page-description-text"}>
-                            Secret Hitler Online is an adaptation of the original Secret Hitler board game,
-                            reimagined for the web.
-                            It supports up to 20 players, featuring smooth art and animations with all the secrecy and
-                            intrigue of the original. It's designed to be easy to pick up and play for any quarantine
-                            game night.<br/><br/>Play for free in your browser, with no ads ever!
+                            Secret Hitler Online is a browser-based hidden-identity game for up to 20 players.
+                            It keeps the secrecy, bluffing, and fast lobby sharing of the tabletop version while making
+                            setup and moderation easier online.
                             <br/><br/>
                         </p>
                     </div>
@@ -50,19 +34,17 @@ class LoginPageContent extends Component {
                     <div id={"login-page-description-text-container"}>
                         <p id={"login-page-description-text"}>
                             <br/>
-                            The project is open-source, and is licensed under CC BY-NC-SA 4.0.
+                            This project is open-source and released under CC BY-NC-SA 4.0.
                             You can read more about the project <a
-                                href={"https://github.com/ShrimpCryptid/Secret-Hitler-Online/"}
+                                href={REPO_URL}
                                 rel="noreferrer"
-                                target={"_blank"} onClick={this.onClickAbout}>
+                                target={"_blank"}>
                                     on GitHub
                             </a>!
                             <br/><br/>
-                            Adapted from the original <a href={"https://secrethitler.com"} target={"_blank"} rel="noreferrer" onClick={this.onClickGameWebsite}>
-                                Secret Hitler
-                            </a> board game by Goat, Wolf, & Cabbage (© 2016-2020). Developed by ShrimpCryptid (© 2020-2023).
+                            Based on the original Secret Hitler board game.
                             <br/><br/>
-                            Found a bug or want to leave a comment? Report bugs on the <a href={"https://github.com/ShrimpCryptid/Secret-Hitler-Online/issues"}
+                            Found a bug or want to leave a comment? Report it on the <a href={REPO_ISSUES_URL}
                                                                                              rel="noreferrer"
                                                                                              target={"_blank"}>Issues page</a>.
                         </p>

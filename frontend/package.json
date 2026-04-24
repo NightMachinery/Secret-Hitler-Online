@@ -23,13 +23,11 @@
 		"react": "^16.14.0",
 		"react-alice-carousel": "^2.5.1",
 		"react-dom": "^16.14.0",
-		"react-ga": "^2.7.0",
 		"react-helmet": "^6.1.0",
 		"react-router": "^5.2.0",
 		"react-router-config": "^5.1.1",
 		"react-router-dom": "^5.2.0",
 		"react-textfit": "^1.1.1",
-		"react-twitter-embed": "^3.0.3",
 		"typescript": "^3.9.10"
 	},
 	"devDependencies": {
