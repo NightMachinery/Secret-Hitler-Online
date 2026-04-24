@@ -225,7 +225,6 @@ class Player extends Component {
         const discussionReactionRemainingMs = discussionReaction
             ? discussionReaction.expiresAt - Date.now()
             : 0;
-        const discussionReactionLabel = discussionReaction?.type === "LIKE" ? "LIKE" : "DISLIKE";
         const discussionReactionBadge = discussionReaction && discussionReactionRemainingMs > 0 ? (
             <div
                 key={`discussion-reaction-${discussionReaction.type}-${discussionReaction.expiresAt}`}
@@ -259,9 +258,6 @@ class Player extends Component {
                     </svg>
                     <div className={"player-discussion-reaction-core"}>
                         {this.renderDiscussionReactionIcon(discussionReaction.type)}
-                    </div>
-                    <div className={"player-discussion-reaction-word"}>
-                        {discussionReactionLabel}
                     </div>
                 </div>
             </div>
