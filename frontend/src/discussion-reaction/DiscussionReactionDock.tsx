@@ -132,6 +132,36 @@ const DiscussionReactionDock = ({
         ? "Dislike cue live"
         : "No active cue";
 
+  const reactionButtons = [
+    {
+      type: DiscussionReactionType.LIKE,
+      label: "Like",
+      subtitle: "Approve or agree",
+      ariaLabel: "Send like reaction",
+      title: "Like",
+      isActive: activeReaction?.type === DiscussionReactionType.LIKE,
+      isDisabled: !canReact,
+    },
+    {
+      type: DiscussionReactionType.DISLIKE,
+      label: "Dislike",
+      subtitle: "Object or disagree",
+      ariaLabel: "Send dislike reaction",
+      title: "Dislike",
+      isActive: activeReaction?.type === DiscussionReactionType.DISLIKE,
+      isDisabled: !canReact,
+    },
+    {
+      type: DiscussionReactionType.CLEAR,
+      label: "Clear",
+      subtitle: "Remove your cue",
+      ariaLabel: "Clear reaction",
+      title: "Clear",
+      isActive: false,
+      isDisabled: !canReact || !activeReaction,
+    },
+  ];
+
   return (
     <div id="discussion-reaction-dock-wrap">
       {showSettings && isModerator && (
@@ -139,7 +169,9 @@ const DiscussionReactionDock = ({
           <div className="discussion-reaction-settings-eyebrow">
             Moderator controls
           </div>
-          <div className="discussion-reaction-settings-title">Reaction settings</div>
+          <div className="discussion-reaction-settings-title">
+            Reaction settings
+          </div>
           <p className="discussion-reaction-settings-copy">
             Tune how long each cue lingers on a player card.
           </p>
@@ -183,57 +215,43 @@ const DiscussionReactionDock = ({
 
       <div id="discussion-reaction-dock-frame">
         <div id="discussion-reaction-dock-badge">DISCUSSION CUES</div>
+        <div className="discussion-reaction-toolbar-copy">
+          Mark the current speaker without interrupting the table.
+        </div>
         <div id="discussion-reaction-dock">
           <div className="discussion-reaction-button-cluster">
-            <button
-              type="button"
-              className={`discussion-reaction-button discussion-reaction-button-like ${
-                activeReaction?.type === DiscussionReactionType.LIKE
-                  ? "discussion-reaction-button-active"
-                  : ""
-              }`}
-              disabled={!canReact}
-              onClick={() => onReact(DiscussionReactionType.LIKE)}
-              aria-label="Send like reaction"
-              title="Like"
-            >
-              <span className="discussion-reaction-button-shell">
-                <span className="discussion-reaction-button-shine" />
-                <ReactionIcon type={DiscussionReactionType.LIKE} />
-              </span>
-            </button>
-            <button
-              type="button"
-              className={`discussion-reaction-button discussion-reaction-button-dislike ${
-                activeReaction?.type === DiscussionReactionType.DISLIKE
-                  ? "discussion-reaction-button-active"
-                  : ""
-              }`}
-              disabled={!canReact}
-              onClick={() => onReact(DiscussionReactionType.DISLIKE)}
-              aria-label="Send dislike reaction"
-              title="Dislike"
-            >
-              <span className="discussion-reaction-button-shell">
-                <span className="discussion-reaction-button-shine" />
-                <ReactionIcon type={DiscussionReactionType.DISLIKE} />
-              </span>
-            </button>
-            <button
-              type="button"
-              className={`discussion-reaction-button discussion-reaction-button-clear ${
-                activeReaction ? "discussion-reaction-button-clear-ready" : ""
-              }`}
-              disabled={!canReact || !activeReaction}
-              onClick={() => onReact(DiscussionReactionType.CLEAR)}
-              aria-label="Clear reaction"
-              title="Clear"
-            >
-              <span className="discussion-reaction-button-shell">
-                <span className="discussion-reaction-button-shine" />
-                <ReactionIcon type={DiscussionReactionType.CLEAR} />
-              </span>
-            </button>
+            {reactionButtons.map((button) => (
+              <button
+                key={button.type}
+                type="button"
+                className={`discussion-reaction-button discussion-reaction-button-${button.type.toLowerCase()} ${
+                  button.isActive ? "discussion-reaction-button-active" : ""
+                } ${
+                  button.type === DiscussionReactionType.CLEAR && activeReaction
+                    ? "discussion-reaction-button-clear-ready"
+                    : ""
+                }`}
+                disabled={button.isDisabled}
+                onClick={() => onReact(button.type)}
+                aria-label={button.ariaLabel}
+                title={button.title}
+              >
+                <span className="discussion-reaction-button-shell">
+                  <span className="discussion-reaction-button-shine" />
+                  <span className="discussion-reaction-button-icon-wrap">
+                    <ReactionIcon type={button.type} />
+                  </span>
+                  <span className="discussion-reaction-button-text">
+                    <span className="discussion-reaction-button-label">
+                      {button.label}
+                    </span>
+                    <span className="discussion-reaction-button-subtitle">
+                      {button.subtitle}
+                    </span>
+                  </span>
+                </span>
+              </button>
+            ))}
           </div>
           {isModerator && (
             <>
@@ -249,18 +267,31 @@ const DiscussionReactionDock = ({
               >
                 <span className="discussion-reaction-button-shell">
                   <span className="discussion-reaction-button-shine" />
-                  <SettingsIcon />
+                  <span className="discussion-reaction-button-icon-wrap">
+                    <SettingsIcon />
+                  </span>
+                  <span className="discussion-reaction-button-text">
+                    <span className="discussion-reaction-button-label">
+                      Settings
+                    </span>
+                    <span className="discussion-reaction-button-subtitle">
+                      Moderator only
+                    </span>
+                  </span>
                 </span>
               </button>
             </>
           )}
         </div>
-        <div
-          className="discussion-reaction-active-readout"
-          aria-live="polite"
-          aria-atomic="true"
-        >
-          {activeReactionLabel}
+        <div className="discussion-reaction-active-readout-wrap">
+          <div className="discussion-reaction-active-label">Live status</div>
+          <div
+            className="discussion-reaction-active-readout"
+            aria-live="polite"
+            aria-atomic="true"
+          >
+            {activeReactionLabel}
+          </div>
         </div>
       </div>
 

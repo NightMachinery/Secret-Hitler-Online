@@ -383,7 +383,7 @@ export default function PlayerDisplay(
         }[] = [];
         if (showBotToggleForCreator) {
           actionButtons.push({
-            label: isTemporaryBotControlled ? "HUM" : "BOT",
+            label: isTemporaryBotControlled ? "HUMAN" : "BOT",
             title: isTemporaryBotControlled
               ? `Set ${playerName} to human control`
               : `Set ${playerName} to bot control`,
@@ -393,7 +393,7 @@ export default function PlayerDisplay(
           });
         } else if (showSelfReclaimToggle) {
           actionButtons.push({
-            label: "ME",
+            label: "RECLAIM",
             title: "Reclaim your controls",
             onClick: () => props.onBotControlToggle?.(playerName, false),
             variant: "secondary",
@@ -402,7 +402,7 @@ export default function PlayerDisplay(
 
         if (canOpenModeratorPrompt) {
           actionButtons.push({
-            label: playerIsModerator ? "DEM" : "MOD",
+            label: "MOD TOOLS",
             title: playerIsModerator
               ? `Open moderator actions for ${playerName}`
               : `Promote ${playerName} to moderator`,
@@ -413,7 +413,7 @@ export default function PlayerDisplay(
 
         if (canOpenObserverPrompt) {
           actionButtons.push({
-            label: "OBS",
+            label: observerAssignment ? "OBS TOOLS" : "ASSIGN OBS",
             title: observerAssignment
               ? `Manage observer control for ${playerName}`
               : `Assign an observer to ${playerName}`,
@@ -426,10 +426,12 @@ export default function PlayerDisplay(
           isOffline ? { label: "OFFLINE", variant: "offline" } : null,
           playerIsCreator ? { label: "CREATOR", variant: "creator" } : null,
           !playerIsCreator && playerIsModerator
-            ? { label: "MOD", variant: "moderator" }
+            ? { label: "MODERATOR", variant: "moderator" }
             : null,
-          isObserverControlled ? { label: "OBS", variant: "observer" } : null,
-          isBotControlled ? { label: "BOT", variant: "bot" } : null,
+          isObserverControlled
+            ? { label: "OBSERVER", variant: "observer" }
+            : null,
+          isBotControlled ? { label: "BOT CONTROL", variant: "bot" } : null,
         ].filter(Boolean) as { label: string; variant?: string }[];
 
         // Skip votes for players that are not alive.

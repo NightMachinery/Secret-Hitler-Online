@@ -2,20 +2,20 @@
 
 #discussion-reaction-dock-wrap {
   position: fixed;
-  right: 16px;
-  bottom: 16px;
+  right: 18px;
+  bottom: 18px;
   z-index: 74;
   display: flex;
   flex-direction: column;
   align-items: flex-end;
-  gap: 10px;
+  gap: 12px;
 }
 
 #discussion-reaction-dock-frame {
   position: relative;
-  min-width: min(92vw, 350px);
-  padding: 22px 14px 12px;
-  border-radius: 28px;
+  min-width: min(92vw, 560px);
+  padding: 28px 16px 14px;
+  border-radius: 30px;
   background:
     linear-gradient(180deg, rgba(118, 90, 50, 0.94), rgba(69, 48, 25, 0.96)),
     linear-gradient(180deg, rgba(20, 20, 20, 0.96), rgba(9, 9, 9, 0.98));
@@ -31,7 +31,7 @@
   content: "";
   position: absolute;
   inset: 7px;
-  border-radius: 22px;
+  border-radius: 24px;
   background:
     radial-gradient(circle at top, rgba(255, 227, 179, 0.08), transparent 40%),
     linear-gradient(180deg, rgba(29, 22, 17, 0.96), rgba(15, 12, 10, 0.98));
@@ -59,18 +59,30 @@
     inset 0 1px 0 rgba(255, 246, 224, 0.42);
 }
 
+.discussion-reaction-toolbar-copy {
+  position: relative;
+  z-index: 1;
+  margin: 0 0 12px;
+  text-align: center;
+  color: rgba(236, 217, 188, 0.86);
+  font-family: var(--textFont);
+  font-size: clamp(0.72rem, 0.8vw, 0.84rem);
+  font-weight: 500;
+}
+
 #discussion-reaction-dock {
   position: relative;
   z-index: 1;
   display: flex;
-  align-items: center;
+  align-items: stretch;
   gap: 12px;
 }
 
 .discussion-reaction-button-cluster {
-  display: flex;
-  align-items: center;
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
   gap: 10px;
+  flex: 1;
 }
 
 .discussion-reaction-dock-divider {
@@ -84,17 +96,16 @@
   position: relative;
   margin: 0;
   padding: 0;
-  width: 3.4rem;
-  height: 3.4rem;
-  min-width: 3.4rem;
-  border-radius: 999px;
+  min-height: 5rem;
+  min-width: 0;
+  border-radius: 18px;
   border: 1px solid rgba(255, 236, 204, 0.16);
   box-shadow:
     0 8px 16px rgba(0, 0, 0, 0.26),
     inset 0 1px 0 rgba(255, 247, 233, 0.08);
   display: inline-flex;
-  align-items: center;
-  justify-content: center;
+  align-items: stretch;
+  justify-content: stretch;
   background:
     radial-gradient(circle at top, rgba(255, 255, 255, 0.04), transparent 48%),
     linear-gradient(180deg, rgba(64, 53, 44, 0.98), rgba(28, 24, 20, 0.98));
@@ -109,12 +120,14 @@
 
 .discussion-reaction-button-shell {
   position: relative;
-  width: calc(100% - 0.5rem);
-  height: calc(100% - 0.5rem);
-  border-radius: 999px;
-  display: inline-flex;
+  width: 100%;
+  min-height: inherit;
+  padding: 0.72rem 0.78rem;
+  display: flex;
   align-items: center;
-  justify-content: center;
+  gap: 0.72rem;
+  border-radius: inherit;
+  box-sizing: border-box;
   background:
     radial-gradient(circle at 35% 28%, rgba(255, 255, 255, 0.18), transparent 36%),
     linear-gradient(180deg, rgba(96, 77, 60, 0.98), rgba(47, 38, 31, 0.98));
@@ -137,6 +150,46 @@
   transform: rotate(25deg);
   opacity: 0.5;
   pointer-events: none;
+}
+
+.discussion-reaction-button-icon-wrap {
+  position: relative;
+  z-index: 1;
+  width: 2.4rem;
+  min-width: 2.4rem;
+  height: 2.4rem;
+  border-radius: 999px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(17, 14, 12, 0.24);
+  border: 1px solid rgba(255, 237, 210, 0.12);
+}
+
+.discussion-reaction-button-text {
+  position: relative;
+  z-index: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 0.12rem;
+  min-width: 0;
+  text-align: left;
+}
+
+.discussion-reaction-button-label {
+  font-family: var(--headerFont);
+  font-size: clamp(0.84rem, 0.95vw, 0.98rem);
+  line-height: 1.05;
+  letter-spacing: 0.04em;
+}
+
+.discussion-reaction-button-subtitle {
+  font-family: var(--textFont);
+  font-size: clamp(0.62rem, 0.68vw, 0.74rem);
+  color: rgba(238, 224, 203, 0.78);
+  font-weight: 500;
+  line-height: 1.2;
 }
 
 .discussion-reaction-button:hover,
@@ -219,6 +272,7 @@
 }
 
 .discussion-reaction-button-settings {
+  width: 168px;
   color: #eee1cc;
 }
 
@@ -245,20 +299,36 @@
   z-index: 1;
 }
 
-.discussion-reaction-active-readout {
+.discussion-reaction-active-readout-wrap {
   position: relative;
   z-index: 1;
-  margin-top: 10px;
-  text-align: center;
-  color: rgba(236, 217, 188, 0.88);
+  margin-top: 12px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+.discussion-reaction-active-label {
+  color: rgba(244, 214, 168, 0.74);
   font-family: var(--textFont);
-  font-size: calc(7px + 0.55vmin);
+  font-size: calc(7px + 0.4vmin);
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+}
+
+.discussion-reaction-active-readout {
+  color: rgba(236, 217, 188, 0.92);
+  font-family: var(--textFont);
+  font-size: calc(8px + 0.6vmin);
+  font-weight: 700;
   letter-spacing: 0.04em;
+  text-align: right;
 }
 
 #discussion-reaction-settings-panel {
   position: relative;
-  width: min(92vw, 330px);
+  width: min(92vw, 360px);
   padding: 14px;
   border-radius: 18px;
   background:
@@ -430,7 +500,7 @@
 }
 
 #discussion-reaction-disabled-note {
-  max-width: min(92vw, 330px);
+  max-width: min(92vw, 360px);
   padding: 10px 13px;
   border-radius: 14px;
   background:
@@ -441,6 +511,22 @@
   font-size: calc(8px + 0.55vmin);
   text-align: left;
   box-shadow: 0 10px 22px rgba(0, 0, 0, 0.24);
+}
+
+@media (max-width: 900px) {
+  #discussion-reaction-dock {
+    flex-direction: column;
+  }
+
+  .discussion-reaction-dock-divider {
+    width: 100%;
+    height: 1px;
+    background: linear-gradient(90deg, transparent, rgba(244, 214, 168, 0.32), transparent);
+  }
+
+  .discussion-reaction-button-settings {
+    width: 100%;
+  }
 }
 
 @media (max-width: 700px) {
@@ -454,17 +540,37 @@
   #discussion-reaction-dock-frame {
     min-width: 0;
     width: 100%;
+    padding: 26px 12px 12px;
   }
 
-  #discussion-reaction-dock {
-    justify-content: center;
-    width: 100%;
-    box-sizing: border-box;
+  .discussion-reaction-toolbar-copy {
+    font-size: 0.72rem;
+    margin-bottom: 10px;
   }
 
   .discussion-reaction-button-cluster {
-    justify-content: center;
-    flex: 1;
+    grid-template-columns: 1fr;
+  }
+
+  .discussion-reaction-button {
+    min-height: 4.4rem;
+  }
+
+  .discussion-reaction-button-shell {
+    padding: 0.65rem 0.72rem;
+  }
+
+  .discussion-reaction-button-label {
+    font-size: 0.86rem;
+  }
+
+  .discussion-reaction-button-subtitle {
+    font-size: 0.65rem;
+  }
+
+  .discussion-reaction-active-readout-wrap {
+    flex-direction: column;
+    align-items: flex-start;
   }
 
   #discussion-reaction-settings-panel,

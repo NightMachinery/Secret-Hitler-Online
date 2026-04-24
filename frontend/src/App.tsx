@@ -972,11 +972,10 @@ class App extends Component<{}, AppState> {
 
   renderLoginPage() {
     return (
-      <div className="App">
+      <div className="App app-shell app-shell-login">
         <header className="App-header">SECRET-HITLER.ONLINE</header>
-        <br />
-        <div style={{ textAlign: "center" }}>
-          {/** TODO: Add reusable announcement component. 
+        <div className="login-shell">
+          {/** TODO: Add reusable announcement component.
                     <div style={{backgroundColor: "#222222", width: "50vmin", margin: "0 auto", padding: "20px"}}>
                         <p>
                             Hello! Secret Hitler Online is currently undergoing some maintenance.
@@ -986,144 +985,134 @@ class App extends Component<{}, AppState> {
 
                     </div>
                     */}
-          <h2>JOIN A GAME</h2>
-          <MaxLengthTextField
-            label={"Lobby"}
-            onChange={this.updateJoinLobby}
-            value={this.state.joinLobby}
-            maxLength={LOBBY_CODE_LENGTH}
-            showCharCount={false}
-            forceUpperCase={true}
-          />
+          <div className="login-grid">
+            <section className="login-card login-card-primary">
+              <div className="login-card-eyebrow">Quick join</div>
+              <h2>JOIN A GAME</h2>
+              <MaxLengthTextField
+                className="login-form-field"
+                label={"Lobby"}
+                onChange={this.updateJoinLobby}
+                value={this.state.joinLobby}
+                maxLength={LOBBY_CODE_LENGTH}
+                showCharCount={false}
+                forceUpperCase={true}
+                placeholder={"ABCD"}
+              />
 
-          <MaxLengthTextField
-            label={"Your Name"}
-            onChange={this.updateJoinName}
-            value={this.state.joinName}
-            maxLength={12}
-          />
-          <p id={"errormessage"}>{this.state.joinError}</p>
-          <button
-            onClick={this.onClickJoin}
-            disabled={!this.shouldJoinButtonBeEnabled()}
-          >
-            JOIN
-          </button>
-        </div>
-        <br />
-        <div>
-          <h2>CREATE A LOBBY</h2>
-          <MaxLengthTextField
-            label={"Your Name"}
-            onChange={this.updateCreateLobbyName}
-            value={this.state.createLobbyName}
-            maxLength={12}
-          />
-          <div
-            style={{
-              margin: "10px auto",
-              textAlign: "left",
-              width: "min(90vw, 520px)",
-            }}
-          >
-            <p style={{ margin: "6px 0", fontSize: "calc(8px + 1vmin)" }}>
-              History settings (locked after lobby creation):
-            </p>
-            <label
-              style={{ display: "block", margin: "4px 0", cursor: "pointer" }}
-            >
-              <input
-                type="checkbox"
-                checked={this.state.createLobbyShowHistory}
-                onChange={this.updateCreateLobbyShowHistory}
-                style={{
-                  width: "16px",
-                  minWidth: "16px",
-                  marginRight: "8px",
-                  verticalAlign: "middle",
-                }}
+              <MaxLengthTextField
+                className="login-form-field"
+                label={"Your Name"}
+                onChange={this.updateJoinName}
+                value={this.state.joinName}
+                maxLength={12}
+                placeholder={"Enter your name"}
               />
-              Show history panel
-            </label>
-            <label
-              style={{ display: "block", margin: "4px 0", cursor: "pointer" }}
-            >
-              <input
-                type="checkbox"
-                checked={this.state.createLobbyShowPublicActions}
-                onChange={this.updateCreateLobbyShowPublicActions}
-                disabled={!this.state.createLobbyShowHistory}
-                style={{
-                  width: "16px",
-                  minWidth: "16px",
-                  marginRight: "8px",
-                  verticalAlign: "middle",
-                }}
-              />
-              Show presidential power actions
-            </label>
-            <label
-              style={{ display: "block", margin: "4px 0", cursor: "pointer" }}
-            >
-              <input
-                type="checkbox"
-                checked={this.state.createLobbyShowVoteBreakdown}
-                onChange={this.updateCreateLobbyShowVoteBreakdown}
-                disabled={!this.state.createLobbyShowHistory}
-                style={{
-                  width: "16px",
-                  minWidth: "16px",
-                  marginRight: "8px",
-                  verticalAlign: "middle",
-                }}
-              />
-              Show who voted yes/no
-            </label>
-            <div style={{ marginTop: "8px" }}>
-              <label style={{ marginRight: "8px" }}>Rounds to show:</label>
-              <select
-                value={this.state.createLobbyRoundsToShow}
-                onChange={this.updateCreateLobbyRoundsToShow}
-                disabled={!this.state.createLobbyShowHistory}
+              <p id={"errormessage"} className="login-error-text">
+                {this.state.joinError}
+              </p>
+              <button
+                className="button-primary login-submit-button"
+                onClick={this.onClickJoin}
+                disabled={!this.shouldJoinButtonBeEnabled()}
               >
-                <option value={HistoryRoundsToShow.ALL}>All rounds</option>
-                <option value={HistoryRoundsToShow.LAST_1}>Last round</option>
-                <option value={HistoryRoundsToShow.LAST_3}>Last 3 rounds</option>
-              </select>
-            </div>
+                JOIN
+              </button>
+            </section>
+
+            <section className="login-card">
+              <div className="login-card-eyebrow">Host a table</div>
+              <h2>CREATE A LOBBY</h2>
+              <MaxLengthTextField
+                className="login-form-field"
+                label={"Your Name"}
+                onChange={this.updateCreateLobbyName}
+                value={this.state.createLobbyName}
+                maxLength={12}
+                placeholder={"Enter your name"}
+              />
+              <div className="login-settings-panel">
+                <p className="login-settings-title">
+                  History settings <span>(locked after lobby creation)</span>
+                </p>
+                <label className="login-setting-row">
+                  <input
+                    type="checkbox"
+                    checked={this.state.createLobbyShowHistory}
+                    onChange={this.updateCreateLobbyShowHistory}
+                  />
+                  <span>Show history panel</span>
+                </label>
+                <label className="login-setting-row">
+                  <input
+                    type="checkbox"
+                    checked={this.state.createLobbyShowPublicActions}
+                    onChange={this.updateCreateLobbyShowPublicActions}
+                    disabled={!this.state.createLobbyShowHistory}
+                  />
+                  <span>Show presidential power actions</span>
+                </label>
+                <label className="login-setting-row">
+                  <input
+                    type="checkbox"
+                    checked={this.state.createLobbyShowVoteBreakdown}
+                    onChange={this.updateCreateLobbyShowVoteBreakdown}
+                    disabled={!this.state.createLobbyShowHistory}
+                  />
+                  <span>Show who voted yes/no</span>
+                </label>
+                <div className="login-setting-select-row">
+                  <label htmlFor="create-lobby-rounds">Rounds to show</label>
+                  <select
+                    id="create-lobby-rounds"
+                    value={this.state.createLobbyRoundsToShow}
+                    onChange={this.updateCreateLobbyRoundsToShow}
+                    disabled={!this.state.createLobbyShowHistory}
+                  >
+                    <option value={HistoryRoundsToShow.ALL}>All rounds</option>
+                    <option value={HistoryRoundsToShow.LAST_1}>Last round</option>
+                    <option value={HistoryRoundsToShow.LAST_3}>Last 3 rounds</option>
+                  </select>
+                </div>
+              </div>
+              <p id={"errormessage"} className="login-error-text">
+                {this.state.createLobbyError}
+              </p>
+              <button
+                className="button-primary login-submit-button"
+                onClick={this.onClickCreateLobby}
+                disabled={!this.shouldCreateLobbyButtonBeEnabled()}
+              >
+                CREATE LOBBY
+              </button>
+            </section>
           </div>
-          <p id={"errormessage"}>{this.state.createLobbyError}</p>
-          <button
-            onClick={this.onClickCreateLobby}
-            disabled={!this.shouldCreateLobbyButtonBeEnabled()}
-          >
-            CREATE LOBBY
-          </button>
+
+          <AnnouncementBox>
+            <h2>Announcing: BOTS!</h2>
+            <p>
+              You can now start games with only 1-4 players; extra spots will be
+              filled by bots.
+            </p>
+            <p>
+              Bots are still in beta, so{" "}
+              <a
+                href={
+                  "https://github.com/ShrimpCryptid/Secret-Hitler-Online/issues/44"
+                }
+                target={"_blank"}
+                rel="noreferrer"
+              >
+                leave feedback on GitHub!
+              </a>
+            </p>
+            <p className="login-muted-copy">
+              (Please be nice, they are trying their best.)
+            </p>
+          </AnnouncementBox>
+
+          <LoginPageContent />
         </div>
-        <AnnouncementBox>
-          <h2>Announcing: BOTS!</h2>
-          <p>
-            You can now start games with only 1-4 players; extra spots will be
-            filled by bots.
-          </p>
-          <p>
-            Bots are still in beta, so{" "}
-            <a
-              href={
-                "https://github.com/ShrimpCryptid/Secret-Hitler-Online/issues/44"
-              }
-              target={"_blank"}
-              rel="noreferrer"
-            >
-              leave feedback on GitHub!
-            </a>
-          </p>
-          <p style={{ fontStyle: "italic", fontSize: "calc(8px + 1vmin)" }}>
-            (Please be nice, they are trying their best.)
-          </p>
-        </AnnouncementBox>
-        <br />
-        <LoginPageContent />
       </div>
     );
   }
@@ -1618,36 +1607,19 @@ class App extends Component<{}, AppState> {
     }
 
     return (
-      <div
-        style={{
-          margin: "12px auto 0",
-          padding: "12px",
-          width: "min(90vw, 720px)",
-          backgroundColor: "var(--backgroundDark)",
-          textAlign: "left",
-        }}
-      >
-        <h3 style={{ margin: "0 0 8px 0" }}>Observers</h3>
+      <div className="observer-panel">
+        <h3 className="observer-panel-title">Observers</h3>
         {observers.map((observer) => {
           const seat = this.state.gameState.observerAssignments?.[observer];
           const isOffline =
             this.state.gameState.observerConnected?.[observer] === false;
           return (
-            <div
-              key={observer}
-              style={{
-                display: "flex",
-                justifyContent: "space-between",
-                gap: "12px",
-                padding: "4px 0",
-                borderTop: "1px solid rgba(255,255,255,0.08)",
-              }}
-            >
-              <span>
+            <div key={observer} className="observer-panel-row">
+              <span className="observer-panel-name">
                 {observer}
                 {seat ? ` → ${seat}` : ""}
               </span>
-              <span style={{ opacity: 0.8 }}>
+              <span className="observer-panel-state">
                 {isOffline ? "OFFLINE" : "ONLINE"}
               </span>
             </div>
@@ -1718,46 +1690,37 @@ class App extends Component<{}, AppState> {
   renderLobbyPage() {
     const isManager = this.isLobbyManager(this.state.name);
     return (
-      <div className="App">
+      <div className="App app-shell app-shell-lobby">
         <header className="App-header">SECRET-HITLER.ONLINE</header>
 
         <CustomAlert show={this.state.showAlert}>
           {this.state.alertContent}
         </CustomAlert>
 
-        <div
-          style={{ textAlign: "left", marginLeft: "20px", marginRight: "20px" }}
-        >
-          <div style={{ display: "flex", flexDirection: "row" }}>
-            <h2>LOBBY CODE: </h2>
-            <h2
-              style={{ marginLeft: "5px", color: "var(--textColorHighlight)" }}
-            >
-              {this.state.lobby}
-            </h2>
+        <div className="lobby-shell">
+          <div className="lobby-header-row">
+            <div className="lobby-code-pill">LOBBY CODE</div>
+            <h2 className="lobby-code-value">{this.state.lobby}</h2>
           </div>
 
-          <p style={{ marginBottom: "2px" }}>
-            Copy and share this link to invite other players.
-          </p>
-          <div
-            style={{
-              textAlign: "left",
-              display: "flex",
-              flexDirection: "row",
-              alignItems: "center",
-            }}
-          >
-            <textarea
-              id="linkText"
-              readOnly={true}
-              value={
-                (CLIENT_ORIGIN || SERVER_ADDRESS_HTTP) +
-                "/?lobby=" +
-                this.state.lobby
-              }
-            />
-            <button onClick={this.onClickCopy}>COPY</button>
+          <div className="lobby-share-panel">
+            <p className="lobby-share-copy">
+              Copy and share this link to invite other players.
+            </p>
+            <div className="lobby-share-row">
+              <textarea
+                id="linkText"
+                readOnly={true}
+                value={
+                  (CLIENT_ORIGIN || SERVER_ADDRESS_HTTP) +
+                  "/?lobby=" +
+                  this.state.lobby
+                }
+              />
+              <button className="button-secondary" onClick={this.onClickCopy}>
+                COPY
+              </button>
+            </div>
           </div>
 
           <div id={"lobby-lower-container"}>
@@ -1767,15 +1730,14 @@ class App extends Component<{}, AppState> {
                   Players ({this.state.usernames.length}/{MAX_PLAYERS})
                 </p>
                 <button
+                  className="button-secondary"
                   id={"lobby-change-icon-button"}
                   onClick={this.onClickChangeIcon}
                 >
                   CHANGE ICON
                 </button>
               </div>
-              <div id={"lobby-player-container"}>
-                {this.renderLobbyPlayerList()}
-              </div>
+              <div id={"lobby-player-container"}>{this.renderLobbyPlayerList()}</div>
             </div>
 
             <div id={"lobby-button-container"}>
@@ -1785,17 +1747,23 @@ class App extends Component<{}, AppState> {
                 </p>
               )}
               <button
+                className="button-primary"
                 onClick={this.onClickStartGame}
                 disabled={!this.shouldStartGameBeEnabled()}
               >
                 START GAME
               </button>
               {isManager && (
-                <button onClick={() => this.showResetBansPrompt()}>
+                <button
+                  className="button-secondary"
+                  onClick={() => this.showResetBansPrompt()}
+                >
                   RESET BAN LIST
                 </button>
               )}
-              <button onClick={this.onClickLeaveLobby}>LEAVE LOBBY</button>
+              <button className="button-danger" onClick={this.onClickLeaveLobby}>
+                LEAVE LOBBY
+              </button>
             </div>
             <div id={"lobby-text-container"}>
               <p id={"lobby-about-text"}>
@@ -1809,7 +1777,6 @@ class App extends Component<{}, AppState> {
                   About this project
                 </a>
               </p>
-              <br />
               <p id={"lobby-warning-text"}>
                 You can report bugs on the{" "}
                 <a
@@ -2637,7 +2604,7 @@ class App extends Component<{}, AppState> {
    */
   renderGamePage() {
     return (
-      <div className="App" style={{ textAlign: "center" }}>
+      <div className="App app-shell app-shell-game">
         <header className="App-header">SECRET-HITLER.ONLINE</header>
 
         <CustomAlert
@@ -2655,7 +2622,7 @@ class App extends Component<{}, AppState> {
           message={this.state.eventBarMessage}
         />
 
-        <div style={{ backgroundColor: "var(--backgroundDark)" }}>
+        <div className="game-player-stage">
           <PlayerDisplay
             gameState={this.state.gameState}
             user={this.state.name}
@@ -2697,15 +2664,7 @@ class App extends Component<{}, AppState> {
         )}
 
         {this.isViewerReadOnlySeatOwner() && (
-          <div
-            style={{
-              margin: "12px auto 0",
-              padding: "10px 12px",
-              width: "min(90vw, 720px)",
-              backgroundColor: "var(--backgroundDark)",
-              textAlign: "left",
-            }}
-          >
+          <div className="game-readonly-note">
             An observer is currently controlling your seat. You are in read-only
             mode until a moderator returns control.
           </div>
@@ -2715,55 +2674,44 @@ class App extends Component<{}, AppState> {
 
         <StatusBar>{this.state.statusBarText}</StatusBar>
 
-        <div style={{ display: "inline-block" }}>
-          <div
-            id={"Board Layout"}
-            style={{
-              alignItems: "center",
-              display: "flex",
-              flexDirection: "column",
-              margin: "10px auto",
-            }}
-          >
-            <div
-              style={{
-                display: "flex",
-                flexDirection: "row",
-                alignItems: "center",
-                marginTop: "15px",
-              }}
-            >
+        <div className="game-board-layout">
+          <div id={"Board Layout"} className="game-control-dock">
+            <div className="game-control-dock-stack game-control-dock-stack-draw">
               <Deck cardCount={this.state.drawDeckSize} deckType={"DRAW"} />
+            </div>
 
-              <div style={{ margin: "auto auto" }}>
-                <button
-                  disabled={
-                    this.state.gameState[PARAM_STATE] !==
-                      STATE_POST_LEGISLATIVE ||
-                    this.getViewerSeat() !== this.state.gameState[PARAM_PRESIDENT] ||
-                    !this.canViewerAct()
-                  }
-                  onClick={() => {
-                    this.sendWSCommand({ command: WSCommandType.END_TERM });
-                  }}
-                >
-                  {" "}
-                  END TERM
-                </button>
+            <div className="game-control-dock-center">
+              <button
+                className="game-end-turn-button"
+                disabled={
+                  this.state.gameState[PARAM_STATE] !== STATE_POST_LEGISLATIVE ||
+                  this.getViewerSeat() !== this.state.gameState[PARAM_PRESIDENT] ||
+                  !this.canViewerAct()
+                }
+                onClick={() => {
+                  this.sendWSCommand({ command: WSCommandType.END_TERM });
+                }}
+              >
+                END TERM
+              </button>
 
-                <PlayerPolicyStatus
-                  numFascistPolicies={this.state.fascistPolicies}
-                  numLiberalPolicies={this.state.liberalPolicies}
-                  playerCount={this.state.gameState.playerOrder.length}
-                />
-              </div>
+              <PlayerPolicyStatus
+                className="game-policy-status-card"
+                numFascistPolicies={this.state.fascistPolicies}
+                numLiberalPolicies={this.state.liberalPolicies}
+                playerCount={this.state.gameState.playerOrder.length}
+              />
+            </div>
 
+            <div className="game-control-dock-stack game-control-dock-stack-discard">
               <Deck
                 cardCount={this.state.discardDeckSize}
                 deckType={"DISCARD"}
               />
             </div>
+          </div>
 
+          <div className="game-board-frame">
             <Board
               numPlayers={this.state.gameState.playerOrder.length}
               numFascistPolicies={this.state.fascistPolicies}

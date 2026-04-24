@@ -269,69 +269,71 @@ class Player extends Component {
         ) : null;
 
         return (
-            <div id="player-container"
-                className={this.getHighlight() + this.getClassName() + this.getButtonClass()}
-                 onClick = {this.props.onClick}
-                 disabled = {this.props.disabled}
-            >
-                <img id="player-image"
-                     src={PlayerBase}
-                     alt={this.getAltText()}
-                     className={this.getClassName()}
-                />
+            <div className={"player-card-shell"}>
+                <div id="player-container"
+                    className={this.getHighlight() + this.getClassName() + this.getButtonClass()}
+                     onClick = {this.props.onClick}
+                     disabled = {this.props.disabled}
+                >
+                    <img id="player-image"
+                         src={PlayerBase}
+                         alt={this.getAltText()}
+                         className={this.getClassName()}
+                    />
 
-                <img id={"player-icon"}
-                     alt={portraitsAltText[this.props.icon]}
-                     src={portraits[this.props.icon]}
-                     className={this.getClassName()}
-                />
+                    <img id={"player-icon"}
+                         alt={portraitsAltText[this.props.icon]}
+                         src={portraits[this.props.icon]}
+                         className={this.getClassName()}
+                    />
 
-                {statusBadges.length > 0 && (
-                    <div className={"player-status-badges"}>
-                        {statusBadges}
-                    </div>
-                )}
+                    {statusBadges.length > 0 && (
+                        <div className={"player-status-badges"}>
+                            {statusBadges}
+                        </div>
+                    )}
+
+                    {discussionReactionBadge}
+
+                    <img id="player-busy-icon"
+                         src={IconBusy}
+                         className={this.state.initialState ? "player-icon-default" :(this.props.isBusy ? "player-icon-show" : "player-icon-hide")}
+                         alt=""
+                    />
+
+                    <img
+                        id={"player-icon-vote"}
+                        className={this.state.initialVoteState ? "player-icon-default" : (this.props.showVote ? "player-icon-show" : "player-icon-hide")}
+                        src={this.props.vote ? YesVote : NoVote}
+                        alt={""}
+                    />
+
+                    {identity_components}
+
+                    <Textfit id={"player-name"}
+                             className={this.getClassName() + " force-update"}
+                             mode="multi"
+                             forceSingleModeWidth={false}
+                             alignVertWithFlexbox={true}
+                             throttle={1000}
+                    >
+                        {this.props.name}
+                    </Textfit>
+
+                    <p  id="player-disabled-label"
+                        hidden={!this.props.disabled}
+                    >
+                        {this.props.disabledText}
+                    </p>
+
+                 </div>
 
                 {actionButtons.length > 0 && (
                     <div className={"player-corner-actions"}>
                         {actionButtons}
                     </div>
                 )}
-
-                {discussionReactionBadge}
-
-                <img id="player-busy-icon"
-                     src={IconBusy}
-                     className={this.state.initialState ? "player-icon-default" :(this.props.isBusy ? "player-icon-show" : "player-icon-hide")}
-                     alt=""
-                />
-
-                <img
-                    id={"player-icon-vote"}
-                    className={this.state.initialVoteState ? "player-icon-default" : (this.props.showVote ? "player-icon-show" : "player-icon-hide")}
-                    src={this.props.vote ? YesVote : NoVote}
-                    alt={""}
-                />
-
-                {identity_components}
-
-                <Textfit id={"player-name"}
-                         className={this.getClassName() + " force-update"}
-                         mode="multi"
-                         forceSingleModeWidth={false}
-                         alignVertWithFlexbox={true}
-                         throttle={1000}
-                >
-                    {this.props.name}
-                </Textfit>
-
-                <p  id="player-disabled-label"
-                    hidden={!this.props.disabled}
-                >
-                    {this.props.disabledText}
-                </p>
-
-             </div>
+            </div>
         );
     }
 

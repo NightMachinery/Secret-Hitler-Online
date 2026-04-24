@@ -3,17 +3,23 @@
 #board-container {
     display: flex;
     flex-direction: column;
+    align-items: center;
+    gap: 18px;
+    width: 100%;
 }
 
 #board-group {
-    margin:4px 10px;
-    position:relative;
+    margin: 0;
+    position: relative;
+    width: min(100%, 1040px);
 }
 
 #board {
-    min-width: 40vmin;
-    width: 90vmin;
-    max-width: 90vw;
+    display: block;
+    width: min(100%, 1040px);
+    max-width: 100%;
+    margin: 0 auto;
+    filter: drop-shadow(0 18px 30px rgba(0, 0, 0, 0.16));
 }
 
 
@@ -63,4 +69,10 @@
 #election-tracker {
     transition: 1.0s left;
     transition-timing-function: ease-in-out;
+}
+
+@media (max-width: 700px) {
+    #board-container {
+        gap: 14px;
+    }
 }

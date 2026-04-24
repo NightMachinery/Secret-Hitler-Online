@@ -1,9 +1,24 @@
 @import './variables.css';
 
 #lobby-lower-container {
-    text-align: left;
-    display: flex;
-    flex-direction: column;
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) minmax(280px, 340px);
+    gap: 22px;
+    align-items: start;
+    margin-top: 20px;
+}
+
+#lobby-player-area-container,
+#lobby-button-container,
+#lobby-text-container {
+    background:
+        linear-gradient(180deg, rgba(34, 30, 25, 0.96), rgba(19, 18, 16, 0.98));
+    border: 1px solid rgba(199, 163, 110, 0.16);
+    border-radius: 28px;
+    padding: 22px;
+    box-shadow:
+        0 18px 40px rgba(0, 0, 0, 0.24),
+        inset 0 1px 0 rgba(255, 238, 211, 0.08);
 }
 
 #lobby-player-area-container {
@@ -14,8 +29,11 @@
     text-align: left;
     display: flex;
     flex-direction: row;
-    width: 90vw;
-    max-width: 655px;
+    width: 100%;
+    max-width: none;
+    align-items: center;
+    gap: 12px;
+    margin-bottom: 8px;
 }
 
 #lobby-change-icon-button {
@@ -24,15 +42,16 @@
 
 #lobby-player-count-text {
     align-self: center;
-    font-size: calc(12px + 2vmin);
+    font-size: calc(10px + 1.1vmin);
+    margin: 0;
 }
 
 #lobby-player-container {
     display: flex;
     flex-wrap: wrap;
     justify-content: center;
-    gap: 6px 2px;
-    padding: 10px 0;
+    gap: 12px 10px;
+    padding: 12px 0 0;
 }
 
 #lobby-player-placeholder {
@@ -43,39 +62,40 @@
     display: block;
     margin: 5px;
     border-radius: 16%/10%;
-    -webkit-user-select: none;
-    -moz-user-select: none;
-    -ms-user-select: none;
     user-select: none;
+    filter: drop-shadow(0 8px 18px rgba(0, 0, 0, 0.22));
 }
 
 #lobby-button-container {
     display: inline-flex;
     flex-direction: column;
-    gap: 8px;
-    max-width: 700px;
+    gap: 12px;
+    max-width: none;
+    position: sticky;
+    top: 18px;
 }
 
 #lobby-vip-text {
-    margin-bottom: 0;
-    text-align: center;
+    margin: 0;
+    text-align: left;
+    color: rgba(233, 222, 208, 0.72);
 }
 
 #lobby-text-container {
-    display: inline-block;
-    margin-top: 10px;
-    max-width: 700px;
+    grid-column: 1 / -1;
+    margin-top: -4px;
 }
 
 #lobby-warning-text {
-    margin: 10px 0;
-    font-weight: 300;
-    text-align: center;
+    margin: 0;
+    font-weight: 400;
+    text-align: left;
 }
 
 #lobby-about-text {
-    margin: 10px 10px;
-    font-weight: 300;
+    margin: 0 0 8px;
+    font-weight: 400;
+    text-align: left;
 }
 
 .prompt-button-row,
@@ -88,4 +108,37 @@
 
 .prompt-button-grid {
     justify-content: flex-start;
+}
+
+@media (max-width: 960px) {
+    #lobby-lower-container {
+        grid-template-columns: 1fr;
+    }
+
+    #lobby-button-container {
+        position: static;
+    }
+}
+
+@media (max-width: 700px) {
+    #lobby-player-area-container,
+    #lobby-button-container,
+    #lobby-text-container {
+        border-radius: 22px;
+        padding: 18px;
+    }
+
+    #lobby-player-text-choose-container {
+        flex-wrap: wrap;
+        align-items: stretch;
+    }
+
+    #lobby-change-icon-button {
+        margin-left: 0;
+        width: 100%;
+    }
+
+    #lobby-player-container {
+        gap: 8px 4px;
+    }
 }

@@ -17,13 +17,13 @@ class MaxLengthTextField extends Component {
     /**
      * Called when the text field changes.
      * @param event the change event.
-     * @effects Calls {@code this.props.onChange} with the modified text of the event, where any whitespace (' ' or '\t') from
+     * @effects Calls {@code this.props.onChange} with the modified text of the event, where any whitespace (' ' or '	') from
      *          the front of the text is removed and the text length is trimmed to be {@literal <=} {@code this.props.maxLength}
      */
     handleChange = (event) => {
         let text = event.target.value;
         text = this.collapseSpaces(text);
-        while(text.charAt(0) === ' ' || text.charAt(0) === '\t') {
+        while(text.charAt(0) === ' ' || text.charAt(0) === '	') {
             text = text.substr(1);
         }
         if (text.length > this.props.maxLength && this.props.maxLength !== -1) {
@@ -37,31 +37,31 @@ class MaxLengthTextField extends Component {
     };
 
     /**
-     * Collapses whitespace characters (' ' and '\t') to single spaces.
+     * Collapses whitespace characters (' ' and '	') to single spaces.
      * @param text
-     * @return the text, but any repeating sequences of '\t' or ' ' are replaced with a single ' ' character.
+     * @return the text, but any repeating sequences of '	' or ' ' are replaced with a single ' ' character.
      */
     collapseSpaces(text) {
         return text.replace(/\s\s+/g, ' ');
     }
 
     render() {
+        const className = this.props.className ? ` ${this.props.className}` : "";
         return (
-            <div style={{flexDirection:"column", margin:"10px"}}>
-                <label>
-                    <div style={{display:"flex", width:"calc(10px + 40vmin)", flexDirection:"row", marginLeft:"auto", marginRight:"auto"}}>
-                        <p style={{margin:"2px"}}>{this.props.label}</p>
-                        <p style={{margin:"2px", marginLeft:"auto"}}>{this.charactersLeft()}</p>
+            <div className={`max-length-field${className}`}>
+                <label className="max-length-field-label">
+                    <div className="max-length-field-meta">
+                        <p className="max-length-field-title">{this.props.label}</p>
+                        <p className="max-length-field-count">{this.charactersLeft()}</p>
                     </div>
-                    <input  className="MaxLengthTextField"
-                            value={this.props.value}
-                            onChange={this.handleChange}
-                            placeholder={this.props.placeholder}
-                            autoComplete={"off"}
-                    >
-                    </input>
+                    <input
+                        className="MaxLengthTextField max-length-field-input"
+                        value={this.props.value}
+                        onChange={this.handleChange}
+                        placeholder={this.props.placeholder}
+                        autoComplete={"off"}
+                    />
                 </label>
-
             </div>
         );
     }
@@ -73,7 +73,8 @@ MaxLengthTextField.defaultProps = {
     placeholder: "",
     textAreaLabel: "Prompt Here",
     showCharCount: true, /*Shows the remaining characters left (before hitting the maxLength).*/
-    forceUpperCase: false /*Set to true to make all character input uppercase.*/
+    forceUpperCase: false, /*Set to true to make all character input uppercase.*/
+    className: "",
 };
 
 export default MaxLengthTextField;

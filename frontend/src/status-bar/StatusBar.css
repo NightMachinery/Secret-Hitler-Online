@@ -1,14 +1,31 @@
 @import '../variables.css';
 
 #status-bar {
-    background-color: var(--alertFill);
-    min-height: 8vmin;
+    width: min(1120px, calc(100vw - 32px));
+    margin: 14px auto 0;
+    padding: 0 8px;
+    min-height: 0;
+    background: transparent;
+    display: flex;
+    justify-content: center;
+    box-sizing: border-box;
 }
 
 #status-bar-text {
     margin: 0;
-    padding: 2vmin 5px;
-    color: var(--textColorWhite);
+    width: min(100%, 620px);
+    padding: 0.9rem 1.15rem;
+    border-radius: 999px;
+    color: rgba(246, 235, 219, 0.96);
+    background:
+        radial-gradient(circle at top, rgba(255, 255, 255, 0.08), transparent 46%),
+        linear-gradient(180deg, rgba(27, 23, 19, 0.98), rgba(17, 14, 12, 0.98));
+    border: 1px solid rgba(212, 177, 123, 0.16);
+    box-shadow:
+        0 14px 26px rgba(0, 0, 0, 0.24),
+        inset 0 1px 0 rgba(255, 242, 222, 0.06);
+    text-align: center;
+    letter-spacing: 0.02em;
     -webkit-animation: show 0.25s;
     animation: show 0.25s;
 }
@@ -37,4 +54,17 @@
 @keyframes hide {
     0% {opacity: 1;}
     100% {opacity: 0;}
+}
+
+@media (max-width: 700px) {
+    #status-bar {
+        width: calc(100vw - 20px);
+        margin-top: 12px;
+        padding: 0;
+    }
+
+    #status-bar-text {
+        width: 100%;
+        padding: 0.82rem 1rem;
+    }
 }

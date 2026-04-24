@@ -1,23 +1,28 @@
 @import '../variables.css';
 
 #deck-container {
-    width: 14vmin;
+    width: clamp(136px, 12vw, 220px);
     height: fit-content;
+    max-width: 100%;
 }
 
 #deck-base {
-    width: 14vmin;
+    width: 100%;
     height: auto;
+    filter: drop-shadow(0 12px 24px rgba(0, 0, 0, 0.28));
 }
 
 #deck-card-count {
-    font-size: 3.5vmin;
+    font-size: clamp(2.2rem, 2.8vw, 3.8rem);
     position: absolute;
-    color: var(--textColorWhite);
+    color: rgba(250, 244, 235, 0.96);
     left: 30%;
     top: 58%;
     text-align: center;
     width: 40%;
+    font-family: var(--headerFont);
+    line-height: 1;
+    text-shadow: 0 4px 10px rgba(0, 0, 0, 0.32);
 }
 
 #deck-policy {
@@ -36,4 +41,10 @@
     transition: 0.2s 0.3s opacity, 0.5s left ease-in;
     opacity: 0;
     left: -30%;
+}
+
+@media (max-width: 700px) {
+    #deck-container {
+        width: clamp(150px, 44vw, 220px);
+    }
 }

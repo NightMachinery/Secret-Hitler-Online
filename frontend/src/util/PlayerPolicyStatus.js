@@ -20,27 +20,41 @@ class PlayerPolicyStatus extends  Component {
         liberalPlayers = props.playerCount - totalFascists;
 
         return (
-            <div id={"pps-container"}>
-                <p id={"pps-text"}>
-                    Players:
-                </p>
-                <div id={"pps-icon-container"}>
-                    <img id="pps-icon" src={IconLiberal} alt={"Liberal"}/>
-                    <p id={"pps-icon-number"} className={"highlight-blue"}>{liberalPlayers}</p>
-                    <img id="pps-icon" src={IconFascist} alt={"Fascist"}/>
-                    <p id={"pps-icon-number"} className={"highlight"}>{fascistPlayers}</p>
-                    <img id="pps-icon" src={IconHitler} alt={"Hitler"}/>
-                    <p id={"pps-icon-number"}  className={"highlight"}>{NUM_HITLER_PLAYERS}</p>
+            <div id={"pps-container"} className={this.props.className}>
+                <div className={"pps-section"}>
+                    <p className={"pps-text"}>
+                        Players
+                    </p>
+                    <div className={"pps-icon-container"}>
+                        <div className={"pps-stat-pill"}>
+                            <img className="pps-icon" src={IconLiberal} alt={"Liberal"}/>
+                            <p className={"pps-icon-number highlight-blue"}>{liberalPlayers}</p>
+                        </div>
+                        <div className={"pps-stat-pill"}>
+                            <img className="pps-icon" src={IconFascist} alt={"Fascist"}/>
+                            <p className={"pps-icon-number highlight"}>{fascistPlayers}</p>
+                        </div>
+                        <div className={"pps-stat-pill"}>
+                            <img className="pps-icon" src={IconHitler} alt={"Hitler"}/>
+                            <p className={"pps-icon-number highlight"}>{NUM_HITLER_PLAYERS}</p>
+                        </div>
+                    </div>
                 </div>
 
-                <p id={"pps-text"}>
-                    Unenacted Policies:
-                </p>
-                <div id={"pps-icon-container"}>
-                    <img id="pps-icon" className={"highlight-blue"} src={IconLiberal} alt={"Liberal"}/>
-                    <p id={"pps-icon-number"} className={"highlight-blue"}>{MAX_LIBERAL_POLICIES - props.numLiberalPolicies}</p>
-                    <img id="pps-icon" className={"highlight"} src={IconFascist} alt={"Fascist"}/>
-                    <p id={"pps-icon-number"} className={"highlight"}>{MAX_FASCIST_POLICIES - props.numFascistPolicies}</p>
+                <div className={"pps-section"}>
+                    <p className={"pps-text"}>
+                        Unenacted Policies
+                    </p>
+                    <div className={"pps-icon-container"}>
+                        <div className={"pps-stat-pill"}>
+                            <img className="pps-icon" src={IconLiberal} alt={"Liberal"}/>
+                            <p className={"pps-icon-number highlight-blue"}>{MAX_LIBERAL_POLICIES - props.numLiberalPolicies}</p>
+                        </div>
+                        <div className={"pps-stat-pill"}>
+                            <img className="pps-icon" src={IconFascist} alt={"Fascist"}/>
+                            <p className={"pps-icon-number highlight"}>{MAX_FASCIST_POLICIES - props.numFascistPolicies}</p>
+                        </div>
+                    </div>
                 </div>
             </div>
         )
@@ -48,9 +62,14 @@ class PlayerPolicyStatus extends  Component {
 }
 
 PlayerPolicyStatus.propTypes = {
+    className: PropTypes.string,
     numFascistPolicies: PropTypes.number.isRequired,
     numLiberalPolicies: PropTypes.number.isRequired,
     playerCount: PropTypes.number.isRequired,
+};
+
+PlayerPolicyStatus.defaultProps = {
+    className: "",
 };
 
 export default PlayerPolicyStatus;

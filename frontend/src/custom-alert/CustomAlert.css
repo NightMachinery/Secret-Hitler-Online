@@ -22,34 +22,53 @@
     margin: 0;
     z-index: 50;
     box-sizing: border-box;
-    background-color: var(--alertFill);
-    opacity:var(--alertOverlayOpacity);
+    background:
+        radial-gradient(circle at top, rgba(195, 118, 52, 0.18), transparent 30%),
+        rgba(9, 8, 7, 0.9);
+    opacity: var(--alertOverlayOpacity);
+    backdrop-filter: blur(5px);
 }
 
 #alert-box {
     position: relative;
     z-index: 60;
     opacity: 1;
-    width: min(92vw, 720px);
-    max-width: min(92vw, 720px);
+    width: min(92vw, 760px);
+    max-width: min(92vw, 760px);
     min-width: min(80vmin, 92vw);
-    min-height: min(60vmin, calc(100vh - 32px));
+    min-height: min(52vmin, calc(100vh - 32px));
     max-height: calc(100vh - 32px);
-    padding: 20px 30px;
-    background-color: var(--alertFill);
+    padding: 24px 28px;
+    background:
+        radial-gradient(circle at top, rgba(255, 223, 171, 0.08), transparent 42%),
+        linear-gradient(180deg, rgba(38, 31, 25, 0.98), rgba(17, 15, 13, 0.99));
+    border: 1px solid rgba(220, 182, 124, 0.18);
+    border-radius: 28px;
     text-align: center;
     margin: auto;
     overflow-y: auto;
     overflow-x: hidden;
     box-sizing: border-box;
+    box-shadow:
+        0 30px 70px rgba(0, 0, 0, 0.46),
+        inset 0 1px 0 rgba(255, 238, 211, 0.08);
 }
 
 #alert-box-content {
-    padding-top: 12px;
+    padding-top: 8px;
 }
 
 .left-align {
     text-align: left;
+}
+
+#prompt-label {
+    margin-bottom: 10px;
+}
+
+#prompt-header {
+    color: rgba(234, 220, 203, 0.84);
+    font-weight: 500;
 }
 
 .alert-window-controls {
@@ -57,7 +76,7 @@
     top: 0;
     display: flex;
     justify-content: flex-end;
-    margin: -8px -18px 0 0;
+    margin: -8px -10px 0 0;
     z-index: 1;
 }
 
@@ -68,24 +87,34 @@
     padding: 0 0.55rem 0.35rem;
     line-height: 1;
     font-size: 1.4rem;
+    border-radius: 12px;
+    background: rgba(92, 72, 50, 0.8);
 }
 
 #alert-restore-container {
     position: fixed;
-    right: 16px;
-    bottom: 16px;
+    right: 24px;
+    bottom: 24px;
     z-index: 76;
+    max-width: calc(100vw - 32px);
 }
 
 #alert-restore-button {
     margin: 0;
-    font-size: calc(8px + 2.2vmin);
-    padding: 10px 18px;
+    width: auto;
+    max-width: min(280px, calc(100vw - 32px));
+    font-size: clamp(0.8rem, 1.1vw, 0.92rem);
+    padding: 0.8rem 1.05rem;
+    letter-spacing: 0.04em;
+    background:
+        radial-gradient(circle at top, rgba(255, 255, 255, 0.12), transparent 46%),
+        linear-gradient(180deg, rgba(226, 95, 46, 0.96), rgba(181, 70, 29, 0.98));
+    box-shadow:
+        0 14px 28px rgba(0, 0, 0, 0.3),
+        inset 0 1px 0 rgba(255, 241, 219, 0.16);
 }
 
-/* DEFAULT APPEAR */
-
-.appear-custom-alert{
+.appear-custom-alert {
     transition-timing-function: ease-in-out;
     -webkit-animation: appear-custom-alert 0.5s;
     animation: appear-custom-alert 0.5s;
@@ -115,43 +144,47 @@
         min-height: 0;
         max-height: calc(100vh - 24px);
         padding: 18px 16px;
+        border-radius: 22px;
     }
 
     .alert-window-controls {
-        margin-right: -6px;
+        margin-right: -4px;
     }
 
     #alert-restore-container {
         right: 12px;
         bottom: 12px;
+        max-width: calc(100vw - 24px);
+    }
+
+    #alert-restore-button {
+        max-width: calc(100vw - 24px);
     }
 }
 
 @-webkit-keyframes appear-custom-alert {
-    0% {opacity: 0;}
-    40% {opacity: 0;}
-    100% {opacity: 1;}
+    0% {opacity: 0; transform: translateY(12px);}
+    40% {opacity: 0; transform: translateY(8px);}
+    100% {opacity: 1; transform: translateY(0);}
 }
 
 @keyframes appear-custom-alert {
-    0% {opacity: 0;}
-    40% {opacity: 0;}
-    100% {opacity: 1;}
+    0% {opacity: 0; transform: translateY(12px);}
+    40% {opacity: 0; transform: translateY(8px);}
+    100% {opacity: 1; transform: translateY(0);}
 }
 
 @-webkit-keyframes disappear-custom-alert {
-    0% {opacity: 1;}
-    50% {opacity: 0;}
-    100%{opacity: 0;}
+    0% {opacity: 1; transform: translateY(0);}
+    50% {opacity: 0; transform: translateY(8px);}
+    100% {opacity: 0; transform: translateY(8px);}
 }
 
 @keyframes disappear-custom-alert {
-    0% {opacity: 1;}
-    50% {opacity: 0;}
-    100%{opacity: 0;}
+    0% {opacity: 1; transform: translateY(0);}
+    50% {opacity: 0; transform: translateY(8px);}
+    100% {opacity: 0; transform: translateY(8px);}
 }
-
-/* BACKGROUND APPEAR/DISAPPEAR */
 
 #alert-background.appear-custom-alert {
     -webkit-animation: appear-background 0.5s;
