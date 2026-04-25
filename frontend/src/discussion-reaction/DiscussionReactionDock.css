@@ -1,14 +1,14 @@
 @import "../variables.css";
 
 #discussion-reaction-dock-wrap {
-  position: fixed;
-  right: 16px;
-  bottom: 16px;
-  z-index: 74;
+  position: relative;
+  z-index: 20;
   display: flex;
   flex-direction: column;
-  align-items: flex-end;
+  align-items: center;
   gap: 10px;
+  margin: 12px auto;
+  width: min(94vw, 520px);
 }
 
 #discussion-reaction-dock-frame {
@@ -348,10 +348,16 @@
 }
 
 @media (max-width: 700px) {
+  #discussion-reaction-dock-frame {
+    min-width: 0;
+    width: 100%;
+  }
+
   #discussion-reaction-dock-wrap {
-    right: 12px;
-    left: 12px;
-    bottom: 12px;
+    width: min(96vw, 420px);
+  }
+
+  #discussion-reaction-dock-wrap {
     align-items: stretch;
   }
 

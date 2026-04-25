@@ -72,15 +72,16 @@
 
 #alert-restore-container {
     position: fixed;
-    right: 16px;
-    bottom: 16px;
+    right: 14px;
+    top: 82px;
     z-index: 76;
 }
 
 #alert-restore-button {
     margin: 0;
-    font-size: calc(8px + 2.2vmin);
-    padding: 10px 18px;
+    font-size: calc(7px + 1.2vmin);
+    padding: 8px 12px;
+    border-radius: 8px;
 }
 
 /* DEFAULT APPEAR */
@@ -123,6 +124,7 @@
 
     #alert-restore-container {
         right: 12px;
+        top: auto;
         bottom: 12px;
     }
 }

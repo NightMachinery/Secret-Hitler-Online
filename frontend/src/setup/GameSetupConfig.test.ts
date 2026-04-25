@@ -1,4 +1,5 @@
 import {
+  applySetupPresetAutomation,
   createAnarchistSetupConfig,
   createStandardSetupConfig,
   parseSetupConfigJson5,
@@ -111,5 +112,72 @@ describe("GameSetupConfig", () => {
 
     expect(parsed.error).toBeUndefined();
     expect((parsed.config as any).anarchistReplacementCount).toBeUndefined();
+  });
+
+  test("preset automation defaults all groups on and applies the selected preset", () => {
+    const manual = {
+      ...createStandardSetupConfig(7),
+      preset: "MANUAL" as const,
+      liberalRoles: 2,
+      anarchistRoles: 2,
+    };
+
+    const next = applySetupPresetAutomation(manual, {
+      preset: "ANARCHIST",
+      autoRoles: true,
+      autoPolicies: true,
+      autoPowers: true,
+    });
+
+    expect(next.preset).toBe("ANARCHIST");
+    expect(next.liberalRoles).toBe(3);
+    expect(next.anarchistRoles).toBe(1);
+    expect(next.anarchistPolicies).toBe(3);
+  });
+
+  test("preset automation preserves manual role overrides when auto roles is off", () => {
+    const manual = {
+      ...createStandardSetupConfig(7),
+      preset: "MANUAL" as const,
+      liberalRoles: 2,
+      fascistRoles: 2,
+      hitlerRoles: 1,
+      anarchistRoles: 2,
+    };
+
+    const next = applySetupPresetAutomation(manual, {
+      preset: "ANARCHIST",
+      autoRoles: false,
+      autoPolicies: true,
+      autoPowers: true,
+    });
+
+    expect(next.preset).toBe("MANUAL");
+    expect(next.liberalRoles).toBe(2);
+    expect(next.anarchistRoles).toBe(2);
+    expect(next.anarchistPolicies).toBe(3);
+  });
+
+  test("preset automation keeps manual power settings valid when auto roles adds Hitler", () => {
+    const manualNoHitler = {
+      ...createStandardSetupConfig(7),
+      preset: "MANUAL" as const,
+      liberalRoles: 5,
+      fascistRoles: 2,
+      hitlerRoles: 0,
+      anarchistRoles: 0,
+      requiredExecutedHitlersForLiberalVictory: 0,
+    };
+
+    const next = applySetupPresetAutomation(manualNoHitler, {
+      preset: "STANDARD",
+      autoRoles: true,
+      autoPolicies: false,
+      autoPowers: false,
+    });
+
+    expect(next.hitlerRoles).toBe(1);
+    expect(next.requiredExecutedHitlersForLiberalVictory).toBe(1);
+    expect(validateSetupConfig(next).valid).toBe(true);
   });
 });

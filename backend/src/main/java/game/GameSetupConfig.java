@@ -269,6 +269,64 @@ public class GameSetupConfig implements Serializable {
         return preset == Preset.ANARCHIST;
     }
 
+    public Preset getPreset() { return preset; }
+
+    public GameSetupConfig withPresetAutomation(Preset selectedPreset, boolean autoRoles, boolean autoPolicies,
+            boolean autoPowers) {
+        Preset effectivePreset = selectedPreset == Preset.ANARCHIST ? Preset.ANARCHIST : Preset.STANDARD;
+        GameSetupConfig presetConfig = effectivePreset == Preset.ANARCHIST
+                ? anarchist(playerCount)
+                : standard(playerCount);
+        boolean allGroupsAutomated = autoRoles && autoPolicies && autoPowers;
+
+        Builder builder = toBuilder().preset(allGroupsAutomated ? effectivePreset : Preset.MANUAL);
+        if (autoRoles) {
+            builder.roles(presetConfig.liberalRoleCount, presetConfig.fascistRoleCount, presetConfig.hitlerRoleCount,
+                    presetConfig.anarchistRoleCount);
+        }
+        if (autoPolicies) {
+            builder.policies(presetConfig.liberalPolicyCount, presetConfig.fascistPolicyCount,
+                    presetConfig.anarchistPolicyCount);
+            builder.liberalPoliciesToWin(presetConfig.liberalPoliciesToWin);
+            builder.fascistPoliciesToWin(presetConfig.fascistPoliciesToWin);
+        }
+        if (autoPowers) {
+            builder.hitlerElectionFascistThreshold(presetConfig.hitlerElectionFascistThreshold);
+            builder.requiredExecutedHitlersForLiberalVictory(Math.min(
+                    presetConfig.requiredExecutedHitlersForLiberalVictory,
+                    builder.hitlerRoleCount));
+            builder.anarchistsKnowEachOther(presetConfig.anarchistsKnowEachOther);
+            builder.anarchistInvestigationsRevealAnarchist(presetConfig.anarchistInvestigationsRevealAnarchist);
+            builder.anarchistPowersEnabled(presetConfig.anarchistPowersEnabled);
+            builder.anarchistTrackerResets(presetConfig.anarchistTrackerResets);
+            builder.clearFascistPowerSchedule();
+            for (Map.Entry<Integer, PresidentialPower> entry : presetConfig.fascistPowerSchedule.entrySet()) {
+                if (entry.getKey() <= builder.fascistPoliciesToWin) {
+                    builder.powerAt(entry.getKey(), entry.getValue());
+                }
+            }
+        }
+        normalizeBuilderForValidation(builder);
+        return builder.build();
+    }
+
+    private static void normalizeBuilderForValidation(Builder builder) {
+        builder.hitlerElectionFascistThreshold = Math.min(
+                Math.max(0, builder.hitlerElectionFascistThreshold),
+                builder.fascistPoliciesToWin);
+
+        if (builder.hitlerRoleCount == 0) {
+            builder.requiredExecutedHitlersForLiberalVictory = 0;
+        } else if (builder.requiredExecutedHitlersForLiberalVictory <= 0) {
+            builder.requiredExecutedHitlersForLiberalVictory = 1;
+        } else if (builder.requiredExecutedHitlersForLiberalVictory > builder.hitlerRoleCount) {
+            builder.requiredExecutedHitlersForLiberalVictory = builder.hitlerRoleCount;
+        }
+
+        builder.fascistPowerSchedule.entrySet().removeIf(entry ->
+                entry.getKey() == null || entry.getKey() < 1 || entry.getKey() > builder.fascistPoliciesToWin);
+    }
+
     public boolean isStandardEquivalent(int players) {
         GameSetupConfig standard = standard(players);
         return playerCount == players

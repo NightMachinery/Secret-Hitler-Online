@@ -108,11 +108,15 @@ import {
 } from "./types";
 import { isVictoryState } from "./utils";
 import {
+  applySetupPresetAutomation,
   createAnarchistSetupConfig,
   createStandardSetupConfig,
+  DEFAULT_SETUP_AUTOMATION,
   GameSetupConfig,
   normalizeSetupConfig,
+  normalizeSetupAutomation,
   parseSetupConfigJson5,
+  SetupAutomationConfig,
   validateSetupConfig,
 } from "./setup/GameSetupConfig";
 
@@ -231,6 +235,8 @@ type AppState = {
   lobbyModerators: string[];
   lobbyConnected: Record<string, boolean>;
   lobbySetupConfig: GameSetupConfig;
+  lobbySetupAutomation: SetupAutomationConfig;
+  lobbyHistoryConfig: HistoryConfig;
   lobbySetupExpanded: boolean;
   lobbySetupImportText: string;
   lobbySetupError: string;
@@ -275,6 +281,8 @@ const defaultAppState: AppState = {
   lobbyModerators: [],
   lobbyConnected: {},
   lobbySetupConfig: createStandardSetupConfig(5),
+  lobbySetupAutomation: DEFAULT_SETUP_AUTOMATION,
+  lobbyHistoryConfig: DEFAULT_HISTORY_CONFIG,
   lobbySetupExpanded: true,
   lobbySetupImportText: "",
   lobbySetupError: "",
@@ -393,23 +401,8 @@ class App extends Component<{}, AppState> {
    * Attempts to request the server to create a new lobby and returns the response.
    * @return {Promise<Response>}
    */
-  async tryCreateLobby(historyConfig: HistoryConfig) {
-    const params = new URLSearchParams();
-    params.set("history-show", historyConfig.showHistory ? "true" : "false");
-    params.set(
-      "history-show-presidential-actions",
-      historyConfig.showPublicActions ? "true" : "false"
-    );
-    params.set(
-      "history-show-vote-breakdown",
-      historyConfig.showVoteBreakdown ? "true" : "false"
-    );
-    params.set(
-      "history-show-policy-claims",
-      historyConfig.showPolicyClaims ? "true" : "false"
-    );
-    params.set("history-rounds-to-show", historyConfig.roundsToShow);
-    return fetch(SERVER_ADDRESS_HTTP + NEW_LOBBY + "?" + params.toString());
+  async tryCreateLobby() {
+    return fetch(SERVER_ADDRESS_HTTP + NEW_LOBBY);
   }
 
   /**
@@ -626,6 +619,19 @@ class App extends Component<{}, AppState> {
         } else {
           message.setupConfig = normalizeSetupConfig(message.setupConfig);
         }
+        if (!message.historyConfig || typeof message.historyConfig !== "object") {
+          message.historyConfig = { ...DEFAULT_HISTORY_CONFIG };
+        } else {
+          message.historyConfig = {
+            ...DEFAULT_HISTORY_CONFIG,
+            ...message.historyConfig,
+          };
+        }
+        message.setupAutomation = normalizeSetupAutomation(
+          message.setupAutomation || {
+            preset: message.setupConfig.preset === "ANARCHIST" ? "ANARCHIST" : "STANDARD",
+          }
+        );
         this.setState({
           usernames: message[PARAM_USERNAMES],
           icons: message[PARAM_ICON],
@@ -633,6 +639,8 @@ class App extends Component<{}, AppState> {
           lobbyModerators: message.moderators,
           lobbyConnected: message.connected,
           lobbySetupConfig: message.setupConfig,
+          lobbySetupAutomation: message.setupAutomation,
+          lobbyHistoryConfig: message.historyConfig,
           lobbySetupImportText: JSON.stringify(message.setupConfig, null, 2),
           lobbySetupError: "",
           page: PAGE.LOBBY,
@@ -733,6 +741,11 @@ class App extends Component<{}, AppState> {
         } else {
           message.setupConfig = normalizeSetupConfig(message.setupConfig);
         }
+        message.setupAutomation = normalizeSetupAutomation(
+          message.setupAutomation || {
+            preset: message.setupConfig.preset === "ANARCHIST" ? "ANARCHIST" : "STANDARD",
+          }
+        );
         if (typeof message.anarchistPoliciesResolved !== "number") {
           message.anarchistPoliciesResolved = 0;
         }
@@ -948,13 +961,7 @@ class App extends Component<{}, AppState> {
    */
   onClickCreateLobby = () => {
     this.setState({ createLobbyError: "Connecting..." });
-    this.tryCreateLobby({
-      showHistory: this.state.createLobbyShowHistory,
-      showPublicActions: this.state.createLobbyShowPublicActions,
-      showVoteBreakdown: this.state.createLobbyShowVoteBreakdown,
-      showPolicyClaims: this.state.createLobbyShowPolicyClaims,
-      roundsToShow: this.state.createLobbyRoundsToShow,
-    })
+    this.tryCreateLobby()
       .then((response) => {
         if (response.ok) {
           response.text().then((lobbyCode) => {
@@ -1034,96 +1041,6 @@ class App extends Component<{}, AppState> {
             value={this.state.createLobbyName}
             maxLength={12}
           />
-          <div
-            style={{
-              margin: "10px auto",
-              textAlign: "left",
-              width: "min(90vw, 520px)",
-            }}
-          >
-            <p style={{ margin: "6px 0", fontSize: "calc(8px + 1vmin)" }}>
-              History settings (locked after lobby creation):
-            </p>
-            <label
-              style={{ display: "block", margin: "4px 0", cursor: "pointer" }}
-            >
-              <input
-                type="checkbox"
-                checked={this.state.createLobbyShowHistory}
-                onChange={this.updateCreateLobbyShowHistory}
-                style={{
-                  width: "16px",
-                  minWidth: "16px",
-                  marginRight: "8px",
-                  verticalAlign: "middle",
-                }}
-              />
-              Show history panel
-            </label>
-            <label
-              style={{ display: "block", margin: "4px 0", cursor: "pointer" }}
-            >
-              <input
-                type="checkbox"
-                checked={this.state.createLobbyShowPublicActions}
-                onChange={this.updateCreateLobbyShowPublicActions}
-                disabled={!this.state.createLobbyShowHistory}
-                style={{
-                  width: "16px",
-                  minWidth: "16px",
-                  marginRight: "8px",
-                  verticalAlign: "middle",
-                }}
-              />
-              Show presidential power actions
-            </label>
-            <label
-              style={{ display: "block", margin: "4px 0", cursor: "pointer" }}
-            >
-              <input
-                type="checkbox"
-                checked={this.state.createLobbyShowVoteBreakdown}
-                onChange={this.updateCreateLobbyShowVoteBreakdown}
-                disabled={!this.state.createLobbyShowHistory}
-                style={{
-                  width: "16px",
-                  minWidth: "16px",
-                  marginRight: "8px",
-                  verticalAlign: "middle",
-                }}
-              />
-              Show who voted yes/no
-            </label>
-            <label
-              style={{ display: "block", margin: "4px 0", cursor: "pointer" }}
-            >
-              <input
-                type="checkbox"
-                checked={this.state.createLobbyShowPolicyClaims}
-                onChange={this.updateCreateLobbyShowPolicyClaims}
-                disabled={!this.state.createLobbyShowHistory}
-                style={{
-                  width: "16px",
-                  minWidth: "16px",
-                  marginRight: "8px",
-                  verticalAlign: "middle",
-                }}
-              />
-              Show policy card claims
-            </label>
-            <div style={{ marginTop: "8px" }}>
-              <label style={{ marginRight: "8px" }}>Rounds to show:</label>
-              <select
-                value={this.state.createLobbyRoundsToShow}
-                onChange={this.updateCreateLobbyRoundsToShow}
-                disabled={!this.state.createLobbyShowHistory}
-              >
-                <option value={HistoryRoundsToShow.ALL}>All rounds</option>
-                <option value={HistoryRoundsToShow.LAST_1}>Last round</option>
-                <option value={HistoryRoundsToShow.LAST_3}>Last 3 rounds</option>
-              </select>
-            </div>
-          </div>
           <p id={"errormessage"}>{this.state.createLobbyError}</p>
           <button
             onClick={this.onClickCreateLobby}
@@ -1343,8 +1260,12 @@ class App extends Component<{}, AppState> {
     this.sendWSCommand({ command: WSCommandType.START_GAME });
   }
 
-  sendLobbySetupConfig(config: GameSetupConfig) {
+  sendLobbySetupConfig(
+    config: GameSetupConfig,
+    setupAutomation: SetupAutomationConfig = this.state.lobbySetupAutomation
+  ) {
     const normalizedConfig = normalizeSetupConfig(config);
+    const normalizedAutomation = normalizeSetupAutomation(setupAutomation);
     const validation = validateSetupConfig(normalizedConfig);
     if (!validation.valid) {
       this.setState({ lobbySetupError: validation.error });
@@ -1352,10 +1273,56 @@ class App extends Component<{}, AppState> {
     }
     this.setState({
       lobbySetupConfig: normalizedConfig,
+      lobbySetupAutomation: normalizedAutomation,
       lobbySetupImportText: JSON.stringify(normalizedConfig, null, 2),
       lobbySetupError: "",
     });
-    this.sendWSCommand({ command: WSCommandType.SET_GAME_SETUP, setupConfig: normalizedConfig });
+    this.sendWSCommand({
+      command: WSCommandType.SET_GAME_SETUP,
+      setupConfig: normalizedConfig,
+      setupAutomation: normalizedAutomation,
+    });
+  }
+
+  sendLobbyHistoryConfig(historyConfig: HistoryConfig) {
+    const normalizedHistoryConfig = {
+      ...DEFAULT_HISTORY_CONFIG,
+      ...historyConfig,
+    };
+    this.setState({ lobbyHistoryConfig: normalizedHistoryConfig });
+    this.sendWSCommand({
+      command: WSCommandType.SET_HISTORY_CONFIG,
+      historyConfig: normalizedHistoryConfig,
+    });
+  }
+
+  getSetupFieldAutomationGroup(
+    keyName: keyof GameSetupConfig
+  ): "autoRoles" | "autoPolicies" | "autoPowers" | null {
+    if (
+      keyName === "liberalRoles" ||
+      keyName === "fascistRoles" ||
+      keyName === "hitlerRoles" ||
+      keyName === "anarchistRoles"
+    ) {
+      return "autoRoles";
+    }
+    if (
+      keyName === "liberalPolicies" ||
+      keyName === "fascistPolicies" ||
+      keyName === "anarchistPolicies" ||
+      keyName === "liberalPoliciesToWin" ||
+      keyName === "fascistPoliciesToWin"
+    ) {
+      return "autoPolicies";
+    }
+    if (
+      keyName === "hitlerElectionFascistThreshold" ||
+      keyName === "requiredExecutedHitlersForLiberalVictory"
+    ) {
+      return "autoPowers";
+    }
+    return null;
   }
 
   renderSetupNumberField(
@@ -1376,14 +1343,124 @@ class App extends Component<{}, AppState> {
           disabled={disabled}
           value={value}
           onChange={(event) => {
+            const automationGroup = this.getSetupFieldAutomationGroup(keyName);
+            const nextAutomation = automationGroup
+              ? {
+                  ...this.state.lobbySetupAutomation,
+                  [automationGroup]: false,
+                }
+              : this.state.lobbySetupAutomation;
             this.sendLobbySetupConfig({
               ...this.state.lobbySetupConfig,
               preset: "MANUAL",
               [keyName]: Number(event.target.value),
-            } as GameSetupConfig);
+            } as GameSetupConfig, nextAutomation);
           }}
         />
       </label>
+    );
+  }
+
+  renderSetupAutomationToggle(
+    label: string,
+    keyName: keyof Pick<SetupAutomationConfig, "autoRoles" | "autoPolicies" | "autoPowers">,
+    disabled: boolean
+  ) {
+    const automation = this.state.lobbySetupAutomation;
+    return (
+      <label className="setup-automation-option">
+        <input
+          type="checkbox"
+          aria-label={label}
+          disabled={disabled}
+          checked={Boolean(automation[keyName])}
+          onChange={(event) => {
+            const nextAutomation = {
+              ...automation,
+              [keyName]: event.target.checked,
+            };
+            const nextConfig = event.target.checked
+              ? applySetupPresetAutomation(this.state.lobbySetupConfig, nextAutomation)
+              : {
+                  ...this.state.lobbySetupConfig,
+                  preset: "MANUAL" as const,
+                };
+            this.sendLobbySetupConfig(nextConfig, nextAutomation);
+          }}
+        />
+        {label}
+      </label>
+    );
+  }
+
+  renderHistorySetupControls(canEdit: boolean) {
+    const historyConfig = this.state.lobbyHistoryConfig;
+    const updateHistory = (patch: Partial<HistoryConfig>) => {
+      this.sendLobbyHistoryConfig({
+        ...historyConfig,
+        ...patch,
+      });
+    };
+    return (
+      <section className="setup-history-section" aria-label="History settings">
+        <h3>HISTORY</h3>
+        <div className="setup-history-toggle-row">
+          <label>
+            <input
+              type="checkbox"
+              aria-label="Show history panel"
+              disabled={!canEdit}
+              checked={historyConfig.showHistory}
+              onChange={(event) => updateHistory({ showHistory: event.target.checked })}
+            />
+            Show history panel
+          </label>
+          <label>
+            <input
+              type="checkbox"
+              disabled={!canEdit || !historyConfig.showHistory}
+              checked={historyConfig.showPublicActions}
+              onChange={(event) => updateHistory({ showPublicActions: event.target.checked })}
+            />
+            Show presidential actions
+          </label>
+          <label>
+            <input
+              type="checkbox"
+              disabled={!canEdit || !historyConfig.showHistory}
+              checked={historyConfig.showVoteBreakdown}
+              onChange={(event) => updateHistory({ showVoteBreakdown: event.target.checked })}
+            />
+            Show vote breakdown
+          </label>
+          <label>
+            <input
+              type="checkbox"
+              disabled={!canEdit || !historyConfig.showHistory}
+              checked={historyConfig.showPolicyClaims}
+              onChange={(event) => updateHistory({ showPolicyClaims: event.target.checked })}
+            />
+            Show policy claims
+          </label>
+        </div>
+        <label className="setup-history-rounds">
+          <span>Rounds to show:</span>
+          <select
+            aria-label="Rounds to show"
+            value={historyConfig.roundsToShow}
+            disabled={!canEdit || !historyConfig.showHistory}
+            onChange={(event) =>
+              updateHistory({
+                roundsToShow: event.target.value as HistoryRoundsToShow,
+              })
+            }
+          >
+            <option value={HistoryRoundsToShow.ALL}>All rounds</option>
+            <option value={HistoryRoundsToShow.LAST_1}>Last round</option>
+            <option value={HistoryRoundsToShow.LAST_3}>Last 3 rounds</option>
+          </select>
+        </label>
+      </section>
     );
   }
 
@@ -1407,23 +1484,32 @@ class App extends Component<{}, AppState> {
               Visible to everyone. Editable by the creator and moderators. Standard games remain the default.
             </p>
             <div className="setup-preset-row">
-              <button
-                disabled={!canEdit}
-                onClick={() =>
-                  this.sendLobbySetupConfig(createStandardSetupConfig(Math.max(5, this.state.usernames.length)))
-                }
-              >
-                STANDARD
-              </button>
-              <button
-                disabled={!canEdit}
-                onClick={() =>
-                  this.sendLobbySetupConfig(createAnarchistSetupConfig(Math.max(5, this.state.usernames.length)))
-                }
-              >
-                ANARCHIST
-              </button>
-              <span className="setup-current-preset">Preset: {config.preset}</span>
+              <label className="setup-preset-select-label">
+                <span>Preset</span>
+                <select
+                  aria-label="Setup preset"
+                  disabled={!canEdit}
+                  value={this.state.lobbySetupAutomation.preset}
+                  onChange={(event) => {
+                    const nextAutomation = normalizeSetupAutomation({
+                      ...this.state.lobbySetupAutomation,
+                      preset: event.target.value === "ANARCHIST" ? "ANARCHIST" : "STANDARD",
+                    });
+                    this.sendLobbySetupConfig(
+                      applySetupPresetAutomation(config, nextAutomation),
+                      nextAutomation
+                    );
+                  }}
+                >
+                  <option value="STANDARD">Standard</option>
+                  <option value="ANARCHIST">Anarchist</option>
+                </select>
+              </label>
+              <div className="setup-automation-row">
+                {this.renderSetupAutomationToggle("Auto roles", "autoRoles", !canEdit)}
+                {this.renderSetupAutomationToggle("Auto policies", "autoPolicies", !canEdit)}
+                {this.renderSetupAutomationToggle("Auto powers", "autoPowers", !canEdit)}
+              </div>
             </div>
             <div className="setup-grid">
               {this.renderSetupNumberField("Liberal roles", "liberalRoles", !canEdit)}
@@ -1450,18 +1536,23 @@ class App extends Component<{}, AppState> {
                     type="checkbox"
                     disabled={!canEdit}
                     checked={Boolean((config as any)[keyName])}
-                    onChange={(event) =>
+                    onChange={(event) => {
+                      const nextAutomation = {
+                        ...this.state.lobbySetupAutomation,
+                        autoPowers: false,
+                      };
                       this.sendLobbySetupConfig({
                         ...config,
                         preset: "MANUAL",
                         [keyName]: event.target.checked,
-                      } as GameSetupConfig)
-                    }
+                      } as GameSetupConfig, nextAutomation);
+                    }}
                   />
                   {label}
                 </label>
               ))}
             </div>
+            {this.renderHistorySetupControls(canEdit)}
             <div className="setup-json-row">
               <textarea
                 aria-label="Setup JSON5 import export"
@@ -1480,7 +1571,12 @@ class App extends Component<{}, AppState> {
                     if (result.error) {
                       this.setState({ lobbySetupError: result.error });
                     } else {
-                      this.sendLobbySetupConfig(result.config);
+                      this.sendLobbySetupConfig(result.config, {
+                        ...this.state.lobbySetupAutomation,
+                        autoRoles: false,
+                        autoPolicies: false,
+                        autoPowers: false,
+                      });
                     }
                   }}
                 >

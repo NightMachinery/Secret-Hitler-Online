@@ -154,6 +154,8 @@ public class GameToJSONConverter {
         out.put("chancellorPolicyClaimSubmitted", game.hasChancellorPolicyClaim());
         out.put("history", convertHistory(game.getHistory(), effectiveHistoryConfig, game.getRound(), perspectivePlayer));
         out.put("historyConfig", convertHistoryConfig(effectiveHistoryConfig));
+        out.put("setupAutomation",
+                lobby == null ? Lobby.SetupAutomationConfig.defaultConfig().toJson() : lobby.getSetupAutomationConfig().toJson());
         Lobby.DiscussionReactionConfig reactionConfig = lobby == null
                 ? Lobby.DiscussionReactionConfig.defaultConfig()
                 : lobby.getDiscussionReactionConfig();

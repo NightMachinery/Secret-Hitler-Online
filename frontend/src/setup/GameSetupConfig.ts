@@ -1,4 +1,12 @@
 export type PresetName = "STANDARD" | "ANARCHIST" | "MANUAL";
+export type AutomationPresetName = "STANDARD" | "ANARCHIST";
+
+export type SetupAutomationConfig = {
+  preset: AutomationPresetName;
+  autoRoles: boolean;
+  autoPolicies: boolean;
+  autoPowers: boolean;
+};
 
 export type PresidentialPowerName =
   | "NONE"
@@ -35,6 +43,33 @@ export type ValidationResult =
 const NUM_LIBERAL_POLICIES = 6;
 const NUM_FASCIST_POLICIES = 11;
 const PRESIDENT_DRAW_SIZE = 3;
+
+export const DEFAULT_SETUP_AUTOMATION: SetupAutomationConfig = {
+  preset: "STANDARD",
+  autoRoles: true,
+  autoPolicies: true,
+  autoPowers: true,
+};
+
+export function normalizeSetupAutomation(
+  automation?: Partial<SetupAutomationConfig> | null
+): SetupAutomationConfig {
+  return {
+    preset: automation?.preset === "ANARCHIST" ? "ANARCHIST" : "STANDARD",
+    autoRoles:
+      typeof automation?.autoRoles === "boolean"
+        ? automation.autoRoles
+        : DEFAULT_SETUP_AUTOMATION.autoRoles,
+    autoPolicies:
+      typeof automation?.autoPolicies === "boolean"
+        ? automation.autoPolicies
+        : DEFAULT_SETUP_AUTOMATION.autoPolicies,
+    autoPowers:
+      typeof automation?.autoPowers === "boolean"
+        ? automation.autoPowers
+        : DEFAULT_SETUP_AUTOMATION.autoPowers,
+  };
+}
 
 export function getDefaultPowerSchedule(playerCount: number): PresidentialPowerName[] {
   const powers: PresidentialPowerName[] = ["NONE", "NONE", "NONE", "NONE", "NONE", "NONE"];
@@ -91,6 +126,62 @@ export function createAnarchistSetupConfig(playerCount: number): GameSetupConfig
     anarchistRoles,
     anarchistPolicies: 3,
   };
+}
+
+function createPresetSetupConfig(
+  preset: AutomationPresetName,
+  playerCount: number
+): GameSetupConfig {
+  return preset === "ANARCHIST"
+    ? createAnarchistSetupConfig(playerCount)
+    : createStandardSetupConfig(playerCount);
+}
+
+export function applySetupPresetAutomation(
+  currentConfig: GameSetupConfig,
+  automationInput: SetupAutomationConfig
+): GameSetupConfig {
+  const automation = normalizeSetupAutomation(automationInput);
+  const presetConfig = createPresetSetupConfig(automation.preset, currentConfig.playerCount);
+  const allGroupsAutomated =
+    automation.autoRoles && automation.autoPolicies && automation.autoPowers;
+  const nextConfig: GameSetupConfig = {
+    ...currentConfig,
+    preset: allGroupsAutomated ? automation.preset : "MANUAL",
+    playerCount: currentConfig.playerCount,
+  };
+
+  if (automation.autoRoles) {
+    nextConfig.liberalRoles = presetConfig.liberalRoles;
+    nextConfig.fascistRoles = presetConfig.fascistRoles;
+    nextConfig.hitlerRoles = presetConfig.hitlerRoles;
+    nextConfig.anarchistRoles = presetConfig.anarchistRoles;
+  }
+
+  if (automation.autoPolicies) {
+    nextConfig.liberalPolicies = presetConfig.liberalPolicies;
+    nextConfig.fascistPolicies = presetConfig.fascistPolicies;
+    nextConfig.anarchistPolicies = presetConfig.anarchistPolicies;
+    nextConfig.liberalPoliciesToWin = presetConfig.liberalPoliciesToWin;
+    nextConfig.fascistPoliciesToWin = presetConfig.fascistPoliciesToWin;
+  }
+
+  if (automation.autoPowers) {
+    nextConfig.hitlerElectionFascistThreshold =
+      presetConfig.hitlerElectionFascistThreshold;
+    nextConfig.requiredExecutedHitlersForLiberalVictory = Math.min(
+      presetConfig.requiredExecutedHitlersForLiberalVictory,
+      nextConfig.hitlerRoles
+    );
+    nextConfig.anarchistsKnowEachOther = presetConfig.anarchistsKnowEachOther;
+    nextConfig.anarchistInvestigationsRevealAnarchist =
+      presetConfig.anarchistInvestigationsRevealAnarchist;
+    nextConfig.anarchistPowersEnabled = presetConfig.anarchistPowersEnabled;
+    nextConfig.anarchistTrackerResets = presetConfig.anarchistTrackerResets;
+    nextConfig.fascistPowerSchedule = presetConfig.fascistPowerSchedule;
+  }
+
+  return normalizeSetupConfig(nextConfig);
 }
 
 export function validateSetupConfig(config: GameSetupConfig): ValidationResult {
@@ -153,6 +244,12 @@ export function validateSetupConfig(config: GameSetupConfig): ValidationResult {
       error: "Required executed Hitlers must be between 0 and the Hitler role count.",
     };
   }
+  if (config.hitlerRoles > 0 && config.requiredExecutedHitlersForLiberalVictory === 0) {
+    return {
+      valid: false,
+      error: "At least one executed Hitler must be required when Hitler roles exist.",
+    };
+  }
   return { valid: true };
 }
 
@@ -164,8 +261,25 @@ export function normalizeSetupConfig(
   const fascistPowerSchedule = Array.isArray(withoutReplacementCount.fascistPowerSchedule)
     ? withoutReplacementCount.fascistPowerSchedule.slice(0, fascistPoliciesToWin)
     : getDefaultPowerSchedule(withoutReplacementCount.playerCount).slice(0, fascistPoliciesToWin);
+  let requiredExecutedHitlersForLiberalVictory =
+    withoutReplacementCount.requiredExecutedHitlersForLiberalVictory;
+  if (withoutReplacementCount.hitlerRoles === 0) {
+    requiredExecutedHitlersForLiberalVictory = 0;
+  } else if (requiredExecutedHitlersForLiberalVictory <= 0) {
+    requiredExecutedHitlersForLiberalVictory = 1;
+  } else {
+    requiredExecutedHitlersForLiberalVictory = Math.min(
+      requiredExecutedHitlersForLiberalVictory,
+      withoutReplacementCount.hitlerRoles
+    );
+  }
   return {
     ...withoutReplacementCount,
+    hitlerElectionFascistThreshold: Math.min(
+      Math.max(0, withoutReplacementCount.hitlerElectionFascistThreshold),
+      withoutReplacementCount.fascistPoliciesToWin
+    ),
+    requiredExecutedHitlersForLiberalVictory,
     fascistPowerSchedule,
   };
 }

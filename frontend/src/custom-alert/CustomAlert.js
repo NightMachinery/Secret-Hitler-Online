@@ -52,7 +52,7 @@ class CustomAlert extends Component {
                 )}
 
                 {isMinimized && (
-                    <div id="alert-restore-container">
+                    <div id="alert-restore-container" className="alert-restore-container-history-safe">
                         <button
                             type={"button"}
                             id={"alert-restore-button"}

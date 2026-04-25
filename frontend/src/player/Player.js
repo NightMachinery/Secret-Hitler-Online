@@ -214,7 +214,7 @@ class Player extends Component {
         const actionButtons = (this.props.actionButtons || []).map((action, index) => (
             <button
                 key={`${action.label}-${index}`}
-                className={`player-corner-action ${action.variant ? `player-corner-action-${action.variant}` : ""}`}
+                className={`player-card-action ${action.variant ? `player-card-action-${action.variant}` : ""}`}
                 onClick={(event) => {
                     event.preventDefault();
                     event.stopPropagation();
@@ -233,7 +233,7 @@ class Player extends Component {
         const discussionReactionBadge = discussionReaction && discussionReactionRemainingMs > 0 ? (
             <div
                 key={`discussion-reaction-${discussionReaction.type}-${discussionReaction.expiresAt}`}
-                className={`player-discussion-reaction-badge ${
+                className={`player-discussion-reaction-cue ${
                     discussionReaction.type === "LIKE"
                         ? "player-discussion-reaction-like"
                         : "player-discussion-reaction-dislike"
@@ -242,29 +242,32 @@ class Player extends Component {
                 role="img"
                 aria-label={discussionReaction.type === "LIKE" ? "Like reaction" : "Dislike reaction"}
             >
-                <div className={"player-discussion-reaction-medallion"}>
-                    <svg
-                        className={"player-discussion-reaction-ring"}
-                        viewBox="0 0 40 40"
-                        aria-hidden="true"
-                    >
-                        <circle
-                            className={"player-discussion-reaction-ring-track"}
-                            cx="20"
-                            cy="20"
-                            r="17"
-                        />
-                        <circle
-                            className={"player-discussion-reaction-ring-progress"}
-                            cx="20"
-                            cy="20"
-                            r="17"
-                        />
-                    </svg>
-                    <div className={"player-discussion-reaction-core"}>
-                        {this.renderDiscussionReactionIcon(discussionReaction.type)}
+                <span className={"player-discussion-reaction-core"}>
+                    {this.renderDiscussionReactionIcon(discussionReaction.type)}
+                </span>
+                <span>{discussionReaction.type === "LIKE" ? "LIKE" : "DISLIKE"}</span>
+            </div>
+        ) : null;
+
+        const utilityChrome = (
+            discussionReactionBadge ||
+            statusBadges.length > 0 ||
+            actionButtons.length > 0
+        ) ? (
+            <div className="player-utility-chrome">
+                {discussionReactionBadge}
+
+                {statusBadges.length > 0 && (
+                    <div className={"player-status-chip-row"}>
+                        {statusBadges}
                     </div>
-                </div>
+                )}
+
+                {actionButtons.length > 0 && (
+                    <div className={"player-card-actions"}>
+                        {actionButtons}
+                    </div>
+                )}
             </div>
         ) : null;
 
@@ -274,62 +277,52 @@ class Player extends Component {
                  onClick = {this.props.onClick}
                  disabled = {this.props.disabled}
             >
-                <img id="player-image"
-                     src={PlayerBase}
-                     alt={this.getAltText()}
-                     className={this.getClassName()}
-                />
+                <div className="player-card-frame">
+                    <img id="player-image"
+                         src={PlayerBase}
+                         alt={this.getAltText()}
+                         className={this.getClassName()}
+                    />
 
-                <img id={"player-icon"}
-                     alt={portraitsAltText[this.props.icon]}
-                     src={portraits[this.props.icon]}
-                     className={this.getClassName()}
-                />
+                    <img id={"player-icon"}
+                         alt={portraitsAltText[this.props.icon]}
+                         src={portraits[this.props.icon]}
+                         className={this.getClassName()}
+                    />
 
-                {statusBadges.length > 0 && (
-                    <div className={"player-status-badges"}>
-                        {statusBadges}
-                    </div>
-                )}
+                    <img id="player-busy-icon"
+                         src={IconBusy}
+                         className={this.state.initialState ? "player-icon-default" :(this.props.isBusy ? "player-icon-show" : "player-icon-hide")}
+                         alt=""
+                    />
 
-                {actionButtons.length > 0 && (
-                    <div className={"player-corner-actions"}>
-                        {actionButtons}
-                    </div>
-                )}
+                    <img
+                        id={"player-icon-vote"}
+                        className={this.state.initialVoteState ? "player-icon-default" : (this.props.showVote ? "player-icon-show" : "player-icon-hide")}
+                        src={this.props.vote ? YesVote : NoVote}
+                        alt={""}
+                    />
 
-                {discussionReactionBadge}
+                    {identity_components}
 
-                <img id="player-busy-icon"
-                     src={IconBusy}
-                     className={this.state.initialState ? "player-icon-default" :(this.props.isBusy ? "player-icon-show" : "player-icon-hide")}
-                     alt=""
-                />
+                    <Textfit id={"player-name"}
+                             className={this.getClassName() + " force-update"}
+                             mode="multi"
+                             forceSingleModeWidth={false}
+                             alignVertWithFlexbox={true}
+                             throttle={1000}
+                    >
+                        {this.props.name}
+                    </Textfit>
 
-                <img
-                    id={"player-icon-vote"}
-                    className={this.state.initialVoteState ? "player-icon-default" : (this.props.showVote ? "player-icon-show" : "player-icon-hide")}
-                    src={this.props.vote ? YesVote : NoVote}
-                    alt={""}
-                />
+                    <p  id="player-disabled-label"
+                        hidden={!this.props.disabled}
+                    >
+                        {this.props.disabledText}
+                    </p>
+                </div>
 
-                {identity_components}
-
-                <Textfit id={"player-name"}
-                         className={this.getClassName() + " force-update"}
-                         mode="multi"
-                         forceSingleModeWidth={false}
-                         alignVertWithFlexbox={true}
-                         throttle={1000}
-                >
-                    {this.props.name}
-                </Textfit>
-
-                <p  id="player-disabled-label"
-                    hidden={!this.props.disabled}
-                >
-                    {this.props.disabledText}
-                </p>
+                {utilityChrome}
 
              </div>
         );

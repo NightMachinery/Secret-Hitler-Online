@@ -1,5 +1,5 @@
 import { PolicyType, Role } from "./game";
-import { GameSetupConfig } from "../setup/GameSetupConfig";
+import { GameSetupConfig, SetupAutomationConfig } from "../setup/GameSetupConfig";
 
 export enum LobbyState {
   SETUP = "SETUP",
@@ -156,6 +156,7 @@ export type GameState = {
   observerAssignableTargets?: Record<string, ObserverAssignableTargetType>;
   selfType: UserType;
   setupConfig?: GameSetupConfig;
+  setupAutomation?: SetupAutomationConfig;
 
   usernames?: string[];
   /** Maps from usernames to icon keys */

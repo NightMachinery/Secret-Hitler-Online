@@ -43,9 +43,24 @@ class Board extends Component {
         return !config || (
             config.liberalPoliciesToWin === 5 &&
             config.fascistPoliciesToWin === 6 &&
-            (config.anarchistPolicies || 0) === 0 &&
-            (config.anarchistRoles || 0) === 0 &&
             hasStandardPowerSchedule
+        );
+    }
+
+    shouldShowAnarchistSummary() {
+        const config = this.props.setupConfig || {};
+        return (config.anarchistPolicies || 0) > 0 || (this.props.numAnarchistPoliciesResolved || 0) > 0;
+    }
+
+    renderAnarchistSummary() {
+        if (!this.shouldShowAnarchistSummary()) {
+            return null;
+        }
+        return (
+            <div className="board-anarchist-summary">
+                <img src={AnarchistPolicy} alt="" />
+                <span>Anarchist policies resolved: {this.props.numAnarchistPoliciesResolved || 0}</span>
+            </div>
         );
     }
 
@@ -96,6 +111,26 @@ class Board extends Component {
         );
     }
 
+    renderDynamicPolicySlots(count, totalCount, src, type) {
+        return (
+            <div
+                className={"dynamic-policy-slots " + type + "-policy-slots"}
+                style={{gridTemplateColumns: "repeat(" + totalCount + ", minmax(0, 1fr))"}}
+            >
+                {Array.from({length: totalCount}).map((_, index) => (
+                    <div
+                        className={"dynamic-policy-slot" + (index < count ? " filled" : "")}
+                        key={index}
+                    >
+                        {index < count && (
+                            <img src={src} alt="" />
+                        )}
+                    </div>
+                ))}
+            </div>
+        );
+    }
+
     /**
      * Places a series of repeating images.
      * @param count {number} the count of currently visible images.
@@ -141,17 +176,14 @@ class Board extends Component {
                     {this.renderDynamicElectionTracker()}
                     <div className="dynamic-board-row liberal-row" aria-label={this.props.numLiberalPolicies + " liberal policies have been passed."}>
                         <div className="dynamic-board-label">LIBERAL</div>
-                        {this.placeRepeating(this.props.numLiberalPolicies, liberalTotal, PolicyLiberal, "policy", "18.2%", "13.54%")}
+                        {this.renderDynamicPolicySlots(this.props.numLiberalPolicies, liberalTotal, PolicyLiberal, "liberal")}
                     </div>
                     <div className="dynamic-board-row fascist-row" aria-label={this.props.numFascistPolicies + " fascist policies have been passed."}>
                         <div className="dynamic-board-label">FASCIST</div>
-                        {this.placeRepeating(this.props.numFascistPolicies, fascistTotal, PolicyFascist, "policy", "11%", "13.6%")}
+                        {this.renderDynamicPolicySlots(this.props.numFascistPolicies, fascistTotal, PolicyFascist, "fascist")}
                         {this.renderDynamicPowerMarkers(fascistTotal)}
                     </div>
-                    <div className="dynamic-anarchist-summary">
-                        <img src={AnarchistPolicy} alt="" />
-                        <span>Anarchist policies resolved: {this.props.numAnarchistPoliciesResolved || 0}</span>
-                    </div>
+                    {this.renderAnarchistSummary()}
                 </div>
             );
         }
@@ -180,6 +212,7 @@ class Board extends Component {
                     />
                     {this.placeRepeating(this.props.numFascistPolicies, 6, PolicyFascist, "policy", "11%", "13.6%")}
                 </div>
+                {this.renderAnarchistSummary()}
             </div>
         );
     }

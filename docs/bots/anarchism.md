@@ -57,7 +57,9 @@ Custom setup can change Hitler count.
 
 ## Custom powers
 
-The setup config can provide a per-Fascist-policy-slot power schedule. Dynamic/custom boards use that schedule on the backend and render with a generated board on the frontend. Standard-equivalent settings keep the original fixed board art.
+The setup config can provide a per-Fascist-policy-slot power schedule. Custom thresholds or non-standard Fascist powers render with a generated board on the frontend. Standard-equivalent Liberal/Fascist thresholds and Fascist powers keep the original fixed board art, even when Anarchist roles or Anarchist policies are enabled.
+
+When Anarchist policies are in the setup, the frontend shows a compact Anarchist resolved-policy strip below either board style. This strip reports resolved Anarchist policies without forcing the board into custom/dynamic mode.
 
 ## Frontend art assets
 

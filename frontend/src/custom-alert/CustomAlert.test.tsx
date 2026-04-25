@@ -35,6 +35,11 @@ describe("CustomAlert", () => {
     );
 
     expect(screen.queryByText("Alert body")).not.toBeInTheDocument();
+    expect(
+      screen
+        .getByRole("button", { name: /return to popup/i })
+        .closest("#alert-restore-container")
+    ).toHaveClass("alert-restore-container-history-safe");
     fireEvent.click(
       screen.getByRole("button", { name: /return to popup/i })
     );

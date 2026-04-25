@@ -117,7 +117,7 @@ describe("PlayerDisplay", () => {
     const gameState = buildGameState(["Alice", "Bob", "Cara"]);
     gameState.connected = { Alice: true, Bob: false, Cara: true };
 
-    render(
+    const { container } = render(
       <PlayerDisplay
         user={"Alice"}
         gameState={gameState}
@@ -126,8 +126,12 @@ describe("PlayerDisplay", () => {
       />
     );
 
-    expect(screen.getByText("OFFLINE")).toBeInTheDocument();
-    expect(screen.getByTitle("Promote Bob to moderator")).toBeInTheDocument();
+    expect(screen.getByText("OFFLINE").closest(".player-utility-chrome")).not.toBeNull();
+    expect(
+      screen.getByTitle("Promote Bob to moderator").closest(".player-card-actions")
+    ).not.toBeNull();
+    expect(container.querySelector(".player-status-badges")).toBeNull();
+    expect(container.querySelector(".player-corner-actions")).toBeNull();
   });
 
   test("shows observer badge and observer action for assignable seats", () => {
@@ -167,5 +171,6 @@ describe("PlayerDisplay", () => {
     );
 
     expect(screen.getByLabelText("Like reaction")).toBeInTheDocument();
+    expect(screen.getByText("LIKE").closest(".player-discussion-reaction-cue")).not.toBeNull();
   });
 });

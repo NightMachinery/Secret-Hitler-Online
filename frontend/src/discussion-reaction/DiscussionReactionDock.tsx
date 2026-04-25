@@ -133,7 +133,7 @@ const DiscussionReactionDock = ({
         : "No active cue";
 
   return (
-    <div id="discussion-reaction-dock-wrap">
+    <div id="discussion-reaction-dock-wrap" className="discussion-reaction-dock-inline">
       {showSettings && isModerator && (
         <div id="discussion-reaction-settings-panel">
           <div className="discussion-reaction-settings-eyebrow">

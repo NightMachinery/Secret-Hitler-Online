@@ -85,6 +85,28 @@ public class Lobby implements Serializable {
             return new HistoryDisplayConfig(true, true, true, RoundsToShow.ALL, true);
         }
 
+        public static HistoryDisplayConfig fromJson(JSONObject json) {
+            if (json == null) {
+                return defaultConfig();
+            }
+            return new HistoryDisplayConfig(
+                    json.optBoolean("showHistory", true),
+                    json.optBoolean("showPublicActions", true),
+                    json.optBoolean("showVoteBreakdown", true),
+                    RoundsToShow.fromString(json.optString("roundsToShow", "ALL")),
+                    json.optBoolean("showPolicyClaims", true));
+        }
+
+        public JSONObject toJson() {
+            JSONObject out = new JSONObject();
+            out.put("showHistory", showHistory);
+            out.put("showPublicActions", showPublicActions);
+            out.put("showVoteBreakdown", showVoteBreakdown);
+            out.put("showPolicyClaims", showPolicyClaims);
+            out.put("roundsToShow", roundsToShow.toString());
+            return out;
+        }
+
         public boolean shouldShowHistory() {
             return showHistory;
         }
@@ -103,6 +125,66 @@ public class Lobby implements Serializable {
 
         public RoundsToShow getRoundsToShow() {
             return roundsToShow;
+        }
+    }
+
+    public static class SetupAutomationConfig implements Serializable {
+        private final GameSetupConfig.Preset preset;
+        private final boolean autoRoles;
+        private final boolean autoPolicies;
+        private final boolean autoPowers;
+
+        public SetupAutomationConfig(GameSetupConfig.Preset preset, boolean autoRoles, boolean autoPolicies,
+                boolean autoPowers) {
+            this.preset = preset == GameSetupConfig.Preset.ANARCHIST
+                    ? GameSetupConfig.Preset.ANARCHIST
+                    : GameSetupConfig.Preset.STANDARD;
+            this.autoRoles = autoRoles;
+            this.autoPolicies = autoPolicies;
+            this.autoPowers = autoPowers;
+        }
+
+        public static SetupAutomationConfig defaultConfig() {
+            return new SetupAutomationConfig(GameSetupConfig.Preset.STANDARD, true, true, true);
+        }
+
+        public static SetupAutomationConfig fromJson(JSONObject json) {
+            if (json == null) {
+                return defaultConfig();
+            }
+            GameSetupConfig.Preset preset = "ANARCHIST".equals(json.optString("preset", "STANDARD").trim().toUpperCase())
+                    ? GameSetupConfig.Preset.ANARCHIST
+                    : GameSetupConfig.Preset.STANDARD;
+            return new SetupAutomationConfig(
+                    preset,
+                    json.optBoolean("autoRoles", true),
+                    json.optBoolean("autoPolicies", true),
+                    json.optBoolean("autoPowers", true));
+        }
+
+        public JSONObject toJson() {
+            JSONObject out = new JSONObject();
+            out.put("preset", preset.toString());
+            out.put("autoRoles", autoRoles);
+            out.put("autoPolicies", autoPolicies);
+            out.put("autoPowers", autoPowers);
+            return out;
+        }
+
+        public GameSetupConfig.Preset getPreset() {
+            return preset;
+        }
+
+        public boolean shouldAutoRoles() {
+            return autoRoles;
+        }
+
+        public boolean shouldAutoPolicies() {
+            return autoPolicies;
+        }
+
+        public boolean shouldAutoPowers() {
+            return autoPowers;
         }
     }
 
@@ -208,6 +290,7 @@ public class Lobby implements Serializable {
     private ConcurrentHashMap<String, CpuPlayer> cpuControllersByName;
 
     private HistoryDisplayConfig historyDisplayConfig;
+    private SetupAutomationConfig setupAutomationConfig;
     private DiscussionReactionConfig discussionReactionConfig;
     private GameSetupConfig gameSetupConfig;
     private ConcurrentHashMap<String, DiscussionReaction> discussionReactions;
@@ -250,6 +333,7 @@ public class Lobby implements Serializable {
         cpuControllersByName = new ConcurrentHashMap<>();
         usernameToPreferredIcon = new ConcurrentHashMap<>();
         this.historyDisplayConfig = historyDisplayConfig == null ? HistoryDisplayConfig.defaultConfig() : historyDisplayConfig;
+        this.setupAutomationConfig = SetupAutomationConfig.defaultConfig();
         this.discussionReactionConfig = DiscussionReactionConfig.defaultConfig();
         this.gameSetupConfig = null;
         this.discussionReactions = new ConcurrentHashMap<>();
@@ -263,6 +347,31 @@ public class Lobby implements Serializable {
         return historyDisplayConfig;
     }
 
+    synchronized public void setHistoryDisplayConfig(HistoryDisplayConfig historyDisplayConfig) {
+        if (isInGame()) {
+            throw new IllegalStateException("History settings can only be changed before the game starts.");
+        }
+        this.historyDisplayConfig = historyDisplayConfig == null
+                ? HistoryDisplayConfig.defaultConfig()
+                : historyDisplayConfig;
+    }
+
+    public SetupAutomationConfig getSetupAutomationConfig() {
+        if (setupAutomationConfig == null) {
+            return SetupAutomationConfig.defaultConfig();
+        }
+        return setupAutomationConfig;
+    }
+
+    synchronized public void setSetupAutomationConfig(SetupAutomationConfig setupAutomationConfig) {
+        if (isInGame()) {
+            throw new IllegalStateException("Game setup automation can only be changed before the game starts.");
+        }
+        this.setupAutomationConfig = setupAutomationConfig == null
+                ? SetupAutomationConfig.defaultConfig()
+                : setupAutomationConfig;
+    }
+
     public DiscussionReactionConfig getDiscussionReactionConfig() {
         if (discussionReactionConfig == null) {
             discussionReactionConfig = DiscussionReactionConfig.defaultConfig();
@@ -274,19 +383,50 @@ public class Lobby implements Serializable {
         int effectivePlayerCount = Math.max(SecretHitlerGame.MIN_PLAYERS, isInGame() && game != null
                 ? game.getPlayerList().size()
                 : lobbyUsernames.size());
+        return resolveGameSetupConfig(effectivePlayerCount);
+    }
+
+    private GameSetupConfig resolveGameSetupConfig(int effectivePlayerCount) {
+        GameSetupConfig baseConfig;
         if (gameSetupConfig == null) {
-            return GameSetupConfig.standard(effectivePlayerCount);
+            baseConfig = GameSetupConfig.standard(effectivePlayerCount);
+        } else {
+            baseConfig = gameSetupConfig.withPlayerCount(effectivePlayerCount);
         }
-        return gameSetupConfig.withPlayerCount(effectivePlayerCount);
+        SetupAutomationConfig automationConfig = getSetupAutomationConfig();
+        return baseConfig.withPresetAutomation(
+                automationConfig.getPreset(),
+                automationConfig.shouldAutoRoles(),
+                automationConfig.shouldAutoPolicies(),
+                automationConfig.shouldAutoPowers());
     }
 
     synchronized public void setGameSetupConfig(GameSetupConfig config) {
+        SetupAutomationConfig automationConfig;
+        if (config != null && (config.isStandardPreset() || config.isAnarchistPreset())) {
+            automationConfig = new SetupAutomationConfig(config.getPreset(), true, true, true);
+        } else if (config != null) {
+            automationConfig = new SetupAutomationConfig(getSetupAutomationConfig().getPreset(), false, false, false);
+        } else {
+            automationConfig = SetupAutomationConfig.defaultConfig();
+        }
+        setGameSetupConfig(config, automationConfig);
+    }
+
+    synchronized public void setGameSetupConfig(GameSetupConfig config, SetupAutomationConfig setupAutomationConfig) {
         if (isInGame()) {
             throw new IllegalStateException("Game setup can only be changed before the game starts.");
         }
         int effectivePlayerCount = Math.max(SecretHitlerGame.MIN_PLAYERS, lobbyUsernames.size());
+        this.setupAutomationConfig = setupAutomationConfig == null
+                ? SetupAutomationConfig.defaultConfig()
+                : setupAutomationConfig;
         gameSetupConfig = config == null ? null
-                : config.withPlayerCount(effectivePlayerCount);
+                : config.withPlayerCount(effectivePlayerCount).withPresetAutomation(
+                        this.setupAutomationConfig.getPreset(),
+                        this.setupAutomationConfig.shouldAutoRoles(),
+                        this.setupAutomationConfig.shouldAutoPolicies(),
+                        this.setupAutomationConfig.shouldAutoPowers());
     }
 
     synchronized public Map<String, DiscussionReaction> getDiscussionReactionsSnapshot() {
@@ -1241,6 +1381,8 @@ public class Lobby implements Serializable {
             message.put("moderators", new JSONArray(moderatorUsernames));
             message.put("connected", new JSONObject(getLobbyConnectedStatusSnapshot()));
             message.put("setupConfig", getGameSetupConfig().toJson());
+            message.put("setupAutomation", getSetupAutomationConfig().toJson());
+            message.put("historyConfig", getHistoryDisplayConfig().toJson());
         }
 
         message.put("icon", new JSONObject(usernameToIcon));
@@ -1335,6 +1477,12 @@ public class Lobby implements Serializable {
         if (historyDisplayConfig == null) {
             historyDisplayConfig = HistoryDisplayConfig.defaultConfig();
         }
+        if (setupAutomationConfig == null) {
+            GameSetupConfig.Preset restoredPreset = gameSetupConfig != null && gameSetupConfig.isAnarchistPreset()
+                    ? GameSetupConfig.Preset.ANARCHIST
+                    : GameSetupConfig.Preset.STANDARD;
+            setupAutomationConfig = new SetupAutomationConfig(restoredPreset, true, true, true);
+        }
         if (discussionReactionConfig == null) {
             discussionReactionConfig = DiscussionReactionConfig.defaultConfig();
         }
@@ -1426,9 +1574,7 @@ public class Lobby implements Serializable {
         playerNames.addAll(cpuNames);
         Collections.shuffle(playerNames);
 
-        GameSetupConfig effectiveSetupConfig = gameSetupConfig == null
-                ? GameSetupConfig.standard(playerNames.size())
-                : gameSetupConfig.withPlayerCount(playerNames.size());
+        GameSetupConfig effectiveSetupConfig = resolveGameSetupConfig(playerNames.size());
         game = new SecretHitlerGame(playerNames, effectiveSetupConfig);
 
         for (String botName : generatedBotPlayers) {

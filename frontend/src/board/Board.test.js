@@ -47,4 +47,21 @@ describe("Board", () => {
     expect(container.querySelector(".dynamic-board-container")).toBeInTheDocument();
     expect(screen.getByText("EXECUTION")).toBeInTheDocument();
   });
+
+  test("uses fixed board art for the default Anarchist preset and adds the Anarchist summary strip", () => {
+    const { container } = render(
+      <Board
+        numPlayers={7}
+        numLiberalPolicies={0}
+        numFascistPolicies={0}
+        numAnarchistPoliciesResolved={1}
+        electionTracker={0}
+        setupConfig={createAnarchistSetupConfig(7)}
+      />
+    );
+
+    expect(container.querySelector(".dynamic-board-container")).not.toBeInTheDocument();
+    expect(screen.getByText("Anarchist policies resolved: 1")).toBeInTheDocument();
+    expect(container.querySelector(".board-anarchist-summary")).toBeInTheDocument();
+  });
 });

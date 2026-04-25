@@ -5,7 +5,7 @@ import { DiscussionReactionType } from "../types";
 
 describe("DiscussionReactionDock", () => {
   test("renders reaction controls and clear button state", () => {
-    render(
+    const { container } = render(
       <DiscussionReactionDock
         activeReaction={{
           type: DiscussionReactionType.LIKE,
@@ -23,6 +23,9 @@ describe("DiscussionReactionDock", () => {
     expect(screen.getByLabelText("Send like reaction")).toBeInTheDocument();
     expect(screen.getByLabelText("Send dislike reaction")).toBeInTheDocument();
     expect(screen.getByLabelText("Clear reaction")).not.toBeDisabled();
+    expect(container.querySelector("#discussion-reaction-dock-wrap")).toHaveClass(
+      "discussion-reaction-dock-inline"
+    );
   });
 
   test("shows moderator settings and submits updated config", () => {

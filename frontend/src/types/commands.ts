@@ -1,6 +1,7 @@
 import { DiscussionReactionType } from "./lobby_state";
-import { GameSetupConfig } from "../setup/GameSetupConfig";
+import { GameSetupConfig, SetupAutomationConfig } from "../setup/GameSetupConfig";
 import { PolicyType } from "./game";
+import { HistoryConfig } from "./lobby_state";
 
 // TODO: Change these all to camelCase
 export const enum WSCommandType {
@@ -25,6 +26,7 @@ export const enum WSCommandType {
   SET_DISCUSSION_REACTION = "set-discussion-reaction",
   SET_DISCUSSION_REACTION_CONFIG = "set-discussion-reaction-config",
   SET_GAME_SETUP = "set-game-setup",
+  SET_HISTORY_CONFIG = "set-history-config",
   LEAVE_LOBBY = "leave-lobby",
   SET_MODERATOR_STATUS = "set-moderator-status",
   KICK_USER = "kick-user",
@@ -64,6 +66,11 @@ export type ServerRequestPayload =
   | {
       command: WSCommandType.SET_GAME_SETUP;
       setupConfig: GameSetupConfig;
+      setupAutomation?: SetupAutomationConfig;
+    }
+  | {
+      command: WSCommandType.SET_HISTORY_CONFIG;
+      historyConfig: HistoryConfig;
     }
   | {
       command: WSCommandType.SET_OBSERVER_ASSIGNMENT;

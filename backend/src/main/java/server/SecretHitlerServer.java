@@ -96,6 +96,7 @@ public class SecretHitlerServer {
     public static final String COMMAND_SET_DISCUSSION_REACTION = "set-discussion-reaction";
     public static final String COMMAND_SET_DISCUSSION_REACTION_CONFIG = "set-discussion-reaction-config";
     public static final String COMMAND_SET_GAME_SETUP = "set-game-setup";
+    public static final String COMMAND_SET_HISTORY_CONFIG = "set-history-config";
     public static final String COMMAND_LEAVE_LOBBY = "leave-lobby";
     public static final String COMMAND_SET_MODERATOR_STATUS = "set-moderator-status";
     public static final String COMMAND_KICK_USER = "kick-user";
@@ -980,8 +981,23 @@ public class SecretHitlerServer {
                             throw new RuntimeException("Game setup can only be changed in the setup lobby.");
                         }
                         verifyIsModerator(name, lobby);
-                        lobby.setGameSetupConfig(GameSetupConfig.fromJson(message.getJSONObject("setupConfig"),
-                                Math.max(SecretHitlerGame.MIN_PLAYERS, lobby.getUserCount()), lobby.getGameSetupConfig()));
+                        GameSetupConfig setupConfig = GameSetupConfig.fromJson(message.getJSONObject("setupConfig"),
+                                Math.max(SecretHitlerGame.MIN_PLAYERS, lobby.getUserCount()), lobby.getGameSetupConfig());
+                        if (message.has("setupAutomation") && !message.isNull("setupAutomation")) {
+                            lobby.setGameSetupConfig(setupConfig,
+                                    Lobby.SetupAutomationConfig.fromJson(message.getJSONObject("setupAutomation")));
+                        } else {
+                            lobby.setGameSetupConfig(setupConfig);
+                        }
+                        break;
+
+                    case COMMAND_SET_HISTORY_CONFIG:
+                        if (lobby.isInGame()) {
+                            throw new RuntimeException("History settings can only be changed in the setup lobby.");
+                        }
+                        verifyIsModerator(name, lobby);
+                        lobby.setHistoryDisplayConfig(
+                                Lobby.HistoryDisplayConfig.fromJson(message.getJSONObject("historyConfig")));
                         break;
 
                     case COMMAND_SET_MODERATOR_STATUS:
