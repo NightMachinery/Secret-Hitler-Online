@@ -3,14 +3,17 @@ package server.util;
 import game.GameState;
 import game.GameSetupConfig;
 import game.SecretHitlerGame;
+import game.datastructures.Deck;
 import game.datastructures.Identity;
 import game.datastructures.Player;
+import game.datastructures.Policy;
 import org.json.JSONArray;
 import org.json.JSONObject;
 import org.junit.Test;
 
 import java.lang.reflect.Field;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentSkipListSet;
 
@@ -26,6 +29,25 @@ public class GameToJSONConverterTest {
             out.add(Integer.toString(i));
         }
         return out;
+    }
+
+
+    private void replaceDrawDeck(SecretHitlerGame game, Policy.Type... topToBottom) throws Exception {
+        Deck deck = new Deck();
+        for (int i = topToBottom.length - 1; i >= 0; i--) {
+            deck.add(new Policy(topToBottom[i]));
+        }
+        Field drawField = SecretHitlerGame.class.getDeclaredField("draw");
+        drawField.setAccessible(true);
+        drawField.set(game, deck);
+    }
+
+    private void voteYesForAllLiving(SecretHitlerGame game) {
+        for (Player player : game.getPlayerList()) {
+            if (player.isAlive()) {
+                game.registerVote(player.getUsername(), true);
+            }
+        }
     }
 
     private void voteNoForAllLiving(SecretHitlerGame game) {
@@ -96,6 +118,46 @@ public class GameToJSONConverterTest {
         assertEquals(false, historyConfig.getBoolean("showPublicActions"));
         assertTrue(historyConfig.getString("roundsToShow").equals("LAST_1"));
     }
+
+
+    @Test
+    public void testCurrentRoundPolicyClaimsSerializeWhenHistoryOptionIsDisabled() throws Exception {
+        SecretHitlerGame game = new SecretHitlerGame(makePlayers(6));
+        replaceDrawDeck(game, Policy.Type.FASCIST, Policy.Type.LIBERAL, Policy.Type.LIBERAL, Policy.Type.FASCIST);
+        game.nominateChancellor("2");
+        voteYesForAllLiving(game);
+        game.presidentDiscardPolicy(1);
+        game.chancellorEnactPolicy(0);
+        game.registerPolicyClaim("0", false, Arrays.asList(
+                Policy.Type.FASCIST,
+                Policy.Type.FASCIST,
+                Policy.Type.LIBERAL));
+
+        Lobby.HistoryDisplayConfig config = new Lobby.HistoryDisplayConfig(
+                true,
+                true,
+                true,
+                Lobby.HistoryDisplayConfig.RoundsToShow.ALL,
+                false);
+        JSONObject currentRoundOut = GameToJSONConverter.convert(game, "0", config);
+
+        JSONObject currentEntry = currentRoundOut.getJSONArray("history").getJSONObject(0);
+        assertEquals(false, currentRoundOut.getJSONObject("historyConfig").getBoolean("showPolicyClaims"));
+        assertEquals(true, currentEntry.getBoolean("policyClaimsRequired"));
+        assertEquals(false, currentEntry.getJSONObject("presidentPolicyClaim").getBoolean("refused"));
+        assertEquals("FASCIST", currentEntry.getJSONObject("presidentPolicyClaim").getJSONArray("policies").getString(0));
+        assertTrue(currentEntry.isNull("chancellorPolicyClaim"));
+
+        game.refusePolicyClaim("2");
+        game.endPresidentialTerm();
+
+        JSONObject pastRoundOut = GameToJSONConverter.convert(game, "0", config);
+        JSONObject pastEntry = pastRoundOut.getJSONArray("history").getJSONObject(0);
+        assertEquals(false, pastEntry.getBoolean("policyClaimsRequired"));
+        assertTrue(pastEntry.isNull("presidentPolicyClaim"));
+        assertTrue(pastEntry.isNull("chancellorPolicyClaim"));
+    }
+
 
     @Test
     public void testGamePacketIncludesCreatorAndBotControlledMetadata() throws Exception {

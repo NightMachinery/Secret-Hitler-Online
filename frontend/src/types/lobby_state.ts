@@ -8,6 +8,7 @@ export enum LobbyState {
   LEGISLATIVE_PRESIDENT = "LEGISLATIVE_PRESIDENT", // In the legislative phase. The president is selecting a card to discard.
   LEGISLATIVE_CHANCELLOR = "LEGISLATIVE_CHANCELLOR", // In the legislative phase. The chancellor is selecting a card to enact.
   LEGISLATIVE_PRESIDENT_VETO = "LEGISLATIVE_PRESIDENT_VETO", // Chancellor decided to initiate veto, President chooses whether to allow.
+  POLICY_CLAIMS = "POLICY_CLAIMS", // President and chancellor are reporting policy cards.
   PP_PEEK = "PRESIDENTIAL_POWER_PEEK", // President may peek at the next three cards in the deck
   PP_INVESTIGATE = "PRESIDENTIAL_POWER_INVESTIGATE", // President can investigate a party membership
   PP_EXECUTION = "PRESIDENTIAL_POWER_EXECUTION", // President may choose a player to execute
@@ -59,6 +60,11 @@ export type PublicHistoryAction = {
   hitlerExecuted: boolean | null;
 };
 
+export type PolicyClaim = {
+  refused: boolean;
+  policies: PolicyType[];
+};
+
 export type RoundHistoryEntry = {
   round: number;
   president: string;
@@ -67,6 +73,10 @@ export type RoundHistoryEntry = {
   votePassed: boolean;
   result: RoundHistoryResult | null;
   publicActions: PublicHistoryAction[];
+  isCurrentRound?: boolean;
+  policyClaimsRequired?: boolean;
+  presidentPolicyClaim?: PolicyClaim | null;
+  chancellorPolicyClaim?: PolicyClaim | null;
 };
 
 export const enum HistoryRoundsToShow {
@@ -79,6 +89,7 @@ export type HistoryConfig = {
   showHistory: boolean;
   showPublicActions: boolean;
   showVoteBreakdown: boolean;
+  showPolicyClaims: boolean;
   roundsToShow: HistoryRoundsToShow;
 };
 
@@ -128,6 +139,8 @@ export type GameState = {
   peek?: PolicyType[];
   history: RoundHistoryEntry[];
   historyConfig: HistoryConfig;
+  presidentPolicyClaimSubmitted?: boolean;
+  chancellorPolicyClaimSubmitted?: boolean;
   discussionReactions: Record<string, DiscussionReaction>;
   discussionReactionConfig: DiscussionReactionConfig;
   creator?: string;

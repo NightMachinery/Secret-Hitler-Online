@@ -150,7 +150,9 @@ public class GameToJSONConverter {
         out.put("setupConfig", game.getSetupConfig().toJson());
         out.put("userVotes", game.getVotes());
         out.put("vetoOccurred", game.didVetoOccurThisTurn());
-        out.put("history", convertHistory(game.getHistory(), effectiveHistoryConfig));
+        out.put("presidentPolicyClaimSubmitted", game.hasPresidentPolicyClaim());
+        out.put("chancellorPolicyClaimSubmitted", game.hasChancellorPolicyClaim());
+        out.put("history", convertHistory(game.getHistory(), effectiveHistoryConfig, game.getRound()));
         out.put("historyConfig", convertHistoryConfig(effectiveHistoryConfig));
         Lobby.DiscussionReactionConfig reactionConfig = lobby == null
                 ? Lobby.DiscussionReactionConfig.defaultConfig()
@@ -218,6 +220,7 @@ public class GameToJSONConverter {
         out.put("showHistory", historyConfig.shouldShowHistory());
         out.put("showPublicActions", historyConfig.shouldShowPublicActions());
         out.put("showVoteBreakdown", historyConfig.shouldShowVoteBreakdown());
+        out.put("showPolicyClaims", historyConfig.shouldShowPolicyClaims());
         out.put("roundsToShow", historyConfig.getRoundsToShow().toString());
         return out;
     }
@@ -250,7 +253,7 @@ public class GameToJSONConverter {
     }
 
     private static JSONArray convertHistory(List<SecretHitlerGame.RoundHistoryEntry> history,
-            Lobby.HistoryDisplayConfig historyConfig) {
+            Lobby.HistoryDisplayConfig historyConfig, int currentRound) {
         JSONArray out = new JSONArray();
         if (!historyConfig.shouldShowHistory()) {
             return out;
@@ -277,6 +280,7 @@ public class GameToJSONConverter {
             jsonEntry.put("chancellor", entry.getChancellor());
             jsonEntry.put("votePassed", entry.didVotePass());
             jsonEntry.put("result", entry.getResult() == null ? JSONObject.NULL : entry.getResult().toString());
+            jsonEntry.put("isCurrentRound", entry.getRound() == currentRound);
 
             JSONObject voteData = new JSONObject();
             if (historyConfig.shouldShowVoteBreakdown()) {
@@ -300,7 +304,37 @@ public class GameToJSONConverter {
             }
             jsonEntry.put("publicActions", actions);
 
+            boolean includePolicyClaims = historyConfig.shouldShowPolicyClaims() || entry.getRound() == currentRound;
+            jsonEntry.put("policyClaimsRequired", includePolicyClaims && entry.arePolicyClaimsRequired());
+            jsonEntry.put("presidentPolicyClaim", includePolicyClaims
+                    ? convertPolicyClaim(entry.getPresidentPolicyClaim())
+                    : JSONObject.NULL);
+            jsonEntry.put("chancellorPolicyClaim", includePolicyClaims
+                    ? convertPolicyClaim(entry.getChancellorPolicyClaim())
+                    : JSONObject.NULL);
+
             out.put(jsonEntry);
+        }
+        return out;
+    }
+
+    private static Object convertPolicyClaim(SecretHitlerGame.PolicyClaim claim) {
+        if (claim == null) {
+            return JSONObject.NULL;
+        }
+        JSONObject out = new JSONObject();
+        out.put("refused", claim.isRefused());
+        out.put("policies", convertPolicyListToJsonArray(claim.getPolicies()));
+        return out;
+    }
+
+    private static JSONArray convertPolicyListToJsonArray(List<Policy.Type> policies) {
+        JSONArray out = new JSONArray();
+        if (policies == null) {
+            return out;
+        }
+        for (Policy.Type policy : policies) {
+            out.put(policy.toString());
         }
         return out;
     }

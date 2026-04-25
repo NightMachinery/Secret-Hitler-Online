@@ -26,6 +26,7 @@ import {
   PARAM_PRESIDENT,
   STATE_LEGISLATIVE_PRESIDENT,
   STATE_LEGISLATIVE_CHANCELLOR,
+  STATE_POLICY_CLAIMS,
   PARAM_PACKET_TYPE,
   PACKET_LOBBY,
   PACKET_GAME_STATE,
@@ -65,6 +66,7 @@ import Board from "./board/Board";
 import VotingPrompt from "./custom-alert/VotingPrompt";
 import PresidentLegislativePrompt from "./custom-alert/PresidentLegislativePrompt";
 import ChancellorLegislativePrompt from "./custom-alert/ChancellorLegislativePrompt";
+import PolicyClaimPrompt from "./custom-alert/PolicyClaimPrompt";
 import VetoPrompt from "./custom-alert/VetoPrompt";
 import ElectionTrackerAlert from "./custom-alert/ElectionTrackerAlert";
 import PolicyEnactedAlert from "./custom-alert/PolicyEnactedAlert";
@@ -98,6 +100,7 @@ import {
   LobbyState,
   ObserverAssignableTargetType,
   PlayerState,
+  PolicyType,
   ServerRequestPayload,
   UserType,
   WSCommand,
@@ -119,6 +122,7 @@ const DEFAULT_HISTORY_CONFIG: HistoryConfig = {
   showHistory: true,
   showPublicActions: true,
   showVoteBreakdown: true,
+  showPolicyClaims: true,
   roundsToShow: HistoryRoundsToShow.ALL,
 };
 const DEFAULT_DISCUSSION_REACTION_CONFIG: DiscussionReactionConfig = {
@@ -151,6 +155,8 @@ const DEFAULT_GAME_STATE: GameState = {
   peek: [],
   history: [],
   historyConfig: DEFAULT_HISTORY_CONFIG,
+  presidentPolicyClaimSubmitted: false,
+  chancellorPolicyClaimSubmitted: false,
   discussionReactions: {},
   discussionReactionConfig: DEFAULT_DISCUSSION_REACTION_CONFIG,
   creator: "",
@@ -214,6 +220,7 @@ type AppState = {
   createLobbyShowHistory: boolean;
   createLobbyShowPublicActions: boolean;
   createLobbyShowVoteBreakdown: boolean;
+  createLobbyShowPolicyClaims: boolean;
   createLobbyRoundsToShow: HistoryRoundsToShow;
   name: string;
   lobby: string;
@@ -257,6 +264,7 @@ const defaultAppState: AppState = {
   createLobbyShowHistory: true,
   createLobbyShowPublicActions: true,
   createLobbyShowVoteBreakdown: true,
+  createLobbyShowPolicyClaims: true,
   createLobbyRoundsToShow: HistoryRoundsToShow.ALL,
   name: "P1",
   lobby: "AAAAAA",
@@ -395,6 +403,10 @@ class App extends Component<{}, AppState> {
     params.set(
       "history-show-vote-breakdown",
       historyConfig.showVoteBreakdown ? "true" : "false"
+    );
+    params.set(
+      "history-show-policy-claims",
+      historyConfig.showPolicyClaims ? "true" : "false"
     );
     params.set("history-rounds-to-show", historyConfig.roundsToShow);
     return fetch(SERVER_ADDRESS_HTTP + NEW_LOBBY + "?" + params.toString());
@@ -637,6 +649,17 @@ class App extends Component<{}, AppState> {
         }
         if (!message.historyConfig) {
           message.historyConfig = { ...DEFAULT_HISTORY_CONFIG };
+        } else {
+          message.historyConfig = {
+            ...DEFAULT_HISTORY_CONFIG,
+            ...message.historyConfig,
+          };
+        }
+        if (typeof message.presidentPolicyClaimSubmitted !== "boolean") {
+          message.presidentPolicyClaimSubmitted = false;
+        }
+        if (typeof message.chancellorPolicyClaimSubmitted !== "boolean") {
+          message.chancellorPolicyClaimSubmitted = false;
         }
         if (
           !message.discussionReactions ||
@@ -837,6 +860,14 @@ class App extends Component<{}, AppState> {
     });
   };
 
+  updateCreateLobbyShowPolicyClaims = (
+    event: React.ChangeEvent<HTMLInputElement>
+  ) => {
+    this.setState({
+      createLobbyShowPolicyClaims: event.target.checked,
+    });
+  };
+
   updateCreateLobbyRoundsToShow = (
     event: React.ChangeEvent<HTMLSelectElement>
   ) => {
@@ -921,6 +952,7 @@ class App extends Component<{}, AppState> {
       showHistory: this.state.createLobbyShowHistory,
       showPublicActions: this.state.createLobbyShowPublicActions,
       showVoteBreakdown: this.state.createLobbyShowVoteBreakdown,
+      showPolicyClaims: this.state.createLobbyShowPolicyClaims,
       roundsToShow: this.state.createLobbyRoundsToShow,
     })
       .then((response) => {
@@ -1061,6 +1093,23 @@ class App extends Component<{}, AppState> {
                 }}
               />
               Show who voted yes/no
+            </label>
+            <label
+              style={{ display: "block", margin: "4px 0", cursor: "pointer" }}
+            >
+              <input
+                type="checkbox"
+                checked={this.state.createLobbyShowPolicyClaims}
+                onChange={this.updateCreateLobbyShowPolicyClaims}
+                disabled={!this.state.createLobbyShowHistory}
+                style={{
+                  width: "16px",
+                  minWidth: "16px",
+                  marginRight: "8px",
+                  verticalAlign: "middle",
+                }}
+              />
+              Show policy card claims
             </label>
             <div style={{ marginTop: "8px" }}>
               <label style={{ marginRight: "8px" }}>Rounds to show:</label>
@@ -2041,6 +2090,7 @@ class App extends Component<{}, AppState> {
     // Check for changes in enacted policies and election tracker.
     const statesToShowPolicyFor = [
       LobbyState.POST_LEGISLATIVE,
+      LobbyState.POLICY_CLAIMS,
       LobbyState.PP_INVESTIGATE,
       LobbyState.PP_EXECUTION,
       LobbyState.PP_ELECTION,
@@ -2228,6 +2278,36 @@ class App extends Component<{}, AppState> {
                 electionTracker={newState.electionTracker}
               />,
               true
+            );
+          }
+          break;
+
+        case STATE_POLICY_CLAIMS:
+          this.queueEventUpdate("POLICY CLAIMS");
+          this.queueStatusMessage(
+            "Waiting for the president and chancellor to report or refuse policy cards."
+          );
+          if (isPresident && canAct && !newState.presidentPolicyClaimSubmitted) {
+            this.queueAlert(
+              <PolicyClaimPrompt
+                roleLabel={"President"}
+                cardCount={3}
+                allowedPolicyTypes={this.getAllowedPolicyClaimTypes(newState)}
+                sendWSCommand={this.sendWSCommand}
+              />
+            );
+          } else if (
+            isChancellor &&
+            canAct &&
+            !newState.chancellorPolicyClaimSubmitted
+          ) {
+            this.queueAlert(
+              <PolicyClaimPrompt
+                roleLabel={"Chancellor"}
+                cardCount={2}
+                allowedPolicyTypes={this.getAllowedPolicyClaimTypes(newState)}
+                sendWSCommand={this.sendWSCommand}
+              />
             );
           }
           break;
@@ -2445,6 +2525,25 @@ class App extends Component<{}, AppState> {
       gameState.creator === this.state.name ||
       Boolean(gameState.moderators?.includes(this.state.name))
     );
+  }
+
+  getAllowedPolicyClaimTypes(gameState: GameState): PolicyType[] {
+    const setupConfig = gameState.setupConfig;
+    const allowedPolicyTypes: PolicyType[] = [];
+
+    if (!setupConfig || setupConfig.fascistPolicies > 0) {
+      allowedPolicyTypes.push(PolicyType.FASCIST);
+    }
+    if (!setupConfig || setupConfig.liberalPolicies > 0) {
+      allowedPolicyTypes.push(PolicyType.LIBERAL);
+    }
+    if (setupConfig && setupConfig.anarchistPolicies > 0) {
+      allowedPolicyTypes.push(PolicyType.ANARCHIST);
+    }
+
+    return allowedPolicyTypes.length > 0
+      ? allowedPolicyTypes
+      : [PolicyType.FASCIST, PolicyType.LIBERAL];
   }
 
   getViewerDiscussionReaction(
@@ -2884,6 +2983,7 @@ class App extends Component<{}, AppState> {
             playerOrder={this.state.gameState.playerOrder}
             showVoteBreakdown={this.state.gameState.historyConfig.showVoteBreakdown}
             showPublicActions={this.state.gameState.historyConfig.showPublicActions}
+            showPolicyClaims={this.state.gameState.historyConfig.showPolicyClaims}
           />
         )}
 

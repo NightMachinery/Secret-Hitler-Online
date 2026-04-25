@@ -3,6 +3,7 @@ package server;
 import game.GameSetupConfig;
 import game.SecretHitlerGame;
 import game.datastructures.Identity;
+import game.datastructures.Policy;
 import io.javalin.Javalin;
 import io.javalin.http.Context;
 import io.javalin.websocket.WsCloseContext;
@@ -11,6 +12,7 @@ import io.javalin.websocket.WsContext;
 import io.javalin.websocket.WsMessageContext;
 
 import org.eclipse.jetty.websocket.api.StatusCode;
+import org.json.JSONArray;
 import org.json.JSONObject;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -41,6 +43,8 @@ public class SecretHitlerServer {
     public static final String PARAM_VOTE = "vote";
     public static final String PARAM_VETO = "veto";
     public static final String PARAM_CHOICE = "choice"; // the index of the chosen policy.
+    public static final String PARAM_REFUSED = "refused";
+    public static final String PARAM_CARDS = "cards";
     public static final String PARAM_ICON = "icon";
     public static final String PARAM_ENABLED = "enabled";
     public static final String PARAM_OBSERVER = "observer";
@@ -50,6 +54,7 @@ public class SecretHitlerServer {
     public static final String PARAM_HISTORY_SHOW = "history-show";
     public static final String PARAM_HISTORY_SHOW_PRESIDENTIAL_ACTIONS = "history-show-presidential-actions";
     public static final String PARAM_HISTORY_SHOW_VOTE_BREAKDOWN = "history-show-vote-breakdown";
+    public static final String PARAM_HISTORY_SHOW_POLICY_CLAIMS = "history-show-policy-claims";
     public static final String PARAM_HISTORY_ROUNDS_TO_SHOW = "history-rounds-to-show";
 
     // Passed to client
@@ -76,6 +81,7 @@ public class SecretHitlerServer {
     public static final String COMMAND_REGISTER_VOTE = "register-vote";
     public static final String COMMAND_REGISTER_PRESIDENT_CHOICE = "register-president-choice";
     public static final String COMMAND_REGISTER_CHANCELLOR_CHOICE = "register-chancellor-choice";
+    public static final String COMMAND_REGISTER_POLICY_CLAIM = "register-policy-claim";
     public static final String COMMAND_REGISTER_CHANCELLOR_VETO = "chancellor-veto";
     public static final String COMMAND_REGISTER_PRESIDENT_VETO = "president-veto";
 
@@ -561,9 +567,24 @@ public class SecretHitlerServer {
         boolean showHistory = parseBooleanQueryParam(ctx, PARAM_HISTORY_SHOW, true);
         boolean showPublicActions = parseBooleanQueryParam(ctx, PARAM_HISTORY_SHOW_PRESIDENTIAL_ACTIONS, true);
         boolean showVoteBreakdown = parseBooleanQueryParam(ctx, PARAM_HISTORY_SHOW_VOTE_BREAKDOWN, true);
+        boolean showPolicyClaims = parseBooleanQueryParam(ctx, PARAM_HISTORY_SHOW_POLICY_CLAIMS, true);
         Lobby.HistoryDisplayConfig.RoundsToShow roundsToShow = Lobby.HistoryDisplayConfig.RoundsToShow
                 .fromString(ctx.queryParam(PARAM_HISTORY_ROUNDS_TO_SHOW));
-        return new Lobby.HistoryDisplayConfig(showHistory, showPublicActions, showVoteBreakdown, roundsToShow);
+        return new Lobby.HistoryDisplayConfig(showHistory, showPublicActions, showVoteBreakdown, roundsToShow,
+                showPolicyClaims);
+    }
+
+    private static List<Policy.Type> parsePolicyClaimCards(JSONObject message) {
+        JSONArray cards = message.optJSONArray(PARAM_CARDS);
+        if (cards == null) {
+            throw new IllegalArgumentException("Policy claim cards must be specified unless refusing.");
+        }
+
+        List<Policy.Type> out = new ArrayList<>();
+        for (int i = 0; i < cards.length(); i++) {
+            out.add(Policy.Type.valueOf(cards.getString(i).trim().toUpperCase()));
+        }
+        return out;
     }
 
     /**
@@ -818,6 +839,17 @@ public class SecretHitlerServer {
                         verifyIsChancellor(requireActingPlayer(name, lobby), lobby);
                         int enact = message.getInt(PARAM_CHOICE);
                         lobby.game().chancellorEnactPolicy(enact);
+                        break;
+
+                    case COMMAND_REGISTER_POLICY_CLAIM:
+                        String policyClaimActor = requireActingPlayer(name, lobby);
+                        if (!policyClaimActor.equals(lobby.game().getCurrentPresident())
+                                && !policyClaimActor.equals(lobby.game().getCurrentChancellor())) {
+                            throw new RuntimeException("Only the current president or chancellor can register a policy claim.");
+                        }
+                        boolean refused = message.optBoolean(PARAM_REFUSED, false);
+                        lobby.game().registerPolicyClaim(policyClaimActor, refused,
+                                refused ? Collections.emptyList() : parsePolicyClaimCards(message));
                         break;
 
                     case COMMAND_REGISTER_CHANCELLOR_VETO:

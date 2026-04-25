@@ -1,17 +1,23 @@
 import React from "react";
 import "./HistoryPanel.css";
 import {
+  PolicyClaim,
+  PolicyType,
   PublicHistoryAction,
   PublicHistoryActionType,
   RoundHistoryEntry,
   RoundHistoryResult,
 } from "../types";
+import LiberalPolicy from "../assets/policy-liberal.png";
+import FascistPolicy from "../assets/policy-fascist.png";
+import AnarchistPolicy from "../assets/policy-anarchist.png";
 
 type HistoryPanelProps = {
   history: RoundHistoryEntry[];
   playerOrder: string[];
   showVoteBreakdown: boolean;
   showPublicActions: boolean;
+  showPolicyClaims: boolean;
 };
 
 const getResultLabel = (result: RoundHistoryResult | null): string => {
@@ -139,15 +145,108 @@ const renderVoteSummary = (
   );
 };
 
+const getPolicyClaimImage = (policy: PolicyType): string => {
+  switch (policy) {
+    case PolicyType.LIBERAL:
+      return LiberalPolicy;
+    case PolicyType.ANARCHIST:
+      return AnarchistPolicy;
+    case PolicyType.FASCIST:
+    default:
+      return FascistPolicy;
+  }
+};
+
+const getPolicyClaimLabel = (policy: PolicyType): string => {
+  switch (policy) {
+    case PolicyType.LIBERAL:
+      return "liberal";
+    case PolicyType.ANARCHIST:
+      return "anarchist";
+    case PolicyType.FASCIST:
+    default:
+      return "fascist";
+  }
+};
+
+const renderClaimCards = (
+  roleName: "President" | "Chancellor",
+  claim: PolicyClaim
+): React.JSX.Element => {
+  return (
+    <span className="history-claim-cards">
+      {claim.policies.map((policy, index) => (
+        <img
+          key={`${roleName}-${index}-${policy}`}
+          className="history-claim-card"
+          src={getPolicyClaimImage(policy)}
+          alt={`${roleName} claimed ${getPolicyClaimLabel(policy)} policy`}
+        />
+      ))}
+    </span>
+  );
+};
+
+const renderClaimLine = (
+  shortLabel: "P" | "C",
+  roleName: "President" | "Chancellor",
+  claim: PolicyClaim | null | undefined,
+  required: boolean | undefined
+): React.JSX.Element => {
+  let claimContent: React.ReactNode = "—";
+  if (claim) {
+    claimContent = claim.refused ? "Refused" : renderClaimCards(roleName, claim);
+  } else if (required) {
+    claimContent = "Pending";
+  }
+
+  return (
+    <div className="history-claim-line">
+      <span className="history-claim-role">{shortLabel}:</span>
+      <span className="history-claim-value">{claimContent}</span>
+    </div>
+  );
+};
+
+const renderPolicyClaims = (entry: RoundHistoryEntry): React.JSX.Element => {
+  return (
+    <div className="history-claim-list">
+      {renderClaimLine(
+        "P",
+        "President",
+        entry.presidentPolicyClaim,
+        entry.policyClaimsRequired
+      )}
+      {renderClaimLine(
+        "C",
+        "Chancellor",
+        entry.chancellorPolicyClaim,
+        entry.policyClaimsRequired
+      )}
+    </div>
+  );
+};
+
 const HistoryPanel = ({
   history,
   playerOrder,
   showVoteBreakdown,
   showPublicActions,
+  showPolicyClaims,
 }: HistoryPanelProps) => {
   const rows = [...history].reverse();
+  const hasVisiblePolicyClaims = rows.some(
+    (entry) =>
+      Boolean(entry.policyClaimsRequired) ||
+      Boolean(entry.presidentPolicyClaim) ||
+      Boolean(entry.chancellorPolicyClaim)
+  );
+  const shouldShowPolicyClaims = showPolicyClaims || hasVisiblePolicyClaims;
   let colCount = 4; // round, president, chancellor, result
   if (showVoteBreakdown) {
+    colCount++;
+  }
+  if (shouldShowPolicyClaims) {
     colCount++;
   }
   if (showPublicActions) {
@@ -166,6 +265,7 @@ const HistoryPanel = ({
               <th>Chancellor</th>
               {showVoteBreakdown && <th>Votes</th>}
               <th>Result</th>
+              {shouldShowPolicyClaims && <th>Claims</th>}
               {showPublicActions && <th>Public Actions</th>}
             </tr>
           </thead>
@@ -190,6 +290,11 @@ const HistoryPanel = ({
                       {getResultLabel(entry.result)}
                     </span>
                   </td>
+                  {shouldShowPolicyClaims && (
+                    <td className="history-claims">
+                      {renderPolicyClaims(entry)}
+                    </td>
+                  )}
                   {showPublicActions && (
                     <td className="history-actions">
                       {entry.publicActions.length === 0

@@ -1,5 +1,6 @@
 import { DiscussionReactionType } from "./lobby_state";
 import { GameSetupConfig } from "../setup/GameSetupConfig";
+import { PolicyType } from "./game";
 
 // TODO: Change these all to camelCase
 export const enum WSCommandType {
@@ -32,6 +33,7 @@ export const enum WSCommandType {
   // Policy action
   REGISTER_CHANCELLOR_CHOICE = "register-chancellor-choice",
   REGISTER_PRESIDENT_CHOICE = "register-president-choice",
+  REGISTER_POLICY_CLAIM = "register-policy-claim",
 }
 
 /** All possible commands and associated parameters. */
@@ -74,7 +76,16 @@ export type ServerRequestPayload =
   | { command: WSCommandType.BAN_USER; target: string }
   | { command: WSCommandType.RESET_BANS }
   | { command: WSCommandType.REGISTER_CHANCELLOR_CHOICE; choice: number }
-  | { command: WSCommandType.REGISTER_PRESIDENT_CHOICE; choice: number };
+  | { command: WSCommandType.REGISTER_PRESIDENT_CHOICE; choice: number }
+  | {
+      command: WSCommandType.REGISTER_POLICY_CLAIM;
+      refused: true;
+    }
+  | {
+      command: WSCommandType.REGISTER_POLICY_CLAIM;
+      refused: false;
+      cards: PolicyType[];
+    };
 
 export type SendWSCommand = (payload: ServerRequestPayload) => void;
 

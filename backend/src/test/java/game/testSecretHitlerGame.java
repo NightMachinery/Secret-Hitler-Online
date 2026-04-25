@@ -1,9 +1,14 @@
 package game;
 
+import game.datastructures.Deck;
 import game.datastructures.Player;
+import game.datastructures.Policy;
+import game.datastructures.board.PresidentialPower;
 import org.junit.Test;
 
+import java.lang.reflect.Field;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.List;
 
 import static junit.framework.TestCase.*;
@@ -16,6 +21,35 @@ public class testSecretHitlerGame {
             out.add(Integer.toString(i));
         }
         return out;
+    }
+
+
+    private void replaceDrawDeck(SecretHitlerGame game, Policy.Type... topToBottom) throws Exception {
+        Deck deck = new Deck();
+        for (int i = topToBottom.length - 1; i >= 0; i--) {
+            deck.add(new Policy(topToBottom[i]));
+        }
+        Field drawField = SecretHitlerGame.class.getDeclaredField("draw");
+        drawField.setAccessible(true);
+        drawField.set(game, deck);
+    }
+
+    private void passVote(SecretHitlerGame game, String chancellor) {
+        game.nominateChancellor(chancellor);
+        for (Player player : game.getPlayerList()) {
+            if (player.isAlive()) {
+                game.registerVote(player.getUsername(), true);
+            }
+        }
+    }
+
+    private void failVote(SecretHitlerGame game, String chancellor) {
+        game.nominateChancellor(chancellor);
+        for (Player player : game.getPlayerList()) {
+            if (player.isAlive()) {
+                game.registerVote(player.getUsername(), false);
+            }
+        }
     }
 
     private int getExpectedTotalFascists(int numPlayers) {
@@ -122,4 +156,123 @@ public class testSecretHitlerGame {
         assertTrue(entry.getPublicActions().isEmpty());
         assertEquals(6, entry.getVotes().size());
     }
+
+    @Test
+    public void testLegislativePolicyRequiresPresidentAndChancellorClaimsBeforeEndTerm() throws Exception {
+        SecretHitlerGame game = new SecretHitlerGame(makePlayers(6));
+        replaceDrawDeck(game, Policy.Type.FASCIST, Policy.Type.LIBERAL, Policy.Type.LIBERAL, Policy.Type.FASCIST);
+
+        passVote(game, "2");
+        game.presidentDiscardPolicy(1);
+        game.chancellorEnactPolicy(0);
+
+        assertEquals(GameState.POLICY_CLAIMS, game.getState());
+        SecretHitlerGame.RoundHistoryEntry entry = game.getHistory().get(0);
+        assertTrue(entry.arePolicyClaimsRequired());
+        assertFalse(entry.hasPresidentPolicyClaim());
+        assertFalse(entry.hasChancellorPolicyClaim());
+
+        game.registerPolicyClaim("0", false, Arrays.asList(
+                Policy.Type.FASCIST,
+                Policy.Type.FASCIST,
+                Policy.Type.LIBERAL));
+
+        assertEquals(GameState.POLICY_CLAIMS, game.getState());
+        entry = game.getHistory().get(0);
+        assertTrue(entry.hasPresidentPolicyClaim());
+        assertFalse(entry.hasChancellorPolicyClaim());
+
+        game.refusePolicyClaim("2");
+
+        assertEquals(GameState.POST_LEGISLATIVE, game.getState());
+        entry = game.getHistory().get(0);
+        assertEquals(Arrays.asList(Policy.Type.FASCIST, Policy.Type.FASCIST, Policy.Type.LIBERAL),
+                entry.getPresidentPolicyClaim().getPolicies());
+        assertTrue(entry.getChancellorPolicyClaim().isRefused());
+    }
+
+    @Test
+    public void testPolicyClaimValidationRejectsUnsupportedPolicyTypesAndDuplicates() throws Exception {
+        SecretHitlerGame game = new SecretHitlerGame(makePlayers(6));
+        replaceDrawDeck(game, Policy.Type.FASCIST, Policy.Type.LIBERAL, Policy.Type.LIBERAL, Policy.Type.FASCIST);
+
+        passVote(game, "2");
+        game.presidentDiscardPolicy(1);
+        game.chancellorEnactPolicy(0);
+
+        try {
+            game.registerPolicyClaim("0", false, Arrays.asList(
+                    Policy.Type.FASCIST,
+                    Policy.Type.ANARCHIST,
+                    Policy.Type.LIBERAL));
+            fail("Expected standard games to reject Anarchist policy claims.");
+        } catch (IllegalArgumentException expected) {
+            assertTrue(expected.getMessage().contains("not available"));
+        }
+
+        game.registerPolicyClaim("0", false, Arrays.asList(
+                Policy.Type.FASCIST,
+                Policy.Type.FASCIST,
+                Policy.Type.LIBERAL));
+
+        try {
+            game.refusePolicyClaim("0");
+            fail("Expected duplicate president claims to be rejected.");
+        } catch (IllegalStateException expected) {
+            assertTrue(expected.getMessage().contains("already"));
+        }
+    }
+
+    @Test
+    public void testElectionTrackerTopDeckDoesNotRequestPolicyClaims() throws Exception {
+        SecretHitlerGame game = new SecretHitlerGame(makePlayers(6));
+        replaceDrawDeck(game, Policy.Type.FASCIST, Policy.Type.LIBERAL, Policy.Type.FASCIST);
+
+        failVote(game, "2");
+        game.endPresidentialTerm();
+        failVote(game, "3");
+        game.endPresidentialTerm();
+        failVote(game, "4");
+
+        assertEquals(GameState.POST_LEGISLATIVE, game.getState());
+        assertFalse(game.getHistory().get(2).arePolicyClaimsRequired());
+    }
+
+    @Test
+    public void testCpuPresidentAndChancellorAutoRefusePolicyClaims() throws Exception {
+        SecretHitlerGame game = new SecretHitlerGame(makePlayers(6));
+        game.getPlayer("0").markAsCpu();
+        game.getPlayer("2").markAsCpu();
+        replaceDrawDeck(game, Policy.Type.FASCIST, Policy.Type.LIBERAL, Policy.Type.LIBERAL, Policy.Type.FASCIST);
+
+        passVote(game, "2");
+        game.presidentDiscardPolicy(1);
+        game.chancellorEnactPolicy(0);
+
+        assertEquals(GameState.POST_LEGISLATIVE, game.getState());
+        SecretHitlerGame.RoundHistoryEntry entry = game.getHistory().get(0);
+        assertTrue(entry.getPresidentPolicyClaim().isRefused());
+        assertTrue(entry.getChancellorPolicyClaim().isRefused());
+    }
+
+    @Test
+    public void testPolicyClaimsResolveBeforePresidentialPowers() throws Exception {
+        SecretHitlerGame game = new SecretHitlerGame(makePlayers(6),
+                GameSetupConfig.builder(6)
+                        .powerAt(1, PresidentialPower.PEEK)
+                        .build());
+        replaceDrawDeck(game, Policy.Type.FASCIST, Policy.Type.LIBERAL, Policy.Type.LIBERAL, Policy.Type.FASCIST);
+
+        passVote(game, "2");
+        game.presidentDiscardPolicy(1);
+        game.chancellorEnactPolicy(0);
+
+        assertEquals(GameState.POLICY_CLAIMS, game.getState());
+        game.refusePolicyClaim("0");
+        assertEquals(GameState.POLICY_CLAIMS, game.getState());
+        game.refusePolicyClaim("2");
+
+        assertEquals(GameState.PRESIDENTIAL_POWER_PEEK, game.getState());
+    }
+
 }

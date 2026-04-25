@@ -81,6 +81,8 @@ public class LobbyBotControlTest {
         }
         game.presidentDiscardPolicy(0);
         game.chancellorEnactPolicy(0);
+        game.refusePolicyClaim(game.getCurrentPresident());
+        game.refusePolicyClaim(game.getCurrentChancellor());
         assertEquals(GameState.POST_LEGISLATIVE, game.getState());
 
         Field gameField = Lobby.class.getDeclaredField("game");

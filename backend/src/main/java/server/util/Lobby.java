@@ -64,18 +64,25 @@ public class Lobby implements Serializable {
         private final boolean showHistory;
         private final boolean showPublicActions;
         private final boolean showVoteBreakdown;
+        private final boolean showPolicyClaims;
         private final RoundsToShow roundsToShow;
 
         public HistoryDisplayConfig(boolean showHistory, boolean showPublicActions, boolean showVoteBreakdown,
                 RoundsToShow roundsToShow) {
+            this(showHistory, showPublicActions, showVoteBreakdown, roundsToShow, true);
+        }
+
+        public HistoryDisplayConfig(boolean showHistory, boolean showPublicActions, boolean showVoteBreakdown,
+                RoundsToShow roundsToShow, boolean showPolicyClaims) {
             this.showHistory = showHistory;
             this.showPublicActions = showPublicActions;
             this.showVoteBreakdown = showVoteBreakdown;
+            this.showPolicyClaims = showPolicyClaims;
             this.roundsToShow = roundsToShow == null ? RoundsToShow.ALL : roundsToShow;
         }
 
         public static HistoryDisplayConfig defaultConfig() {
-            return new HistoryDisplayConfig(true, true, true, RoundsToShow.ALL);
+            return new HistoryDisplayConfig(true, true, true, RoundsToShow.ALL, true);
         }
 
         public boolean shouldShowHistory() {
@@ -88,6 +95,10 @@ public class Lobby implements Serializable {
 
         public boolean shouldShowVoteBreakdown() {
             return showVoteBreakdown;
+        }
+
+        public boolean shouldShowPolicyClaims() {
+            return showPolicyClaims;
         }
 
         public RoundsToShow getRoundsToShow() {
@@ -831,7 +842,11 @@ public class Lobby implements Serializable {
         }
         botControlledPlayers.add(name);
 
-        if (game.getState() == GameState.POST_LEGISLATIVE && name.equals(game.getCurrentPresident())) {
+        if (game.getState() == GameState.POLICY_CLAIMS
+                && (name.equals(game.getCurrentPresident()) || name.equals(game.getCurrentChancellor()))) {
+            game.refusePolicyClaim(name);
+            cpu.synchronizeWithGame(game);
+        } else if (game.getState() == GameState.POST_LEGISLATIVE && name.equals(game.getCurrentPresident())) {
             game.endPresidentialTerm();
             cpu.synchronizeWithGame(game);
         }

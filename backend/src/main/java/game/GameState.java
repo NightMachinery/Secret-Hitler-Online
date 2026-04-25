@@ -7,6 +7,7 @@ public enum GameState {
     LEGISLATIVE_PRESIDENT,          // In the legislative phase. The president is selecting a card to discard.
     LEGISLATIVE_CHANCELLOR,         // In the legislative phase. The chancellor is selecting a card to enact.
     LEGISLATIVE_PRESIDENT_VETO,     // Chancellor decided to initiate veto, President chooses whether to allow.
+    POLICY_CLAIMS,                  // President and chancellor are reporting or refusing to report policy cards.
     PRESIDENTIAL_POWER_PEEK,        // President may peek at the next three cards in the deck
     PRESIDENTIAL_POWER_INVESTIGATE, // President can investigate a party membership
     PRESIDENTIAL_POWER_EXECUTION,   // President may choose a player to execute

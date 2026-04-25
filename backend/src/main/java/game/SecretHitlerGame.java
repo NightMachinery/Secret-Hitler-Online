@@ -111,6 +111,28 @@ public class SecretHitlerGame implements Serializable {
         }
     }
 
+    public static class PolicyClaim implements Serializable {
+        private boolean refused;
+        private List<Policy.Type> policies;
+
+        public PolicyClaim(boolean refused, List<Policy.Type> policies) {
+            this.refused = refused;
+            this.policies = policies == null ? new ArrayList<>() : new ArrayList<>(policies);
+        }
+
+        public PolicyClaim(PolicyClaim other) {
+            this(other.refused, other.policies);
+        }
+
+        public boolean isRefused() {
+            return refused;
+        }
+
+        public List<Policy.Type> getPolicies() {
+            return new ArrayList<>(policies);
+        }
+    }
+
     public static class RoundHistoryEntry implements Serializable {
         private int round;
         private String president;
@@ -119,6 +141,9 @@ public class SecretHitlerGame implements Serializable {
         private boolean votePassed;
         private RoundHistoryResult result;
         private List<PublicAction> publicActions;
+        private boolean policyClaimsRequired;
+        private PolicyClaim presidentPolicyClaim;
+        private PolicyClaim chancellorPolicyClaim;
 
         public RoundHistoryEntry(int round, String president, String chancellor, Map<String, Boolean> votes) {
             this.round = round;
@@ -128,6 +153,9 @@ public class SecretHitlerGame implements Serializable {
             this.votePassed = false;
             this.result = null;
             this.publicActions = new ArrayList<>();
+            this.policyClaimsRequired = false;
+            this.presidentPolicyClaim = null;
+            this.chancellorPolicyClaim = null;
         }
 
         public RoundHistoryEntry(RoundHistoryEntry other) {
@@ -141,6 +169,11 @@ public class SecretHitlerGame implements Serializable {
             for (PublicAction action : other.publicActions) {
                 this.publicActions.add(new PublicAction(action));
             }
+            this.policyClaimsRequired = other.policyClaimsRequired;
+            this.presidentPolicyClaim = other.presidentPolicyClaim == null ? null
+                    : new PolicyClaim(other.presidentPolicyClaim);
+            this.chancellorPolicyClaim = other.chancellorPolicyClaim == null ? null
+                    : new PolicyClaim(other.chancellorPolicyClaim);
         }
 
         public int getRound() {
@@ -175,6 +208,26 @@ public class SecretHitlerGame implements Serializable {
             return out;
         }
 
+        public boolean arePolicyClaimsRequired() {
+            return policyClaimsRequired;
+        }
+
+        public boolean hasPresidentPolicyClaim() {
+            return presidentPolicyClaim != null;
+        }
+
+        public boolean hasChancellorPolicyClaim() {
+            return chancellorPolicyClaim != null;
+        }
+
+        public PolicyClaim getPresidentPolicyClaim() {
+            return presidentPolicyClaim == null ? null : new PolicyClaim(presidentPolicyClaim);
+        }
+
+        public PolicyClaim getChancellorPolicyClaim() {
+            return chancellorPolicyClaim == null ? null : new PolicyClaim(chancellorPolicyClaim);
+        }
+
         private void setVotePassed(boolean votePassed) {
             this.votePassed = votePassed;
         }
@@ -185,6 +238,18 @@ public class SecretHitlerGame implements Serializable {
 
         private void addPublicAction(PublicAction action) {
             this.publicActions.add(action);
+        }
+
+        private void requirePolicyClaims() {
+            this.policyClaimsRequired = true;
+        }
+
+        private void setPresidentPolicyClaim(PolicyClaim claim) {
+            this.presidentPolicyClaim = claim == null ? null : new PolicyClaim(claim);
+        }
+
+        private void setChancellorPolicyClaim(PolicyClaim claim) {
+            this.chancellorPolicyClaim = claim == null ? null : new PolicyClaim(claim);
         }
     }
 
@@ -238,6 +303,7 @@ public class SecretHitlerGame implements Serializable {
     private HashMap<String, Boolean> voteMap;
     private List<RoundHistoryEntry> history;
     private RoundHistoryEntry currentRoundHistory;
+    private GameState stateAfterPolicyClaims;
 
     // </editor-fold>
 
@@ -329,6 +395,14 @@ public class SecretHitlerGame implements Serializable {
         return out;
     }
 
+    public boolean hasPresidentPolicyClaim() {
+        return currentRoundHistory != null && currentRoundHistory.hasPresidentPolicyClaim();
+    }
+
+    public boolean hasChancellorPolicyClaim() {
+        return currentRoundHistory != null && currentRoundHistory.hasChancellorPolicyClaim();
+    }
+
     // </editor-fold>
 
     /////////////////// Constructor
@@ -375,6 +449,7 @@ public class SecretHitlerGame implements Serializable {
         voteMap = new HashMap<>();
         history = new ArrayList<>();
         currentRoundHistory = null;
+        stateAfterPolicyClaims = null;
 
         resetDeck();
         assignRoles();
@@ -746,7 +821,7 @@ public class SecretHitlerGame implements Serializable {
                 electionTracker = 0; // Reset
             }
 
-            enactAndResolvePolicy(newPolicy, PolicyEnactmentSource.TRACKER);
+            enactAndResolvePolicy(newPolicy, PolicyEnactmentSource.TRACKER, false);
         } else {
             finalizeCurrentRoundHistory(RoundHistoryResult.VOTE_FAILED);
             concludePresidentialActions();
@@ -846,6 +921,7 @@ public class SecretHitlerGame implements Serializable {
         this.state = GameState.CHANCELLOR_NOMINATION;
         this.round++;
         currentRoundHistory = null;
+        stateAfterPolicyClaims = null;
     }
 
     /**
@@ -982,7 +1058,7 @@ public class SecretHitlerGame implements Serializable {
         Policy newPolicy = legislativePolicies.remove(index);
         discard.add(legislativePolicies.remove(0)); // Discard last remaining Policy
         didVetoOccurThisTurn = false; // Reset because we have moved past chancellor stage
-        enactAndResolvePolicy(newPolicy, PolicyEnactmentSource.LEGISLATIVE);
+        enactAndResolvePolicy(newPolicy, PolicyEnactmentSource.LEGISLATIVE, true);
     }
 
     /**
@@ -1054,7 +1130,7 @@ public class SecretHitlerGame implements Serializable {
      *          are insufficient cards for a hand,
      *          and resets the election tracker to 0.
      */
-    private void enactAndResolvePolicy(Policy newPolicy, PolicyEnactmentSource source) {
+    private void enactAndResolvePolicy(Policy newPolicy, PolicyEnactmentSource source, boolean requirePolicyClaims) {
         if (newPolicy.getType() == Policy.Type.ANARCHIST) {
             numAnarchistPoliciesResolved++;
             lastEnactedPolicy = Policy.Type.ANARCHIST;
@@ -1075,12 +1151,12 @@ public class SecretHitlerGame implements Serializable {
                 concludePresidentialActions();
                 return;
             }
-            enactAndResolvePolicy(draw.remove(), PolicyEnactmentSource.ANARCHIST_REPLACEMENT);
+            enactAndResolvePolicy(draw.remove(), PolicyEnactmentSource.ANARCHIST_REPLACEMENT, requirePolicyClaims);
             return;
         }
 
         board.enactPolicy(newPolicy);
-        onEnactPolicy(newPolicy.getType(), source);
+        onEnactPolicy(newPolicy.getType(), source, requirePolicyClaims);
     }
 
     private boolean hasAnarchistPlayers() {
@@ -1092,7 +1168,7 @@ public class SecretHitlerGame implements Serializable {
         return false;
     }
 
-    private void onEnactPolicy(Policy.Type policyType, PolicyEnactmentSource source) {
+    private void onEnactPolicy(Policy.Type policyType, PolicyEnactmentSource source, boolean requirePolicyClaims) {
         electionTracker = 0;
         lastEnactedPolicy = policyType;
         finalizeCurrentRoundHistory(policyType == Policy.Type.FASCIST
@@ -1101,6 +1177,16 @@ public class SecretHitlerGame implements Serializable {
 
         if (draw.getSize() < MIN_DRAW_DECK_SIZE) {
             shuffleDiscardIntoDraw();
+        }
+
+        if (board.isFascistVictory()) {
+            this.lastState = this.state;
+            state = GameState.FASCIST_VICTORY_POLICY;
+            return;
+        } else if (board.isLiberalVictory()) {
+            this.lastState = this.state;
+            state = GameState.LIBERAL_VICTORY_POLICY;
+            return;
         }
 
         if (didElectionTrackerAdvance()) {
@@ -1113,24 +1199,134 @@ public class SecretHitlerGame implements Serializable {
         }
 
         this.lastState = this.state;
+        GameState nextState;
         switch (setupConfig.areAnarchistPowersEnabled() || source != PolicyEnactmentSource.ANARCHIST_REPLACEMENT
                 ? board.getActivatedPower()
                 : game.datastructures.board.PresidentialPower.NONE) {
             case PEEK:
-                state = GameState.PRESIDENTIAL_POWER_PEEK;
+                nextState = GameState.PRESIDENTIAL_POWER_PEEK;
                 break;
             case EXECUTION:
-                state = GameState.PRESIDENTIAL_POWER_EXECUTION;
+                nextState = GameState.PRESIDENTIAL_POWER_EXECUTION;
                 break;
             case ELECTION:
-                state = GameState.PRESIDENTIAL_POWER_ELECTION;
+                nextState = GameState.PRESIDENTIAL_POWER_ELECTION;
                 break;
             case INVESTIGATE:
-                state = GameState.PRESIDENTIAL_POWER_INVESTIGATE;
+                nextState = GameState.PRESIDENTIAL_POWER_INVESTIGATE;
                 break;
             case NONE:
-                state = GameState.POST_LEGISLATIVE;
+            default:
+                nextState = GameState.POST_LEGISLATIVE;
                 break;
+        }
+
+        if (requirePolicyClaims) {
+            beginPolicyClaims(nextState);
+        } else {
+            state = nextState;
+        }
+    }
+
+    private void beginPolicyClaims(GameState nextState) {
+        if (currentRoundHistory != null) {
+            currentRoundHistory.requirePolicyClaims();
+        }
+        stateAfterPolicyClaims = nextState == null ? GameState.POST_LEGISLATIVE : nextState;
+        this.lastState = this.state;
+        state = GameState.POLICY_CLAIMS;
+        autoRefusePolicyClaimIfCpu(currentPresident);
+        autoRefusePolicyClaimIfCpu(currentChancellor);
+    }
+
+    private void autoRefusePolicyClaimIfCpu(String username) {
+        if (state != GameState.POLICY_CLAIMS || username == null || !hasPlayer(username)) {
+            return;
+        }
+        if (getPlayer(username).isCpu()) {
+            registerPolicyClaim(username, true, Collections.emptyList());
+        }
+    }
+
+    public void refusePolicyClaim(String username) {
+        registerPolicyClaim(username, true, Collections.emptyList());
+    }
+
+    public void registerPolicyClaim(String username, boolean refused, List<Policy.Type> claimedPolicies) {
+        if (getState() != GameState.POLICY_CLAIMS) {
+            throw new IllegalStateException("Cannot register a policy claim when policy claims are not active.");
+        }
+        if (currentRoundHistory == null || !currentRoundHistory.arePolicyClaimsRequired()) {
+            throw new IllegalStateException("No policy claims are required for the current round.");
+        }
+
+        boolean isPresident = username != null && username.equals(currentPresident);
+        boolean isChancellor = username != null && username.equals(currentChancellor);
+        if (!isPresident && !isChancellor) {
+            throw new IllegalArgumentException("Only the current president or chancellor may register a policy claim.");
+        }
+
+        if (isPresident && currentRoundHistory.hasPresidentPolicyClaim()) {
+            throw new IllegalStateException("The president has already registered a policy claim.");
+        }
+        if (isChancellor && currentRoundHistory.hasChancellorPolicyClaim()) {
+            throw new IllegalStateException("The chancellor has already registered a policy claim.");
+        }
+
+        int expectedPolicyCount = isPresident ? PRESIDENT_DRAW_SIZE : CHANCELLOR_DRAW_SIZE;
+        PolicyClaim claim = refused
+                ? new PolicyClaim(true, Collections.emptyList())
+                : new PolicyClaim(false, validatePolicyClaimList(claimedPolicies, expectedPolicyCount));
+
+        if (isPresident) {
+            currentRoundHistory.setPresidentPolicyClaim(claim);
+        } else {
+            currentRoundHistory.setChancellorPolicyClaim(claim);
+        }
+
+        advanceAfterPolicyClaimsIfComplete();
+    }
+
+    private List<Policy.Type> validatePolicyClaimList(List<Policy.Type> claimedPolicies, int expectedPolicyCount) {
+        if (claimedPolicies == null || claimedPolicies.size() != expectedPolicyCount) {
+            throw new IllegalArgumentException(
+                    "Policy claim must include exactly " + expectedPolicyCount + " policies.");
+        }
+
+        List<Policy.Type> out = new ArrayList<>();
+        for (Policy.Type type : claimedPolicies) {
+            if (!isPolicyTypeAvailableForClaims(type)) {
+                throw new IllegalArgumentException("Policy type " + type + " is not available in this game setup.");
+            }
+            out.add(type);
+        }
+        return out;
+    }
+
+    private boolean isPolicyTypeAvailableForClaims(Policy.Type type) {
+        if (type == null) {
+            return false;
+        }
+        switch (type) {
+            case LIBERAL:
+                return setupConfig.getLiberalPolicyCount() > 0;
+            case FASCIST:
+                return setupConfig.getFascistPolicyCount() > 0;
+            case ANARCHIST:
+                return setupConfig.getAnarchistPolicyCount() > 0;
+            default:
+                return false;
+        }
+    }
+
+    private void advanceAfterPolicyClaimsIfComplete() {
+        if (currentRoundHistory != null
+                && currentRoundHistory.hasPresidentPolicyClaim()
+                && currentRoundHistory.hasChancellorPolicyClaim()) {
+            GameState nextState = stateAfterPolicyClaims == null ? GameState.POST_LEGISLATIVE : stateAfterPolicyClaims;
+            stateAfterPolicyClaims = null;
+            this.lastState = this.state;
+            state = nextState;
         }
     }
 

@@ -45,7 +45,8 @@
 }
 
 .history-votes,
-.history-actions {
+.history-actions,
+.history-claims {
   line-height: 1.4;
 }
 
@@ -132,4 +133,40 @@
 .history-result-pending {
   background-color: rgba(255, 255, 255, 0.14);
   color: var(--textColorOnDark);
+}
+
+.history-claim-list {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.history-claim-line {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  min-height: 24px;
+}
+
+.history-claim-role {
+  color: var(--textColorHighlight);
+  font-weight: 700;
+  min-width: 20px;
+}
+
+.history-claim-value {
+  color: var(--textColorOnDark);
+}
+
+.history-claim-cards {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+}
+
+.history-claim-card {
+  width: 18px;
+  height: auto;
+  border-radius: 2px;
+  box-shadow: 0 0 0 1px rgba(255, 255, 255, 0.16);
 }

@@ -55,6 +55,7 @@ const buildGameState = (playerOrder: string[]): GameState => ({
     showHistory: true,
     showPublicActions: true,
     showVoteBreakdown: true,
+    showPolicyClaims: true,
     roundsToShow: HistoryRoundsToShow.ALL,
   },
   discussionReactions: {},

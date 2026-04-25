@@ -210,6 +210,8 @@ public class CpuPlayer implements Serializable, Comparable<CpuPlayer> {
         return handleLegislativeChancellor(game);
       case LEGISLATIVE_PRESIDENT_VETO:
         return handlePresidentVeto(game);
+      case POLICY_CLAIMS:
+        return handlePolicyClaims(game);
       case PRESIDENTIAL_POWER_PEEK:
         return handlePresidentialPowerPeek(game);
       case PRESIDENTIAL_POWER_INVESTIGATE:
@@ -575,6 +577,18 @@ public class CpuPlayer implements Serializable, Comparable<CpuPlayer> {
       updateReputation(game.getCurrentChancellor(), -1);
     }
     return true;
+  }
+
+  private boolean handlePolicyClaims(SecretHitlerGame game) {
+    if (myName.equals(game.getCurrentPresident()) && !game.hasPresidentPolicyClaim()) {
+      game.refusePolicyClaim(myName);
+      return true;
+    }
+    if (myName.equals(game.getCurrentChancellor()) && !game.hasChancellorPolicyClaim()) {
+      game.refusePolicyClaim(myName);
+      return true;
+    }
+    return false;
   }
 
   private boolean handlePresidentialPowerPeek(SecretHitlerGame game) {

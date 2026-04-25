@@ -56,6 +56,7 @@ const buildGameState = (
     showHistory: true,
     showPublicActions: true,
     showVoteBreakdown: true,
+    showPolicyClaims: true,
     roundsToShow: HistoryRoundsToShow.ALL,
   },
   discussionReactions: {},
