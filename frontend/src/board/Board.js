@@ -7,6 +7,7 @@ import FascistBoard_7_8 from "../assets/board-fascist-7-8.png";
 import FascistBoard_9_10 from "../assets/board-fascist-9-10.png";
 import PolicyFascist from "../assets/board-policy-fascist.png";
 import AnarchistPolicy from "../assets/policy-anarchist.svg";
+import { getDefaultPowerSchedule } from "../setup/GameSetupConfig";
 
 import "./Board.css";
 
@@ -33,11 +34,65 @@ class Board extends Component {
 
     isStandardBoard() {
         const config = this.props.setupConfig;
+        const defaultPowerSchedule = getDefaultPowerSchedule(this.props.numPlayers);
+        const configuredPowerSchedule = config && config.fascistPowerSchedule;
+        const hasStandardPowerSchedule = !configuredPowerSchedule || (
+            configuredPowerSchedule.length === defaultPowerSchedule.length &&
+            configuredPowerSchedule.every((power, index) => power === defaultPowerSchedule[index])
+        );
         return !config || (
             config.liberalPoliciesToWin === 5 &&
             config.fascistPoliciesToWin === 6 &&
             (config.anarchistPolicies || 0) === 0 &&
-            (config.anarchistRoles || 0) === 0
+            (config.anarchistRoles || 0) === 0 &&
+            hasStandardPowerSchedule
+        );
+    }
+
+    renderDynamicElectionTracker() {
+        return (
+            <div
+                className="dynamic-election-tracker"
+                aria-label={"Election tracker at position " + this.props.electionTracker + " out of 3."}
+            >
+                <span>Election tracker</span>
+                <div className="dynamic-election-track">
+                    {[0, 1, 2].map((position) => (
+                        <div className="dynamic-election-slot" key={position}>
+                            {this.props.electionTracker === position && (
+                                <img
+                                    id="election-tracker"
+                                    src={ElectionTracker}
+                                    alt={"Election tracker at position " + this.props.electionTracker + " out of 3."}
+                                />
+                            )}
+                        </div>
+                    ))}
+                </div>
+            </div>
+        );
+    }
+
+    renderDynamicPowerMarkers(totalCount) {
+        const schedule = (this.props.setupConfig && this.props.setupConfig.fascistPowerSchedule) || [];
+        return (
+            <div
+                className="dynamic-power-markers"
+                style={{gridTemplateColumns: "repeat(" + totalCount + ", minmax(0, 1fr))"}}
+                aria-label="Fascist power schedule"
+            >
+                {Array.from({length: totalCount}).map((_, index) => {
+                    const power = schedule[index] || "NONE";
+                    return (
+                        <span
+                            className={"dynamic-power-marker" + (power === "NONE" ? " empty" : "")}
+                            key={index}
+                        >
+                            {power === "NONE" ? "" : power}
+                        </span>
+                    );
+                })}
+            </div>
         );
     }
 
@@ -83,6 +138,7 @@ class Board extends Component {
             const fascistTotal = config.fascistPoliciesToWin || 6;
             return (
                 <div id="board-container" className="dynamic-board-container">
+                    {this.renderDynamicElectionTracker()}
                     <div className="dynamic-board-row liberal-row" aria-label={this.props.numLiberalPolicies + " liberal policies have been passed."}>
                         <div className="dynamic-board-label">LIBERAL</div>
                         {this.placeRepeating(this.props.numLiberalPolicies, liberalTotal, PolicyLiberal, "policy", "18.2%", "13.54%")}
@@ -90,6 +146,7 @@ class Board extends Component {
                     <div className="dynamic-board-row fascist-row" aria-label={this.props.numFascistPolicies + " fascist policies have been passed."}>
                         <div className="dynamic-board-label">FASCIST</div>
                         {this.placeRepeating(this.props.numFascistPolicies, fascistTotal, PolicyFascist, "policy", "11%", "13.6%")}
+                        {this.renderDynamicPowerMarkers(fascistTotal)}
                     </div>
                     <div className="dynamic-anarchist-summary">
                         <img src={AnarchistPolicy} alt="" />

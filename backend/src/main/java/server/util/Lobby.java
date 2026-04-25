@@ -266,10 +266,7 @@ public class Lobby implements Serializable {
         if (gameSetupConfig == null) {
             return GameSetupConfig.standard(effectivePlayerCount);
         }
-        if (gameSetupConfig.isStandardPreset() || gameSetupConfig.isAnarchistPreset()) {
-            return gameSetupConfig.withPlayerCount(effectivePlayerCount);
-        }
-        return gameSetupConfig;
+        return gameSetupConfig.withPlayerCount(effectivePlayerCount);
     }
 
     synchronized public void setGameSetupConfig(GameSetupConfig config) {
@@ -278,9 +275,7 @@ public class Lobby implements Serializable {
         }
         int effectivePlayerCount = Math.max(SecretHitlerGame.MIN_PLAYERS, lobbyUsernames.size());
         gameSetupConfig = config == null ? null
-                : (config.isStandardPreset() || config.isAnarchistPreset()
-                        ? config.withPlayerCount(effectivePlayerCount)
-                        : config);
+                : config.withPlayerCount(effectivePlayerCount);
     }
 
     synchronized public Map<String, DiscussionReaction> getDiscussionReactionsSnapshot() {
@@ -1328,7 +1323,7 @@ public class Lobby implements Serializable {
         if (discussionReactionConfig == null) {
             discussionReactionConfig = DiscussionReactionConfig.defaultConfig();
         }
-        if (gameSetupConfig != null && (gameSetupConfig.isStandardPreset() || gameSetupConfig.isAnarchistPreset())) {
+        if (gameSetupConfig != null) {
             gameSetupConfig = gameSetupConfig.withPlayerCount(Math.max(SecretHitlerGame.MIN_PLAYERS,
                     game == null ? lobbyUsernames.size() : game.getPlayerList().size()));
         }
@@ -1418,9 +1413,7 @@ public class Lobby implements Serializable {
 
         GameSetupConfig effectiveSetupConfig = gameSetupConfig == null
                 ? GameSetupConfig.standard(playerNames.size())
-                : (gameSetupConfig.isStandardPreset() || gameSetupConfig.isAnarchistPreset()
-                        ? gameSetupConfig.withPlayerCount(playerNames.size())
-                        : gameSetupConfig);
+                : gameSetupConfig.withPlayerCount(playerNames.size());
         game = new SecretHitlerGame(playerNames, effectiveSetupConfig);
 
         for (String botName : generatedBotPlayers) {

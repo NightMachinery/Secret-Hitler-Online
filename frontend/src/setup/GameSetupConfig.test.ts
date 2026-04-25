@@ -58,4 +58,58 @@ describe("GameSetupConfig", () => {
     expect(parsed.config).toEqual(base);
     expect(parsed.error).toContain("Liberal");
   });
+
+  test("validation rejects decks too small for a legislative draw", () => {
+    const config = {
+      ...createStandardSetupConfig(6),
+      liberalPolicies: 1,
+      fascistPolicies: 1,
+      anarchistPolicies: 0,
+      liberalPoliciesToWin: 1,
+      fascistPoliciesToWin: 1,
+      hitlerElectionFascistThreshold: 1,
+    };
+
+    const result = validateSetupConfig(config);
+
+    expect(result.valid).toBe(false);
+    expect(result.error).toContain("deck");
+  });
+
+  test("JSON5 parser trims power schedules past the fascist threshold", () => {
+    const base = createStandardSetupConfig(7);
+    const parsed = parseSetupConfigJson5(
+      `{
+        preset: "MANUAL",
+        fascistPoliciesToWin: 5,
+        fascistPowerSchedule: ["NONE", "INVESTIGATE", "ELECTION", "EXECUTION", "EXECUTION", "PEEK"],
+      }`,
+      base
+    );
+
+    expect(parsed.error).toBeUndefined();
+    expect(parsed.config.fascistPoliciesToWin).toBe(5);
+    expect(parsed.config.fascistPowerSchedule).toEqual([
+      "NONE",
+      "INVESTIGATE",
+      "ELECTION",
+      "EXECUTION",
+      "EXECUTION",
+    ]);
+  });
+
+  test("Anarchist replacement count is not part of client setup config", () => {
+    const base = createAnarchistSetupConfig(7);
+    expect((base as any).anarchistReplacementCount).toBeUndefined();
+
+    const parsed = parseSetupConfigJson5(
+      `{
+        anarchistReplacementCount: 3,
+      }`,
+      base
+    );
+
+    expect(parsed.error).toBeUndefined();
+    expect((parsed.config as any).anarchistReplacementCount).toBeUndefined();
+  });
 });

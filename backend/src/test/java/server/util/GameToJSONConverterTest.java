@@ -1,7 +1,9 @@
 package server.util;
 
 import game.GameState;
+import game.GameSetupConfig;
 import game.SecretHitlerGame;
+import game.datastructures.Identity;
 import game.datastructures.Player;
 import org.json.JSONArray;
 import org.json.JSONObject;
@@ -13,6 +15,7 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentSkipListSet;
 
 import static junit.framework.TestCase.assertEquals;
+import static junit.framework.TestCase.assertFalse;
 import static junit.framework.TestCase.assertTrue;
 
 public class GameToJSONConverterTest {
@@ -31,6 +34,15 @@ public class GameToJSONConverterTest {
                 game.registerVote(player.getUsername(), false);
             }
         }
+    }
+
+    private String findPlayerWithIdentity(SecretHitlerGame game, Identity identity) {
+        for (Player player : game.getPlayerList()) {
+            if (player.getIdentity() == identity) {
+                return player.getUsername();
+            }
+        }
+        throw new AssertionError("No player with identity " + identity);
     }
 
     @Test
@@ -151,5 +163,32 @@ public class GameToJSONConverterTest {
         assertEquals(true, observerView.getBoolean("canAct"));
         assertEquals(false, observerView.getJSONObject("connected").getBoolean("5"));
         assertEquals("LIKE", observerView.getJSONObject("discussionReactions").getJSONObject("2").getString("type"));
+    }
+
+    @Test
+    public void testFascistKnowledgeDoesNotSerializeAnarchistIdentities() {
+        SecretHitlerGame game = new SecretHitlerGame(makePlayers(6),
+                GameSetupConfig.builder(6)
+                        .roles(3, 1, 1, 1)
+                        .policies(6, 11, 3)
+                        .build());
+
+        String fascist = findPlayerWithIdentity(game, Identity.FASCIST);
+        String hitler = findPlayerWithIdentity(game, Identity.HITLER);
+        String anarchist = findPlayerWithIdentity(game, Identity.ANARCHIST);
+
+        JSONObject fascistView = GameToJSONConverter.convert(game, fascist,
+                Lobby.HistoryDisplayConfig.defaultConfig());
+        JSONObject fascistPlayers = fascistView.getJSONObject("players");
+        assertEquals("FASCIST", fascistPlayers.getJSONObject(fascist).getString("id"));
+        assertEquals("HITLER", fascistPlayers.getJSONObject(hitler).getString("id"));
+        assertFalse(fascistPlayers.getJSONObject(anarchist).has("id"));
+
+        JSONObject smallHitlerView = GameToJSONConverter.convert(game, hitler,
+                Lobby.HistoryDisplayConfig.defaultConfig());
+        JSONObject hitlerPlayers = smallHitlerView.getJSONObject("players");
+        assertEquals("HITLER", hitlerPlayers.getJSONObject(hitler).getString("id"));
+        assertEquals("FASCIST", hitlerPlayers.getJSONObject(fascist).getString("id"));
+        assertFalse(hitlerPlayers.getJSONObject(anarchist).has("id"));
     }
 }

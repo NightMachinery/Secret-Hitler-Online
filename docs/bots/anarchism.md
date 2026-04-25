@@ -6,7 +6,8 @@ This project supports a configurable Anarchist variant in addition to the standa
 
 - **Anarchist roles** are a third non-Liberal/non-Fascist faction.
 - **Anarchist policies** never remain on either policy board.
-- When an Anarchist policy is chosen or top-decked, it is counted as a resolved Anarchist policy and then replaced by top-deck legislation.
+- When an Anarchist policy is chosen or top-decked, it is counted as a resolved Anarchist policy and then replaced by exactly one top-deck policy.
+- The replacement count is not configurable. If the replacement is another Anarchist policy, it may cascade under the same one-card replacement rule.
 - If an Anarchist policy is resolved by the election tracker or by an Anarchist replacement cascade, Anarchists win only when at least one Anarchist player exists.
 - If there are no Anarchist players, Anarchist policies are “chaos” policies: they resolve and replace, but they do not produce an Anarchist victory.
 

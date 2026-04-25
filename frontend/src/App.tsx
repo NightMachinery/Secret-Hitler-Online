@@ -108,6 +108,7 @@ import {
   createAnarchistSetupConfig,
   createStandardSetupConfig,
   GameSetupConfig,
+  normalizeSetupConfig,
   parseSetupConfigJson5,
   validateSetupConfig,
 } from "./setup/GameSetupConfig";
@@ -610,6 +611,8 @@ class App extends Component<{}, AppState> {
           message.setupConfig = createStandardSetupConfig(
             Math.max(5, Array.isArray(message[PARAM_USERNAMES]) ? message[PARAM_USERNAMES].length : 5)
           );
+        } else {
+          message.setupConfig = normalizeSetupConfig(message.setupConfig);
         }
         this.setState({
           usernames: message[PARAM_USERNAMES],
@@ -704,6 +707,8 @@ class App extends Component<{}, AppState> {
           message.setupConfig = createStandardSetupConfig(
             Math.max(5, Array.isArray(message.playerOrder) ? message.playerOrder.length : 5)
           );
+        } else {
+          message.setupConfig = normalizeSetupConfig(message.setupConfig);
         }
         if (typeof message.anarchistPoliciesResolved !== "number") {
           message.anarchistPoliciesResolved = 0;
@@ -1290,17 +1295,18 @@ class App extends Component<{}, AppState> {
   }
 
   sendLobbySetupConfig(config: GameSetupConfig) {
-    const validation = validateSetupConfig(config);
+    const normalizedConfig = normalizeSetupConfig(config);
+    const validation = validateSetupConfig(normalizedConfig);
     if (!validation.valid) {
       this.setState({ lobbySetupError: validation.error });
       return;
     }
     this.setState({
-      lobbySetupConfig: config,
-      lobbySetupImportText: JSON.stringify(config, null, 2),
+      lobbySetupConfig: normalizedConfig,
+      lobbySetupImportText: JSON.stringify(normalizedConfig, null, 2),
       lobbySetupError: "",
     });
-    this.sendWSCommand({ command: WSCommandType.SET_GAME_SETUP, setupConfig: config });
+    this.sendWSCommand({ command: WSCommandType.SET_GAME_SETUP, setupConfig: normalizedConfig });
   }
 
   renderSetupNumberField(
@@ -1382,7 +1388,6 @@ class App extends Component<{}, AppState> {
               {this.renderSetupNumberField("Fascist win threshold", "fascistPoliciesToWin", !canEdit)}
               {this.renderSetupNumberField("Hitler election slot", "hitlerElectionFascistThreshold", !canEdit)}
               {this.renderSetupNumberField("Hitlers to execute", "requiredExecutedHitlersForLiberalVictory", !canEdit)}
-              {this.renderSetupNumberField("Anarchist replacements", "anarchistReplacementCount", !canEdit)}
             </div>
             <div className="setup-toggle-row">
               {[
@@ -2193,9 +2198,11 @@ class App extends Component<{}, AppState> {
             if (!newState.chancellorChoices) {
               throw new Error("Chancellor choices not found.");
             }
+            const fascistPoliciesToWin = newState.setupConfig?.fascistPoliciesToWin || 6;
             this.queueAlert(
               <ChancellorLegislativePrompt
                 fascistPolicies={newState.fascistPolicies}
+                fascistPoliciesToWin={fascistPoliciesToWin}
                 showError={(message: string) =>
                   this.setState({ snackbarMessage: message })
                 }
@@ -2203,7 +2210,7 @@ class App extends Component<{}, AppState> {
                 sendWSCommand={this.sendWSCommand}
                 // Disable if veto has already happened
                 enableVeto={
-                  newState.fascistPolicies === 5 && !newState.vetoOccurred
+                  newState.fascistPolicies >= fascistPoliciesToWin - 1 && !newState.vetoOccurred
                 }
               />
             );

@@ -33,7 +33,6 @@ public class GameSetupConfig implements Serializable {
     private final int fascistPoliciesToWin;
     private final int hitlerElectionFascistThreshold;
     private final int requiredExecutedHitlersForLiberalVictory;
-    private final int anarchistReplacementCount;
     private final boolean anarchistsKnowEachOther;
     private final boolean anarchistInvestigationsRevealAnarchist;
     private final boolean anarchistPowersEnabled;
@@ -54,7 +53,6 @@ public class GameSetupConfig implements Serializable {
         this.fascistPoliciesToWin = builder.fascistPoliciesToWin;
         this.hitlerElectionFascistThreshold = builder.hitlerElectionFascistThreshold;
         this.requiredExecutedHitlersForLiberalVictory = builder.requiredExecutedHitlersForLiberalVictory;
-        this.anarchistReplacementCount = builder.anarchistReplacementCount;
         this.anarchistsKnowEachOther = builder.anarchistsKnowEachOther;
         this.anarchistInvestigationsRevealAnarchist = builder.anarchistInvestigationsRevealAnarchist;
         this.anarchistPowersEnabled = builder.anarchistPowersEnabled;
@@ -96,7 +94,6 @@ public class GameSetupConfig implements Serializable {
                 .fascistPoliciesToWin(fascistPoliciesToWin)
                 .hitlerElectionFascistThreshold(hitlerElectionFascistThreshold)
                 .requiredExecutedHitlersForLiberalVictory(requiredExecutedHitlersForLiberalVictory)
-                .anarchistReplacementCount(anarchistReplacementCount)
                 .anarchistsKnowEachOther(anarchistsKnowEachOther)
                 .anarchistInvestigationsRevealAnarchist(anarchistInvestigationsRevealAnarchist)
                 .anarchistPowersEnabled(anarchistPowersEnabled)
@@ -113,7 +110,35 @@ public class GameSetupConfig implements Serializable {
         if (isAnarchistPreset()) {
             return anarchist(newPlayerCount);
         }
-        return toBuilder().playerCount(newPlayerCount).build();
+        int liberal = liberalRoleCount;
+        int fascist = fascistRoleCount;
+        int hitler = hitlerRoleCount;
+        int anarchist = anarchistRoleCount;
+        int totalRoles = liberal + fascist + hitler + anarchist;
+        int delta = newPlayerCount - totalRoles;
+        if (delta > 0) {
+            liberal += delta;
+        } else if (delta < 0) {
+            int remaining = -delta;
+            int removed = Math.min(liberal, remaining);
+            liberal -= removed;
+            remaining -= removed;
+
+            removed = Math.min(anarchist, remaining);
+            anarchist -= removed;
+            remaining -= removed;
+
+            removed = Math.min(fascist, remaining);
+            fascist -= removed;
+            remaining -= removed;
+
+            removed = Math.min(hitler, remaining);
+            hitler -= removed;
+        }
+        return toBuilder()
+                .playerCount(newPlayerCount)
+                .roles(liberal, fascist, hitler, anarchist)
+                .build();
     }
 
     private void validate() {
@@ -132,6 +157,11 @@ public class GameSetupConfig implements Serializable {
         if (liberalPolicyCount < 0 || fascistPolicyCount < 0 || anarchistPolicyCount < 0) {
             throw new IllegalArgumentException("Policy counts cannot be negative.");
         }
+        int totalPolicies = liberalPolicyCount + fascistPolicyCount + anarchistPolicyCount;
+        if (totalPolicies < SecretHitlerGame.PRESIDENT_DRAW_SIZE) {
+            throw new IllegalArgumentException("Policy deck must contain at least "
+                    + SecretHitlerGame.PRESIDENT_DRAW_SIZE + " cards.");
+        }
         if (liberalPoliciesToWin <= 0 || liberalPoliciesToWin > liberalPolicyCount) {
             throw new IllegalArgumentException("Liberal policy victory threshold must be between 1 and the Liberal deck count.");
         }
@@ -147,9 +177,6 @@ public class GameSetupConfig implements Serializable {
         }
         if (hitlerRoleCount > 0 && requiredExecutedHitlersForLiberalVictory == 0) {
             throw new IllegalArgumentException("At least one executed Hitler must be required when Hitler roles exist.");
-        }
-        if (anarchistReplacementCount <= 0) {
-            throw new IllegalArgumentException("Anarchist replacement count must be at least 1.");
         }
         for (Map.Entry<Integer, PresidentialPower> entry : fascistPowerSchedule.entrySet()) {
             if (entry.getKey() == null || entry.getKey() < 1 || entry.getKey() > fascistPoliciesToWin) {
@@ -176,7 +203,6 @@ public class GameSetupConfig implements Serializable {
         out.put("fascistPoliciesToWin", fascistPoliciesToWin);
         out.put("hitlerElectionFascistThreshold", hitlerElectionFascistThreshold);
         out.put("requiredExecutedHitlersForLiberalVictory", requiredExecutedHitlersForLiberalVictory);
-        out.put("anarchistReplacementCount", anarchistReplacementCount);
         out.put("anarchistsKnowEachOther", anarchistsKnowEachOther);
         out.put("anarchistInvestigationsRevealAnarchist", anarchistInvestigationsRevealAnarchist);
         out.put("anarchistPowersEnabled", anarchistPowersEnabled);
@@ -220,7 +246,6 @@ public class GameSetupConfig implements Serializable {
                 json.optInt("hitlerElectionFascistThreshold", seed.hitlerElectionFascistThreshold));
         builder.requiredExecutedHitlersForLiberalVictory(json.optInt("requiredExecutedHitlersForLiberalVictory",
                 seed.requiredExecutedHitlersForLiberalVictory));
-        builder.anarchistReplacementCount(json.optInt("anarchistReplacementCount", seed.anarchistReplacementCount));
         builder.anarchistsKnowEachOther(json.optBoolean("anarchistsKnowEachOther", seed.anarchistsKnowEachOther));
         builder.anarchistInvestigationsRevealAnarchist(json.optBoolean("anarchistInvestigationsRevealAnarchist",
                 seed.anarchistInvestigationsRevealAnarchist));
@@ -229,7 +254,7 @@ public class GameSetupConfig implements Serializable {
         if (json.has("fascistPowerSchedule")) {
             builder.clearFascistPowerSchedule();
             JSONArray powers = json.getJSONArray("fascistPowerSchedule");
-            for (int i = 0; i < powers.length(); i++) {
+            for (int i = 0; i < powers.length() && i < builder.fascistPoliciesToWin; i++) {
                 builder.powerAt(i + 1, PresidentialPower.valueOf(powers.getString(i).trim().toUpperCase()));
             }
         }
@@ -272,7 +297,6 @@ public class GameSetupConfig implements Serializable {
     public int getFascistPoliciesToWin() { return fascistPoliciesToWin; }
     public int getHitlerElectionFascistThreshold() { return hitlerElectionFascistThreshold; }
     public int getRequiredExecutedHitlersForLiberalVictory() { return requiredExecutedHitlersForLiberalVictory; }
-    public int getAnarchistReplacementCount() { return anarchistReplacementCount; }
     public boolean doAnarchistsKnowEachOther() { return anarchistsKnowEachOther; }
     public boolean doAnarchistInvestigationsRevealAnarchist() { return anarchistInvestigationsRevealAnarchist; }
     public boolean areAnarchistPowersEnabled() { return anarchistPowersEnabled; }
@@ -317,7 +341,6 @@ public class GameSetupConfig implements Serializable {
         private int fascistPoliciesToWin = 6;
         private int hitlerElectionFascistThreshold = 3;
         private int requiredExecutedHitlersForLiberalVictory = 1;
-        private int anarchistReplacementCount = 1;
         private boolean anarchistsKnowEachOther = true;
         private boolean anarchistInvestigationsRevealAnarchist = true;
         private boolean anarchistPowersEnabled = true;
@@ -368,10 +391,13 @@ public class GameSetupConfig implements Serializable {
         }
 
         public Builder liberalPoliciesToWin(int value) { this.liberalPoliciesToWin = value; return this; }
-        public Builder fascistPoliciesToWin(int value) { this.fascistPoliciesToWin = value; return this; }
+        public Builder fascistPoliciesToWin(int value) {
+            this.fascistPoliciesToWin = value;
+            fascistPowerSchedule.entrySet().removeIf(entry -> entry.getKey() != null && entry.getKey() > value);
+            return this;
+        }
         public Builder hitlerElectionFascistThreshold(int value) { this.hitlerElectionFascistThreshold = value; return this; }
         public Builder requiredExecutedHitlersForLiberalVictory(int value) { this.requiredExecutedHitlersForLiberalVictory = value; return this; }
-        public Builder anarchistReplacementCount(int value) { this.anarchistReplacementCount = value; return this; }
         public Builder anarchistsKnowEachOther(boolean value) { this.anarchistsKnowEachOther = value; return this; }
         public Builder anarchistInvestigationsRevealAnarchist(boolean value) { this.anarchistInvestigationsRevealAnarchist = value; return this; }
         public Builder anarchistPowersEnabled(boolean value) { this.anarchistPowersEnabled = value; return this; }

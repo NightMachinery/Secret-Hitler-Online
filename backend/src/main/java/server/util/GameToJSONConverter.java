@@ -91,12 +91,9 @@ public class GameToJSONConverter {
         }
         boolean userIsPlayer = perspectivePlayer != null && game.hasPlayer(perspectivePlayer);
         Identity role = userIsPlayer ? game.getPlayer(perspectivePlayer).getIdentity() : null;
-        boolean showAllRoles = game.hasGameFinished() || role == Identity.FASCIST
-                || (role == Identity.HITLER && game.getPlayerList().size() <= 6);
+        boolean gameFinished = game.hasGameFinished();
         Player.Type selfType = userIsPlayer ? Player.Type.HUMAN : Player.Type.OBSERVER;
         boolean canAct = lobby == null ? userIsPlayer : (lobby.canUserAct(userName) || userName.equals(perspectivePlayer));
-
-        System.out.println("Show all roles: " + showAllRoles);
 
         for (int i = 0; i < playerList.size(); i++) {
             JSONObject playerObj = new JSONObject();
@@ -108,7 +105,11 @@ public class GameToJSONConverter {
             boolean showAnarchistAlly = role == Identity.ANARCHIST
                     && game.getSetupConfig().doAnarchistsKnowEachOther()
                     && player.getIdentity() == Identity.ANARCHIST;
-            if (player.getUsername().equals(perspectivePlayer) || showAllRoles || showAnarchistAlly) {
+            boolean showFascistTeamRole = (role == Identity.FASCIST
+                    || (role == Identity.HITLER && game.getPlayerList().size() <= 6))
+                    && (player.getIdentity() == Identity.FASCIST || player.getIdentity() == Identity.HITLER);
+            if (player.getUsername().equals(perspectivePlayer) || gameFinished || showFascistTeamRole
+                    || showAnarchistAlly) {
                 String id = player.getIdentity().toString();
                 playerObj.put("id", id);
             }

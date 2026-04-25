@@ -1067,20 +1067,15 @@ public class SecretHitlerGame implements Serializable {
                 return;
             }
 
-            for (int i = 0; i < setupConfig.getAnarchistReplacementCount(); i++) {
-                if (draw.getSize() < MIN_DRAW_DECK_SIZE) {
-                    shuffleDiscardIntoDraw();
-                }
-                if (draw.isEmpty()) {
-                    finalizeCurrentRoundHistory(RoundHistoryResult.ANARCHIST);
-                    concludePresidentialActions();
-                    return;
-                }
-                enactAndResolvePolicy(draw.remove(), PolicyEnactmentSource.ANARCHIST_REPLACEMENT);
-                if (hasGameFinished() || state != GameState.LEGISLATIVE_CHANCELLOR) {
-                    return;
-                }
+            if (draw.getSize() < MIN_DRAW_DECK_SIZE) {
+                shuffleDiscardIntoDraw();
             }
+            if (draw.isEmpty()) {
+                finalizeCurrentRoundHistory(RoundHistoryResult.ANARCHIST);
+                concludePresidentialActions();
+                return;
+            }
+            enactAndResolvePolicy(draw.remove(), PolicyEnactmentSource.ANARCHIST_REPLACEMENT);
             return;
         }
 

@@ -10,6 +10,7 @@ type ChancellorLegislativePromptProps = {
   policyOptions: PolicyType[];
   sendWSCommand: SendWSCommand;
   fascistPolicies: number;
+  fascistPoliciesToWin: number;
   showError: (message: string) => void;
   enableVeto: boolean;
 };
@@ -51,7 +52,7 @@ class ChancellorLegislativePrompt extends Component<
   }
 
   onVetoButtonClick() {
-    if (this.props.fascistPolicies === 5) {
+    if (this.isVetoUnlocked()) {
       // If veto power is activated:
       // Lock the button so that it can't be pressed multiple times.
       this.setState({ waitingForServer: true });
@@ -65,9 +66,17 @@ class ChancellorLegislativePrompt extends Component<
     } else {
       // veto power is not activated
       this.props.showError(
-        "Veto power is unlocked when there are 5 fascist policies."
+        `Veto power is unlocked when there are ${this.getVetoUnlockThreshold()} fascist policies.`
       );
     }
+  }
+
+  getVetoUnlockThreshold() {
+    return this.props.fascistPoliciesToWin - 1;
+  }
+
+  isVetoUnlocked() {
+    return this.props.fascistPolicies >= this.getVetoUnlockThreshold();
   }
 
   // noinspection DuplicatedCode
@@ -86,7 +95,7 @@ class ChancellorLegislativePrompt extends Component<
                 Choose a policy to enact. The remaining policy will be
                 discarded.
               </p>
-              {props.fascistPolicies === 5 && (
+              {this.isVetoUnlocked() && (
                 <p className={"left-align highlight"}>
                   Veto power unlocked: If you choose to veto and the president
                   agrees to the veto, the agenda will be discarded.

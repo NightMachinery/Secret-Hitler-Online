@@ -21,7 +21,6 @@ export type GameSetupConfig = {
   fascistPoliciesToWin: number;
   hitlerElectionFascistThreshold: number;
   requiredExecutedHitlersForLiberalVictory: number;
-  anarchistReplacementCount: number;
   anarchistsKnowEachOther: boolean;
   anarchistInvestigationsRevealAnarchist: boolean;
   anarchistPowersEnabled: boolean;
@@ -35,6 +34,7 @@ export type ValidationResult =
 
 const NUM_LIBERAL_POLICIES = 6;
 const NUM_FASCIST_POLICIES = 11;
+const PRESIDENT_DRAW_SIZE = 3;
 
 export function getDefaultPowerSchedule(playerCount: number): PresidentialPowerName[] {
   const powers: PresidentialPowerName[] = ["NONE", "NONE", "NONE", "NONE", "NONE", "NONE"];
@@ -73,7 +73,6 @@ export function createStandardSetupConfig(playerCount: number): GameSetupConfig 
     fascistPoliciesToWin: 6,
     hitlerElectionFascistThreshold: 3,
     requiredExecutedHitlersForLiberalVictory: totalFascists > 0 ? 1 : 0,
-    anarchistReplacementCount: 1,
     anarchistsKnowEachOther: true,
     anarchistInvestigationsRevealAnarchist: true,
     anarchistPowersEnabled: true,
@@ -117,6 +116,13 @@ export function validateSetupConfig(config: GameSetupConfig): ValidationResult {
       return { valid: false, error: `${field} cannot be negative.` };
     }
   }
+  const policyTotal = config.liberalPolicies + config.fascistPolicies + config.anarchistPolicies;
+  if (policyTotal < PRESIDENT_DRAW_SIZE) {
+    return {
+      valid: false,
+      error: `Policy deck must contain at least ${PRESIDENT_DRAW_SIZE} cards.`,
+    };
+  }
   if (config.liberalPoliciesToWin < 1 || config.liberalPoliciesToWin > config.liberalPolicies) {
     return {
       valid: false,
@@ -147,10 +153,21 @@ export function validateSetupConfig(config: GameSetupConfig): ValidationResult {
       error: "Required executed Hitlers must be between 0 and the Hitler role count.",
     };
   }
-  if (config.anarchistReplacementCount < 1) {
-    return { valid: false, error: "Anarchist replacement count must be at least 1." };
-  }
   return { valid: true };
+}
+
+export function normalizeSetupConfig(
+  config: GameSetupConfig & { anarchistReplacementCount?: number }
+): GameSetupConfig {
+  const { anarchistReplacementCount, ...withoutReplacementCount } = config;
+  const fascistPoliciesToWin = withoutReplacementCount.fascistPoliciesToWin;
+  const fascistPowerSchedule = Array.isArray(withoutReplacementCount.fascistPowerSchedule)
+    ? withoutReplacementCount.fascistPowerSchedule.slice(0, fascistPoliciesToWin)
+    : getDefaultPowerSchedule(withoutReplacementCount.playerCount).slice(0, fascistPoliciesToWin);
+  return {
+    ...withoutReplacementCount,
+    fascistPowerSchedule,
+  };
 }
 
 function quoteBareKeys(input: string): string {
@@ -174,12 +191,12 @@ export function parseSetupConfigJson5(
   try {
     const normalized = stripTrailingCommas(quoteBareKeys(stripJson5Comments(input)));
     const partial = JSON.parse(normalized);
-    const merged: GameSetupConfig = {
+    const merged: GameSetupConfig = normalizeSetupConfig({
       ...baseConfig,
       ...partial,
       preset: partial.preset || "MANUAL",
       playerCount: baseConfig.playerCount,
-    };
+    });
     const validation = validateSetupConfig(merged);
     if (!validation.valid) {
       return { config: baseConfig, error: validation.error };

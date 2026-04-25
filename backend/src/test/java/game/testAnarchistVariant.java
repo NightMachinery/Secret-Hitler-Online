@@ -4,6 +4,8 @@ import game.datastructures.Deck;
 import game.datastructures.Identity;
 import game.datastructures.Player;
 import game.datastructures.Policy;
+import org.json.JSONArray;
+import org.json.JSONObject;
 import org.junit.Test;
 
 import java.lang.reflect.Field;
@@ -114,6 +116,75 @@ public class testAnarchistVariant {
         } catch (IllegalArgumentException expected) {
             assertTrue(expected.getMessage().contains("role"));
         }
+    }
+
+    @Test
+    public void testValidationRejectsDecksTooSmallForLegislativeDraw() {
+        try {
+            GameSetupConfig.builder(6)
+                    .roles(3, 1, 1, 1)
+                    .policies(1, 1, 0)
+                    .liberalPoliciesToWin(1)
+                    .fascistPoliciesToWin(1)
+                    .hitlerElectionFascistThreshold(1)
+                    .build();
+            fail("Expected validation to reject policy decks with fewer than three total cards.");
+        } catch (IllegalArgumentException expected) {
+            assertTrue(expected.getMessage().contains("deck"));
+        }
+    }
+
+    @Test
+    public void testManualSetupResyncsRoleTotalsWhenPlayerCountChanges() {
+        GameSetupConfig sixPlayerManual = GameSetupConfig.builder(6)
+                .roles(3, 1, 1, 1)
+                .policies(6, 11, 3)
+                .build();
+
+        GameSetupConfig sevenPlayerManual = sixPlayerManual.withPlayerCount(7);
+
+        assertEquals(7, sevenPlayerManual.getPlayerCount());
+        assertEquals(7, sevenPlayerManual.getLiberalRoleCount()
+                + sevenPlayerManual.getFascistRoleCount()
+                + sevenPlayerManual.getHitlerRoleCount()
+                + sevenPlayerManual.getAnarchistRoleCount());
+        assertEquals(4, sevenPlayerManual.getLiberalRoleCount());
+        assertEquals(1, sevenPlayerManual.getFascistRoleCount());
+        assertEquals(1, sevenPlayerManual.getHitlerRoleCount());
+        assertEquals(1, sevenPlayerManual.getAnarchistRoleCount());
+    }
+
+    @Test
+    public void testFromJsonTrimsPowerScheduleWhenFascistThresholdShrinks() {
+        JSONObject json = GameSetupConfig.standard(7).toJson();
+        json.put("preset", "MANUAL");
+        json.put("fascistPoliciesToWin", 5);
+        json.put("hitlerElectionFascistThreshold", 3);
+        json.put("fascistPowerSchedule", new JSONArray()
+                .put("NONE")
+                .put("INVESTIGATE")
+                .put("ELECTION")
+                .put("EXECUTION")
+                .put("EXECUTION")
+                .put("PEEK"));
+
+        GameSetupConfig config = GameSetupConfig.fromJson(json, 7, GameSetupConfig.standard(7));
+
+        assertEquals(5, config.getFascistPoliciesToWin());
+        assertEquals(5, config.toJson().getJSONArray("fascistPowerSchedule").length());
+        assertFalse(config.getFascistPowerSchedule().containsKey(6));
+    }
+
+    @Test
+    public void testAnarchistReplacementCountIsNotSerializedOrConfigurable() {
+        JSONObject json = GameSetupConfig.anarchist(7).toJson();
+        assertFalse(json.has("anarchistReplacementCount"));
+
+        json.put("preset", "MANUAL");
+        json.put("anarchistReplacementCount", 3);
+        GameSetupConfig config = GameSetupConfig.fromJson(json, 7, GameSetupConfig.anarchist(7));
+
+        assertFalse(config.toJson().has("anarchistReplacementCount"));
     }
 
     @Test

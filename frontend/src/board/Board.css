@@ -72,6 +72,38 @@
     gap: 10px;
 }
 
+.dynamic-election-tracker {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 14px;
+    color: #f1dfaa;
+    background: #151515;
+    border: 3px solid #ead8a4;
+    border-radius: 10px;
+    padding: 8px 12px;
+    font-family: var(--bodyFont);
+}
+
+.dynamic-election-track {
+    display: grid;
+    grid-template-columns: repeat(3, 42px);
+    gap: 8px;
+}
+
+.dynamic-election-slot {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    min-height: 28px;
+    border: 1px solid rgba(234, 216, 164, .5);
+    border-radius: 999px;
+}
+
+.dynamic-election-slot img {
+    width: 26px;
+}
+
 .dynamic-board-row {
     position: relative;
     min-height: 92px;
@@ -96,6 +128,33 @@
     color: #f1dfaa;
     font-family: var(--titleFont);
     letter-spacing: .12em;
+}
+
+.dynamic-power-markers {
+    position: absolute;
+    left: 8%;
+    right: 4%;
+    bottom: 8px;
+    display: grid;
+    gap: 4px;
+}
+
+.dynamic-power-marker {
+    min-height: 18px;
+    color: #f1dfaa;
+    border: 1px solid rgba(234, 216, 164, .65);
+    border-radius: 999px;
+    padding: 2px 3px;
+    font-family: var(--bodyFont);
+    font-size: clamp(7px, 1.1vmin, 12px);
+    line-height: 1.2;
+    text-align: center;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.dynamic-power-marker.empty {
+    border-color: transparent;
 }
 
 .dynamic-anarchist-summary {
