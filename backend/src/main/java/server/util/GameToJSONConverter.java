@@ -152,7 +152,7 @@ public class GameToJSONConverter {
         out.put("vetoOccurred", game.didVetoOccurThisTurn());
         out.put("presidentPolicyClaimSubmitted", game.hasPresidentPolicyClaim());
         out.put("chancellorPolicyClaimSubmitted", game.hasChancellorPolicyClaim());
-        out.put("history", convertHistory(game.getHistory(), effectiveHistoryConfig, game.getRound()));
+        out.put("history", convertHistory(game.getHistory(), effectiveHistoryConfig, game.getRound(), perspectivePlayer));
         out.put("historyConfig", convertHistoryConfig(effectiveHistoryConfig));
         Lobby.DiscussionReactionConfig reactionConfig = lobby == null
                 ? Lobby.DiscussionReactionConfig.defaultConfig()
@@ -253,7 +253,7 @@ public class GameToJSONConverter {
     }
 
     private static JSONArray convertHistory(List<SecretHitlerGame.RoundHistoryEntry> history,
-            Lobby.HistoryDisplayConfig historyConfig, int currentRound) {
+            Lobby.HistoryDisplayConfig historyConfig, int currentRound, String perspectivePlayer) {
         JSONArray out = new JSONArray();
         if (!historyConfig.shouldShowHistory()) {
             return out;
@@ -299,6 +299,7 @@ public class GameToJSONConverter {
                     actionData.put("target", action.getTarget() == null ? JSONObject.NULL : action.getTarget());
                     actionData.put("hitlerExecuted",
                             action.getHitlerExecuted() == null ? JSONObject.NULL : action.getHitlerExecuted());
+                    actionData.put("investigationResult", convertInvestigationResult(action, perspectivePlayer));
                     actions.put(actionData);
                 }
             }
@@ -316,6 +317,16 @@ public class GameToJSONConverter {
             out.put(jsonEntry);
         }
         return out;
+    }
+
+    private static Object convertInvestigationResult(SecretHitlerGame.PublicAction action, String perspectivePlayer) {
+        if (action.getType() == SecretHitlerGame.PublicActionType.INVESTIGATED
+                && perspectivePlayer != null
+                && perspectivePlayer.equals(action.getPresident())
+                && action.getInvestigationResult() != null) {
+            return action.getInvestigationResult().toString();
+        }
+        return JSONObject.NULL;
     }
 
     private static Object convertPolicyClaim(SecretHitlerGame.PolicyClaim claim) {

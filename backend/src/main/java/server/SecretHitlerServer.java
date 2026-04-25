@@ -876,6 +876,10 @@ public class SecretHitlerServer {
                     case COMMAND_GET_INVESTIGATION: // params: PARAM_TARGET (String)
                         verifyIsPresident(requireActingPlayer(name, lobby), lobby);
                         Identity id = lobby.game().investigatePlayer(message.getString(PARAM_TARGET));
+                        sendOKMessage = false;
+                        JSONObject okObj = new JSONObject();
+                        okObj.put(PARAM_PACKET_TYPE, PACKET_OK);
+                        ctx.send(okObj.toString());
                         // Construct and send a JSONObject.
                         JSONObject obj = new JSONObject();
                         obj.put(PARAM_PACKET_TYPE, PACKET_INVESTIGATION);

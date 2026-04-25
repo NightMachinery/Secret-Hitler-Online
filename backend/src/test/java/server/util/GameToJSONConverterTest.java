@@ -7,6 +7,7 @@ import game.datastructures.Deck;
 import game.datastructures.Identity;
 import game.datastructures.Player;
 import game.datastructures.Policy;
+import game.datastructures.board.PresidentialPower;
 import org.json.JSONArray;
 import org.json.JSONObject;
 import org.junit.Test;
@@ -67,6 +68,42 @@ public class GameToJSONConverterTest {
         throw new AssertionError("No player with identity " + identity);
     }
 
+    private SecretHitlerGame makeGameAfterInvestigation(String target) throws Exception {
+        SecretHitlerGame game = new SecretHitlerGame(makePlayers(9),
+                GameSetupConfig.builder(9)
+                        .powerAt(1, PresidentialPower.INVESTIGATE)
+                        .build());
+        replaceDrawDeck(game, Policy.Type.FASCIST, Policy.Type.LIBERAL, Policy.Type.LIBERAL, Policy.Type.FASCIST);
+
+        game.nominateChancellor("2");
+        voteYesForAllLiving(game);
+        game.presidentDiscardPolicy(1);
+        game.chancellorEnactPolicy(0);
+        game.refusePolicyClaim("0");
+        game.refusePolicyClaim("2");
+
+        assertEquals(GameState.PRESIDENTIAL_POWER_INVESTIGATE, game.getState());
+        game.investigatePlayer(target);
+        assertEquals(GameState.POST_LEGISLATIVE, game.getState());
+        return game;
+    }
+
+    private String expectedInvestigationResult(SecretHitlerGame game, String target) {
+        Player player = game.getPlayer(target);
+        if (player.getIdentity() == Identity.ANARCHIST
+                && game.getSetupConfig().doAnarchistInvestigationsRevealAnarchist()) {
+            return "ANARCHIST";
+        }
+        return player.isFascist() ? "FASCIST" : "LIBERAL";
+    }
+
+    private JSONObject firstPublicAction(JSONObject gamePacket) {
+        return gamePacket.getJSONArray("history")
+                .getJSONObject(0)
+                .getJSONArray("publicActions")
+                .getJSONObject(0);
+    }
+
     @Test
     public void testHistoryHiddenWhenConfiguredOff() {
         SecretHitlerGame game = new SecretHitlerGame(makePlayers(6));
@@ -117,6 +154,43 @@ public class GameToJSONConverterTest {
         assertEquals(false, historyConfig.getBoolean("showVoteBreakdown"));
         assertEquals(false, historyConfig.getBoolean("showPublicActions"));
         assertTrue(historyConfig.getString("roundsToShow").equals("LAST_1"));
+    }
+
+    @Test
+    public void testInvestigationHistoryResultOnlySerializesToInvestigatingPresident() throws Exception {
+        String target = "3";
+        SecretHitlerGame game = makeGameAfterInvestigation(target);
+        String expectedResult = expectedInvestigationResult(game, target);
+
+        JSONObject presidentView = GameToJSONConverter.convert(game, "0", Lobby.HistoryDisplayConfig.defaultConfig());
+        JSONObject presidentAction = firstPublicAction(presidentView);
+        assertEquals("INVESTIGATED", presidentAction.getString("type"));
+        assertEquals("0", presidentAction.getString("president"));
+        assertEquals(target, presidentAction.getString("target"));
+        assertEquals(expectedResult, presidentAction.getString("investigationResult"));
+
+        JSONObject targetView = GameToJSONConverter.convert(game, target, Lobby.HistoryDisplayConfig.defaultConfig());
+        assertTrue(firstPublicAction(targetView).isNull("investigationResult"));
+
+        JSONObject otherPlayerView = GameToJSONConverter.convert(game, "4", Lobby.HistoryDisplayConfig.defaultConfig());
+        assertTrue(firstPublicAction(otherPlayerView).isNull("investigationResult"));
+    }
+
+    @Test
+    public void testInvestigationHistoryResultHiddenWhenPublicActionsAreDisabled() throws Exception {
+        SecretHitlerGame game = makeGameAfterInvestigation("3");
+        Lobby.HistoryDisplayConfig config = new Lobby.HistoryDisplayConfig(
+                true,
+                false,
+                true,
+                Lobby.HistoryDisplayConfig.RoundsToShow.ALL);
+
+        JSONObject presidentView = GameToJSONConverter.convert(game, "0", config);
+
+        assertEquals(0, presidentView.getJSONArray("history")
+                .getJSONObject(0)
+                .getJSONArray("publicActions")
+                .length());
     }
 
 

@@ -10,6 +10,9 @@ import { ANARCHIST, LIBERAL } from "../constants";
 
 import "./InvestigationAlert.css";
 
+const CARD_FLIP_DELAY_MS = 250;
+const RESULT_REVEAL_DELAY_MS = 500;
+
 /**
  * The contents for a CustomAlert that show a party membership card.
  * The card and related text are animated for effect.
@@ -24,10 +27,10 @@ class InvestigationAlert extends Component {
     };
     setTimeout(() => {
       this.setState({ flipCard: true });
-    }, 1000);
+    }, CARD_FLIP_DELAY_MS);
     setTimeout(() => {
       this.setState({ showText: true, disableButton: false });
-    }, 1500);
+    }, RESULT_REVEAL_DELAY_MS);
   }
 
   render() {

@@ -82,16 +82,23 @@ public class SecretHitlerGame implements Serializable {
         private String president;
         private String target;
         private Boolean hitlerExecuted;
+        private Identity investigationResult;
 
         public PublicAction(PublicActionType type, String president, String target, Boolean hitlerExecuted) {
+            this(type, president, target, hitlerExecuted, null);
+        }
+
+        public PublicAction(PublicActionType type, String president, String target, Boolean hitlerExecuted,
+                Identity investigationResult) {
             this.type = type;
             this.president = president;
             this.target = target;
             this.hitlerExecuted = hitlerExecuted;
+            this.investigationResult = investigationResult;
         }
 
         public PublicAction(PublicAction other) {
-            this(other.type, other.president, other.target, other.hitlerExecuted);
+            this(other.type, other.president, other.target, other.hitlerExecuted, other.investigationResult);
         }
 
         public PublicActionType getType() {
@@ -108,6 +115,10 @@ public class SecretHitlerGame implements Serializable {
 
         public Boolean getHitlerExecuted() {
             return hitlerExecuted;
+        }
+
+        public Identity getInvestigationResult() {
+            return investigationResult;
         }
     }
 
@@ -852,9 +863,15 @@ public class SecretHitlerGame implements Serializable {
     }
 
     private void addPublicHistoryAction(PublicActionType type, String target, Boolean hitlerExecuted) {
+        addPublicHistoryAction(type, target, hitlerExecuted, null);
+    }
+
+    private void addPublicHistoryAction(PublicActionType type, String target, Boolean hitlerExecuted,
+            Identity investigationResult) {
         ensureHistoryInitialized();
         if (currentRoundHistory != null) {
-            currentRoundHistory.addPublicAction(new PublicAction(type, currentPresident, target, hitlerExecuted));
+            currentRoundHistory.addPublicAction(
+                    new PublicAction(type, currentPresident, target, hitlerExecuted, investigationResult));
         }
     }
 
@@ -1394,9 +1411,14 @@ public class SecretHitlerGame implements Serializable {
 
         target = username;
         getPlayer(username).investigate(); // sets a flag that this player has been investigated.
-        addPublicHistoryAction(PublicActionType.INVESTIGATED, username, null);
+        Identity investigationResult = getInvestigationResult(username);
+        addPublicHistoryAction(PublicActionType.INVESTIGATED, username, null, investigationResult);
         concludePresidentialActions();
 
+        return investigationResult;
+    }
+
+    private Identity getInvestigationResult(String username) {
         if (getPlayer(username).getIdentity() == Identity.ANARCHIST
                 && setupConfig.doAnarchistInvestigationsRevealAnarchist()) {
             return Identity.ANARCHIST;

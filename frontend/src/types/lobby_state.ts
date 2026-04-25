@@ -58,6 +58,7 @@ export type PublicHistoryAction = {
   president: string;
   target: string | null;
   hitlerExecuted: boolean | null;
+  investigationResult?: PolicyType | null;
 };
 
 export type PolicyClaim = {

@@ -55,7 +55,9 @@ const getActionLabel = (action: PublicHistoryAction): string => {
     case PublicHistoryActionType.PEEK_USED:
       return `${action.president} used the Peek power`;
     case PublicHistoryActionType.INVESTIGATED:
-      return `${action.president} investigated ${action.target}`;
+      return `${action.president} investigated ${action.target}${getInvestigationResultSuffix(
+        action.investigationResult
+      )}`;
     case PublicHistoryActionType.EXECUTED:
       return `${action.president} executed ${action.target}${
         action.hitlerExecuted ? " (Hitler)" : ""
@@ -64,6 +66,21 @@ const getActionLabel = (action: PublicHistoryAction): string => {
       return `${action.president} chose ${action.target} as next president`;
     default:
       return "Unknown action";
+  }
+};
+
+const getInvestigationResultSuffix = (
+  result: PolicyType | null | undefined
+): string => {
+  switch (result) {
+    case PolicyType.LIBERAL:
+      return " — result: Liberal";
+    case PolicyType.ANARCHIST:
+      return " — result: Anarchist";
+    case PolicyType.FASCIST:
+      return " — result: Fascist";
+    default:
+      return "";
   }
 };
 
