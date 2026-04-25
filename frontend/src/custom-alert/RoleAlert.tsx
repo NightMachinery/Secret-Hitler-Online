@@ -9,7 +9,7 @@ import RoleLiberal6 from "../assets/role-liberal-6.png";
 import RoleFascist1 from "../assets/role-fascist-1.png";
 import RoleFascist2 from "../assets/role-fascist-2.png";
 import RoleFascist3 from "../assets/role-fascist-3.png";
-import RoleAnarchist from "../assets/role-anarchist.svg";
+import RoleAnarchist from "../assets/role-anarchist.png";
 
 import "./RoleAlert.css";
 import { GameState, Role } from "../types";

@@ -1,6 +1,0 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 760 170" role="img" aria-label="Anarchist Victory">
-  <rect width="760" height="170" rx="12" fill="#111"/>
-  <path d="M0 170 L760 0" stroke="#b4131a" stroke-width="90"/>
-  <path d="M0 170 L760 0" stroke="#151515" stroke-width="50"/>
-  <text x="380" y="105" text-anchor="middle" fill="#f4e7bf" font-size="70" font-family="Georgia, serif" font-weight="800">ANARCHIST VICTORY</text>
-</svg>

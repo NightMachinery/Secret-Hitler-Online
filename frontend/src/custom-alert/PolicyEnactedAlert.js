@@ -4,7 +4,7 @@ import ButtonPrompt from "./ButtonPrompt";
 
 import LiberalPolicy from "../assets/policy-liberal.png";
 import FascistPolicy from "../assets/policy-fascist.png";
-import AnarchistPolicy from "../assets/policy-anarchist.svg";
+import AnarchistPolicy from "../assets/policy-anarchist.png";
 import FolderCoverFront from "../assets/policy-folder-cover-front.png";
 import FolderCoverBack from "../assets/policy-folder-cover-back.png";
 import FolderBack from "../assets/policy-folder-back.png";

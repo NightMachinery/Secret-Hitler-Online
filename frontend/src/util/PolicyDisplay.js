@@ -4,7 +4,7 @@ import "./PolicyDisplay.css";
 import { ANARCHIST, LIBERAL } from "../constants";
 import LiberalPolicy from "../assets/policy-liberal.png";
 import FascistPolicy from "../assets/policy-fascist.png";
-import AnarchistPolicy from "../assets/policy-anarchist.svg";
+import AnarchistPolicy from "../assets/policy-anarchist.png";
 
 class PolicyDisplay extends Component {
 	render() {

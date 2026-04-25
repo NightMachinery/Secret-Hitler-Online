@@ -5,7 +5,7 @@ import PlayerDisplay, {
 } from "../player/PlayerDisplay";
 import VictoryFascistHeader from "../assets/victory-fascist-header.png";
 import VictoryLiberalHeader from "../assets/victory-liberal-header.png";
-import VictoryAnarchistHeader from "../assets/victory-anarchist-header.svg";
+import VictoryAnarchistHeader from "../assets/victory-anarchist-header.png";
 import { GameState, LobbyState } from "../types";
 import "./VictoryPrompt.css";
 

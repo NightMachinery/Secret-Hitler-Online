@@ -10,7 +10,7 @@ import PlayerBase from "../assets/player-base.png"
 import IconFascist from "../assets/player-icon-fascist.png";
 import IconHitler from "../assets/player-icon-hitler.png";
 import IconLiberal from "../assets/player-icon-liberal.png";
-import IconAnarchist from "../assets/policy-anarchist.svg";
+import IconAnarchist from "../assets/policy-anarchist.png";
 
 import IconBusy from "../assets/player-icon-busy.png";
 

@@ -6,7 +6,7 @@ import FascistBoard_5_6 from "../assets/board-fascist-5-6.png";
 import FascistBoard_7_8 from "../assets/board-fascist-7-8.png";
 import FascistBoard_9_10 from "../assets/board-fascist-9-10.png";
 import PolicyFascist from "../assets/board-policy-fascist.png";
-import AnarchistPolicy from "../assets/policy-anarchist.svg";
+import AnarchistPolicy from "../assets/policy-anarchist.png";
 import { getDefaultPowerSchedule } from "../setup/GameSetupConfig";
 
 import "./Board.css";

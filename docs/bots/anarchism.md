@@ -58,3 +58,14 @@ Custom setup can change Hitler count.
 ## Custom powers
 
 The setup config can provide a per-Fascist-policy-slot power schedule. Dynamic/custom boards use that schedule on the backend and render with a generated board on the frontend. Standard-equivalent settings keep the original fixed board art.
+
+## Frontend art assets
+
+Anarchist-specific frontend art follows the same raster PNG asset convention as the original Liberal/Fascist card art:
+
+- `frontend/src/assets/party-membership-anarchist.png`
+- `frontend/src/assets/policy-anarchist.png`
+- `frontend/src/assets/role-anarchist.png`
+- `frontend/src/assets/victory-anarchist-header.png`
+
+Keep Anarchist imports pointed at these PNGs so the extension art matches the prior card, policy, role, and victory-header assets.
