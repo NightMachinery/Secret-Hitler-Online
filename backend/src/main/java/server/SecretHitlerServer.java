@@ -1,5 +1,7 @@
 package server;
 
+import game.GameSetupConfig;
+import game.SecretHitlerGame;
 import game.datastructures.Identity;
 import io.javalin.Javalin;
 import io.javalin.http.Context;
@@ -62,6 +64,7 @@ public class SecretHitlerServer {
     public static final String PARAM_INVESTIGATION = "investigation";
     public static final String FASCIST = "FASCIST";
     public static final String LIBERAL = "LIBERAL";
+    public static final String ANARCHIST = "ANARCHIST";
 
     // These are the commands that can be passed via a websocket connection.
     public static final String COMMAND_PING = "ping";
@@ -86,6 +89,7 @@ public class SecretHitlerServer {
     public static final String COMMAND_SET_OBSERVER_ASSIGNMENT = "set-observer-assignment";
     public static final String COMMAND_SET_DISCUSSION_REACTION = "set-discussion-reaction";
     public static final String COMMAND_SET_DISCUSSION_REACTION_CONFIG = "set-discussion-reaction-config";
+    public static final String COMMAND_SET_GAME_SETUP = "set-game-setup";
     public static final String COMMAND_LEAVE_LOBBY = "leave-lobby";
     public static final String COMMAND_SET_MODERATOR_STATUS = "set-moderator-status";
     public static final String COMMAND_KICK_USER = "kick-user";
@@ -845,6 +849,8 @@ public class SecretHitlerServer {
                         obj.put(PARAM_PACKET_TYPE, PACKET_INVESTIGATION);
                         if (id == Identity.FASCIST) {
                             obj.put(PARAM_INVESTIGATION, FASCIST);
+                        } else if (id == Identity.ANARCHIST) {
+                            obj.put(PARAM_INVESTIGATION, ANARCHIST);
                         } else {
                             obj.put(PARAM_INVESTIGATION, LIBERAL);
                         }
@@ -931,6 +937,15 @@ public class SecretHitlerServer {
                         int durationSeconds = message.getInt(PARAM_DURATION_SECONDS);
                         boolean allowDeadPlayers = message.getBoolean(PARAM_ALLOW_DEAD_PLAYERS);
                         lobby.setDiscussionReactionConfig(durationSeconds, allowDeadPlayers);
+                        break;
+
+                    case COMMAND_SET_GAME_SETUP:
+                        if (lobby.isInGame()) {
+                            throw new RuntimeException("Game setup can only be changed in the setup lobby.");
+                        }
+                        verifyIsModerator(name, lobby);
+                        lobby.setGameSetupConfig(GameSetupConfig.fromJson(message.getJSONObject("setupConfig"),
+                                Math.max(SecretHitlerGame.MIN_PLAYERS, lobby.getUserCount()), lobby.getGameSetupConfig()));
                         break;
 
                     case COMMAND_SET_MODERATOR_STATUS:

@@ -3,15 +3,18 @@ package game.datastructures.board;
 import game.datastructures.Policy;
 
 import java.io.Serializable;
+import java.util.LinkedHashMap;
+import java.util.Map;
 
 public abstract class Board implements Serializable {
 
-    final int FASCIST_POLICIES_TO_WIN = 6;
-    final int LIBERAL_POLICIES_TO_WIN = 5;
+    private final int fascistPoliciesToWin;
+    private final int liberalPoliciesToWin;
 
     // The minimum number of fascist policies required before
     // fascists can win by electing Hitler chancellor
-    final int MIN_POLICIES_FOR_CHANCELLOR_VICTORY = 3;
+    private final int minPoliciesForChancellorVictory;
+    private final Map<Integer, PresidentialPower> fascistPowerSchedule;
 
     private int numFascistPolicies;
     private int numLiberalPolicies;
@@ -24,6 +27,17 @@ public abstract class Board implements Serializable {
      * @effects this is a new, empty board.
      */
     public Board() {
+        this(6, 5, 3, new LinkedHashMap<>());
+    }
+
+    public Board(int fascistPoliciesToWin, int liberalPoliciesToWin, int minPoliciesForChancellorVictory,
+            Map<Integer, PresidentialPower> fascistPowerSchedule) {
+        this.fascistPoliciesToWin = fascistPoliciesToWin;
+        this.liberalPoliciesToWin = liberalPoliciesToWin;
+        this.minPoliciesForChancellorVictory = minPoliciesForChancellorVictory;
+        this.fascistPowerSchedule = fascistPowerSchedule == null
+                ? new LinkedHashMap<>()
+                : new LinkedHashMap<>(fascistPowerSchedule);
         numFascistPolicies = 0;
         numLiberalPolicies = 0;
     }
@@ -42,7 +56,7 @@ public abstract class Board implements Serializable {
         }
         if (policy.getType() == Policy.Type.FASCIST) {
             numFascistPolicies++;
-        } else {
+        } else if (policy.getType() == Policy.Type.LIBERAL) {
             numLiberalPolicies++;
         }
         lastEnacted = policy;
@@ -85,7 +99,7 @@ public abstract class Board implements Serializable {
      * @return true if the number of Liberal Policies {@literal >=} {@code LIBERAL_POLICIES_TO_WIN}
      */
     public boolean isLiberalVictory() {
-        return getNumLiberalPolicies() >= LIBERAL_POLICIES_TO_WIN;
+        return getNumLiberalPolicies() >= liberalPoliciesToWin;
     }
 
 
@@ -94,7 +108,7 @@ public abstract class Board implements Serializable {
      * @return true if the number of Fascist Policies {@literal >=} {@code FASCIST_POLICIES_TO_WIN}
      */
     public boolean isFascistVictory() {
-        return getNumFascistPolicies() >= FASCIST_POLICIES_TO_WIN;
+        return getNumFascistPolicies() >= fascistPoliciesToWin;
     }
 
 
@@ -114,11 +128,26 @@ public abstract class Board implements Serializable {
      *         last activated presidential power.
      */
     public PresidentialPower getActivatedPower() {
+        if (getLastEnactedType() == Policy.Type.FASCIST) {
+            return fascistPowerSchedule.getOrDefault(getNumFascistPolicies(), PresidentialPower.NONE);
+        }
         return PresidentialPower.NONE;
     }
 
     public boolean fascistsCanWinByElection() {
-        return (getNumFascistPolicies() >= MIN_POLICIES_FOR_CHANCELLOR_VICTORY);
+        return (getNumFascistPolicies() >= minPoliciesForChancellorVictory);
+    }
+
+    public int getFascistPoliciesToWin() {
+        return fascistPoliciesToWin;
+    }
+
+    public int getLiberalPoliciesToWin() {
+        return liberalPoliciesToWin;
+    }
+
+    public int getMinPoliciesForChancellorVictory() {
+        return minPoliciesForChancellorVictory;
     }
 
 }

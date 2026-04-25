@@ -5,6 +5,7 @@ import game.datastructures.Identity;
 import game.datastructures.Player;
 import game.datastructures.Policy;
 import game.datastructures.board.Board;
+import game.datastructures.board.ConfigurableBoard;
 import game.datastructures.board.FiveToSixPlayerBoard;
 import game.datastructures.board.NineToTenPlayerBoard;
 import game.datastructures.board.SevenToEightPlayerBoard;
@@ -59,7 +60,14 @@ public class SecretHitlerGame implements Serializable {
     public enum RoundHistoryResult {
         VOTE_FAILED,
         LIBERAL,
-        FASCIST
+        FASCIST,
+        ANARCHIST
+    }
+
+    private enum PolicyEnactmentSource {
+        LEGISLATIVE,
+        TRACKER,
+        ANARCHIST_REPLACEMENT
     }
 
     public enum PublicActionType {
@@ -189,6 +197,9 @@ public class SecretHitlerGame implements Serializable {
     private Board board;
     private Deck discard;
     private Deck draw;
+    private GameSetupConfig setupConfig;
+    private int numAnarchistPoliciesResolved = 0;
+    private int executedHitlers = 0;
 
     private int electionTracker;
 
@@ -281,6 +292,26 @@ public class SecretHitlerGame implements Serializable {
         return board.getNumLiberalPolicies();
     }
 
+    public int getNumAnarchistPoliciesResolved() {
+        return numAnarchistPoliciesResolved;
+    }
+
+    public int getLiberalPoliciesToWin() {
+        return board.getLiberalPoliciesToWin();
+    }
+
+    public int getFascistPoliciesToWin() {
+        return board.getFascistPoliciesToWin();
+    }
+
+    public int getHitlerElectionFascistThreshold() {
+        return board.getMinPoliciesForChancellorVictory();
+    }
+
+    public GameSetupConfig getSetupConfig() {
+        return setupConfig;
+    }
+
     public boolean didElectionTrackerAdvance() {
         return didElectionTrackerAdvance;
     }
@@ -317,6 +348,10 @@ public class SecretHitlerGame implements Serializable {
      *          chancellor nomination process.
      */
     public SecretHitlerGame(Collection<String> players) {
+        this(players, GameSetupConfig.standard(players.size()));
+    }
+
+    public SecretHitlerGame(Collection<String> players, GameSetupConfig setupConfig) {
         if (players.size() < MIN_PLAYERS) {
             throw new IllegalArgumentException("There must be at least " + MIN_PLAYERS + " to start the game (only "
                     + players.size() + " provided).");
@@ -324,6 +359,10 @@ public class SecretHitlerGame implements Serializable {
             throw new IllegalArgumentException(
                     "There can be a max of " + MAX_PLAYERS + " in a game (" + players.size() + " provided).");
         }
+
+        this.setupConfig = setupConfig == null
+                ? GameSetupConfig.standard(players.size())
+                : setupConfig.withPlayerCount(players.size());
 
         // Set up the list of players.
         playerList = new ArrayList<>();
@@ -341,13 +380,15 @@ public class SecretHitlerGame implements Serializable {
         assignRoles();
         electionTracker = 0;
 
-        // Assign a new board based on the number of players.
-        if (playerList.size() <= 6) {
+        // Assign a new board based on the number of players/settings.
+        if (this.setupConfig.isStandardEquivalent(playerList.size()) && playerList.size() <= 6) {
             board = new FiveToSixPlayerBoard();
-        } else if (playerList.size() <= 8) {
+        } else if (this.setupConfig.isStandardEquivalent(playerList.size()) && playerList.size() <= 8) {
             board = new SevenToEightPlayerBoard();
-        } else {
+        } else if (this.setupConfig.isStandardEquivalent(playerList.size())) {
             board = new NineToTenPlayerBoard();
+        } else {
+            board = new ConfigurableBoard(this.setupConfig);
         }
 
         currentPresident = playerList.get(0).getUsername();
@@ -426,11 +467,14 @@ public class SecretHitlerGame implements Serializable {
         draw = new Deck();
         discard = new Deck();
 
-        for (int i = 0; i < NUM_FASCIST_POLICIES; i++) {
+        for (int i = 0; i < setupConfig.getFascistPolicyCount(); i++) {
             draw.add(new Policy(Policy.Type.FASCIST));
         }
-        for (int i = 0; i < NUM_LIBERAL_POLICIES; i++) {
+        for (int i = 0; i < setupConfig.getLiberalPolicyCount(); i++) {
             draw.add(new Policy(Policy.Type.LIBERAL));
+        }
+        for (int i = 0; i < setupConfig.getAnarchistPolicyCount(); i++) {
+            draw.add(new Policy(Policy.Type.ANARCHIST));
         }
 
         draw.shuffle();
@@ -456,23 +500,14 @@ public class SecretHitlerGame implements Serializable {
             throw new IllegalStateException("Cannot assign roles with too many players.");
         }
 
-        int numFascistsToSet = getRegularFascistsForPlayerCount(players);
-
-        // Set all players to default state
-        for (Player player : playerList) {
-            player.setIdentity(Identity.LIBERAL);
-        }
-
-        // Randomly set one player to be hitler
-        int indexOfHitler = random.nextInt(players);
-        playerList.get(indexOfHitler).setIdentity(Identity.HITLER);
-
-        while (numFascistsToSet > 0) {
-            int randomIndex = random.nextInt(players);
-            if (!playerList.get(randomIndex).isFascist()) { // If player has not already been set
-                playerList.get(randomIndex).setIdentity(Identity.FASCIST);
-                numFascistsToSet--;
-            }
+        List<Identity> roleBag = new ArrayList<>();
+        for (int i = 0; i < setupConfig.getLiberalRoleCount(); i++) roleBag.add(Identity.LIBERAL);
+        for (int i = 0; i < setupConfig.getFascistRoleCount(); i++) roleBag.add(Identity.FASCIST);
+        for (int i = 0; i < setupConfig.getHitlerRoleCount(); i++) roleBag.add(Identity.HITLER);
+        for (int i = 0; i < setupConfig.getAnarchistRoleCount(); i++) roleBag.add(Identity.ANARCHIST);
+        Collections.shuffle(roleBag, random);
+        for (int i = 0; i < playerList.size(); i++) {
+            playerList.get(i).setIdentity(roleBag.get(i));
         }
     }
 
@@ -510,6 +545,9 @@ public class SecretHitlerGame implements Serializable {
      *          win conditions for policies are met.
      */
     private void checkIfGameOver() {
+        if (state == GameState.ANARCHIST_VICTORY_POLICY) {
+            return;
+        }
         if (board.isFascistVictory()) {
             this.lastState = this.state;
             state = GameState.FASCIST_VICTORY_POLICY;
@@ -525,6 +563,7 @@ public class SecretHitlerGame implements Serializable {
     public boolean hasGameFinished() {
         return state == GameState.FASCIST_VICTORY_ELECTION
                 || state == GameState.FASCIST_VICTORY_POLICY
+                || state == GameState.ANARCHIST_VICTORY_POLICY
                 || state == GameState.LIBERAL_VICTORY_EXECUTION
                 || state == GameState.LIBERAL_VICTORY_POLICY;
     }
@@ -702,11 +741,12 @@ public class SecretHitlerGame implements Serializable {
                 shuffleDiscardIntoDraw();
             }
             Policy newPolicy = draw.remove();
-            board.enactPolicy(newPolicy);
             // Note that the newPolicy is NOT added back to the discard pile.
-            electionTracker = 0; // Reset
+            if (setupConfig.doesAnarchistTrackerReset()) {
+                electionTracker = 0; // Reset
+            }
 
-            onEnactPolicy(newPolicy.getType());
+            enactAndResolvePolicy(newPolicy, PolicyEnactmentSource.TRACKER);
         } else {
             finalizeCurrentRoundHistory(RoundHistoryResult.VOTE_FAILED);
             concludePresidentialActions();
@@ -940,10 +980,9 @@ public class SecretHitlerGame implements Serializable {
         }
 
         Policy newPolicy = legislativePolicies.remove(index);
-        board.enactPolicy(newPolicy);
         discard.add(legislativePolicies.remove(0)); // Discard last remaining Policy
         didVetoOccurThisTurn = false; // Reset because we have moved past chancellor stage
-        onEnactPolicy(newPolicy.getType());
+        enactAndResolvePolicy(newPolicy, PolicyEnactmentSource.LEGISLATIVE);
     }
 
     /**
@@ -958,9 +997,9 @@ public class SecretHitlerGame implements Serializable {
     public void chancellorVeto() {
         if (getState() != GameState.LEGISLATIVE_CHANCELLOR) {
             throw new IllegalStateException("Cannot veto in state " + getState().toString());
-        } else if (board.getNumFascistPolicies() != 5) {
+        } else if (board.getNumFascistPolicies() < board.getFascistPoliciesToWin() - 1) {
             throw new IllegalStateException(
-                    "Cannot veto when there are less than 5 fascist policies enacted (currently "
+                    "Cannot veto before the final Fascist policy slot is threatened (currently "
                             + board.getNumFascistPolicies() + ")");
         } else if (didVetoOccurThisTurn()) {
             throw new IllegalStateException("Cannot veto again once veto is denied.");
@@ -1015,7 +1054,50 @@ public class SecretHitlerGame implements Serializable {
      *          are insufficient cards for a hand,
      *          and resets the election tracker to 0.
      */
-    private void onEnactPolicy(Policy.Type policyType) {
+    private void enactAndResolvePolicy(Policy newPolicy, PolicyEnactmentSource source) {
+        if (newPolicy.getType() == Policy.Type.ANARCHIST) {
+            numAnarchistPoliciesResolved++;
+            lastEnactedPolicy = Policy.Type.ANARCHIST;
+
+            if (hasAnarchistPlayers() && (source == PolicyEnactmentSource.TRACKER
+                    || source == PolicyEnactmentSource.ANARCHIST_REPLACEMENT)) {
+                finalizeCurrentRoundHistory(RoundHistoryResult.ANARCHIST);
+                this.lastState = this.state;
+                this.state = GameState.ANARCHIST_VICTORY_POLICY;
+                return;
+            }
+
+            for (int i = 0; i < setupConfig.getAnarchistReplacementCount(); i++) {
+                if (draw.getSize() < MIN_DRAW_DECK_SIZE) {
+                    shuffleDiscardIntoDraw();
+                }
+                if (draw.isEmpty()) {
+                    finalizeCurrentRoundHistory(RoundHistoryResult.ANARCHIST);
+                    concludePresidentialActions();
+                    return;
+                }
+                enactAndResolvePolicy(draw.remove(), PolicyEnactmentSource.ANARCHIST_REPLACEMENT);
+                if (hasGameFinished() || state != GameState.LEGISLATIVE_CHANCELLOR) {
+                    return;
+                }
+            }
+            return;
+        }
+
+        board.enactPolicy(newPolicy);
+        onEnactPolicy(newPolicy.getType(), source);
+    }
+
+    private boolean hasAnarchistPlayers() {
+        for (Player player : playerList) {
+            if (player.getIdentity() == Identity.ANARCHIST) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    private void onEnactPolicy(Policy.Type policyType, PolicyEnactmentSource source) {
         electionTracker = 0;
         lastEnactedPolicy = policyType;
         finalizeCurrentRoundHistory(policyType == Policy.Type.FASCIST
@@ -1036,7 +1118,9 @@ public class SecretHitlerGame implements Serializable {
         }
 
         this.lastState = this.state;
-        switch (board.getActivatedPower()) {
+        switch (setupConfig.areAnarchistPowersEnabled() || source != PolicyEnactmentSource.ANARCHIST_REPLACEMENT
+                ? board.getActivatedPower()
+                : game.datastructures.board.PresidentialPower.NONE) {
             case PEEK:
                 state = GameState.PRESIDENTIAL_POWER_PEEK;
                 break;
@@ -1122,7 +1206,10 @@ public class SecretHitlerGame implements Serializable {
         addPublicHistoryAction(PublicActionType.INVESTIGATED, username, null);
         concludePresidentialActions();
 
-        if (getPlayer(username).isFascist()) {
+        if (getPlayer(username).getIdentity() == Identity.ANARCHIST
+                && setupConfig.doAnarchistInvestigationsRevealAnarchist()) {
+            return Identity.ANARCHIST;
+        } else if (getPlayer(username).isFascist()) {
             return Identity.FASCIST;
         } else {
             return Identity.LIBERAL;
@@ -1160,7 +1247,12 @@ public class SecretHitlerGame implements Serializable {
         playerToKill.kill();
         boolean hitlerExecuted = playerToKill.isHitler();
         addPublicHistoryAction(PublicActionType.EXECUTED, username, hitlerExecuted);
-        if (hitlerExecuted) { // game ends and liberals win.
+        if (hitlerExecuted) {
+            executedHitlers++;
+        }
+        if (hitlerExecuted
+                && setupConfig.getRequiredExecutedHitlersForLiberalVictory() > 0
+                && executedHitlers >= setupConfig.getRequiredExecutedHitlersForLiberalVictory()) {
             this.lastState = this.state;
             state = GameState.LIBERAL_VICTORY_EXECUTION;
         } else {

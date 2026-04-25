@@ -125,6 +125,14 @@ public class CpuPlayer implements Serializable, Comparable<CpuPlayer> {
       }
     }
 
+    if (myPlayerData.getIdentity() == Identity.ANARCHIST && game.getSetupConfig().doAnarchistsKnowEachOther()) {
+      for (Player player : playerList) {
+        if (player.getIdentity() == Identity.ANARCHIST) {
+          knownPlayerRoles.put(player.getUsername(), player.getIdentity());
+        }
+      }
+    }
+
     knownPlayerRoles.put(myName, myPlayerData.getIdentity());
   }
 
@@ -220,15 +228,15 @@ public class CpuPlayer implements Serializable, Comparable<CpuPlayer> {
   } // end onUpdate
 
   private boolean isFascistInDanger(SecretHitlerGame game) {
-    return game.getNumLiberalPolicies() >= 4;
+    return game.getNumLiberalPolicies() >= game.getLiberalPoliciesToWin() - 1;
   }
 
   private boolean isLiberalInDanger(SecretHitlerGame game) {
-    return game.getNumFascistPolicies() >= 5;
+    return game.getNumFascistPolicies() >= game.getFascistPoliciesToWin() - 1;
   }
 
   private boolean canHitlerWinByElection(SecretHitlerGame game) {
-    return game.getNumFascistPolicies() >= 3;
+    return game.getNumFascistPolicies() >= game.getHitlerElectionFascistThreshold();
   }
 
   private List<Player> removePlayerFromList(String username, List<Player> playerList) {
@@ -279,7 +287,9 @@ public class CpuPlayer implements Serializable, Comparable<CpuPlayer> {
     String chancellorName = null;
 
     // Choose chancellor nominee using weighted random
-    if (myPlayerData.getIdentity() == Identity.FASCIST) {
+    if (myPlayerData.getIdentity() == Identity.ANARCHIST) {
+      chancellorName = chooseRandomPlayerWeighted(playerList, 0.7f, 0.2f, 0.7f, 0.2f);
+    } else if (myPlayerData.getIdentity() == Identity.FASCIST) {
       if (canHitlerWinByElection(game)) { // Increase likelihood of choosing hitler
         chancellorName = chooseRandomPlayerWeighted(playerList, 0.35f, 1.5f, 0.15f, 0.05f);
       } else {
@@ -319,6 +329,8 @@ public class CpuPlayer implements Serializable, Comparable<CpuPlayer> {
       Identity id = knownPlayerRoles.get(playerName);
       if (id == Identity.FASCIST || id == Identity.HITLER) {
         reputation = -1 * MAX_REPUTATION;
+      } else if (id == Identity.ANARCHIST && myPlayerData.getIdentity() != Identity.ANARCHIST) {
+        reputation = -2;
       } else {
         reputation = MAX_REPUTATION;
       }
@@ -419,6 +431,15 @@ public class CpuPlayer implements Serializable, Comparable<CpuPlayer> {
     return -1;
   }
 
+  private int tryGetFirstNonAnarchistPolicy(List<Policy> policies) {
+    for (int i = 0; i < policies.size(); i++) {
+      if (policies.get(i).getType() != Policy.Type.ANARCHIST) {
+        return i;
+      }
+    }
+    return -1;
+  }
+
   private boolean handleLegislativePresident(SecretHitlerGame game) {
     if (!game.getCurrentPresident().equals(myName)) {
       return false; // We are not president, no action required
@@ -426,63 +447,36 @@ public class CpuPlayer implements Serializable, Comparable<CpuPlayer> {
 
     List<Policy> policies = game.getPresidentLegislativeChoices();
 
-    // Count the number of fascist and liberal policies
-    int fascistPolicyCount = 0;
-    for (Policy policy : policies) {
-      if (policy.getType() == Policy.Type.FASCIST) {
-        fascistPolicyCount++;
-      }
-    }
-    int liberalPolicyCount = SecretHitlerGame.PRESIDENT_DRAW_SIZE - fascistPolicyCount;
-
-    // Choose a policy to discard
-    int policyIndexToRemove = 0;
-
-    // Check if the policy deck is all of one card type. If so, choose any to
-    // discard, since there is essentially no choice to make.
     Identity myId = myPlayerData.getIdentity();
-    if (fascistPolicyCount == SecretHitlerGame.PRESIDENT_DRAW_SIZE
-        || liberalPolicyCount == SecretHitlerGame.PRESIDENT_DRAW_SIZE) {
-      policyIndexToRemove = 0;
+    int policyIndexToRemove = random.nextInt(policies.size());
 
-    } else if (fascistPolicyCount == 1) { // One fascist, two liberal policies
-      if (myId == Identity.FASCIST) {
-        // Discard one of the liberal policies
-        policyIndexToRemove = tryGetIndexOfPolicy(policies, Policy.Type.LIBERAL);
-      } else if (myId == Identity.HITLER) {
-        if (isFascistInDanger(game)) {
-          // Don't let liberals win by policy election
-          policyIndexToRemove = tryGetIndexOfPolicy(policies, Policy.Type.LIBERAL);
-        } else {
-          // Choose random policy
-          policyIndexToRemove = random.nextInt(SecretHitlerGame.PRESIDENT_DRAW_SIZE);
-        }
-
-      } else { // Liberal
-        if (isLiberalInDanger(game)) {
-          // Don't give choices if in danger.
-          policyIndexToRemove = tryGetIndexOfPolicy(policies, Policy.Type.FASCIST);
-        } else {
-          // Choose a random policy to discard
-          policyIndexToRemove = random.nextInt(SecretHitlerGame.PRESIDENT_DRAW_SIZE);
+    if (myId == Identity.ANARCHIST) {
+      int nonAnarchistIndex = tryGetFirstNonAnarchistPolicy(policies);
+      policyIndexToRemove = nonAnarchistIndex >= 0 ? nonAnarchistIndex : 0;
+    } else if (myId == Identity.FASCIST) {
+      int liberalIndex = tryGetIndexOfPolicy(policies, Policy.Type.LIBERAL);
+      int anarchistIndex = tryGetIndexOfPolicy(policies, Policy.Type.ANARCHIST);
+      policyIndexToRemove = liberalIndex >= 0 ? liberalIndex : (anarchistIndex >= 0 ? anarchistIndex : 0);
+    } else if (myId == Identity.HITLER) {
+      if (isFascistInDanger(game)) {
+        int liberalIndex = tryGetIndexOfPolicy(policies, Policy.Type.LIBERAL);
+        int anarchistIndex = tryGetIndexOfPolicy(policies, Policy.Type.ANARCHIST);
+        policyIndexToRemove = liberalIndex >= 0 ? liberalIndex : (anarchistIndex >= 0 ? anarchistIndex : 0);
+      } else {
+        int anarchistIndex = tryGetIndexOfPolicy(policies, Policy.Type.ANARCHIST);
+        if (anarchistIndex >= 0) {
+          policyIndexToRemove = anarchistIndex;
         }
       }
-
-    } else if (fascistPolicyCount == 2) { // Two fascist, one liberal policy
-      if (myId == Identity.FASCIST) {
-        // Discard the liberal policy
-        policyIndexToRemove = tryGetIndexOfPolicy(policies, Policy.Type.LIBERAL);
-      } else if (myId == Identity.HITLER) {
-        if (isFascistInDanger(game)) {
-          // Don't let liberals win by policy election
-          policyIndexToRemove = tryGetIndexOfPolicy(policies, Policy.Type.LIBERAL);
-        } else {
-          // Choose a random policy to discard
-          policyIndexToRemove = random.nextInt(SecretHitlerGame.PRESIDENT_DRAW_SIZE);
-        }
-      } else {
-        // Liberals should always discard the fascist policy
-        policyIndexToRemove = tryGetIndexOfPolicy(policies, Policy.Type.FASCIST);
+    } else {
+      int fascistIndex = tryGetIndexOfPolicy(policies, Policy.Type.FASCIST);
+      int anarchistIndex = tryGetIndexOfPolicy(policies, Policy.Type.ANARCHIST);
+      if (isLiberalInDanger(game) && fascistIndex >= 0) {
+        policyIndexToRemove = fascistIndex;
+      } else if (anarchistIndex >= 0) {
+        policyIndexToRemove = anarchistIndex;
+      } else if (fascistIndex >= 0) {
+        policyIndexToRemove = fascistIndex;
       }
     }
 
@@ -505,7 +499,8 @@ public class CpuPlayer implements Serializable, Comparable<CpuPlayer> {
     Identity myId = myPlayerData.getIdentity();
     List<Policy> policies = game.getChancellorLegislativeChoices();
     // Veto can't re-occur
-    boolean canVeto = game.getNumFascistPolicies() == 5 && !game.didVetoOccurThisTurn();
+    boolean canVeto = game.getNumFascistPolicies() >= game.getFascistPoliciesToWin() - 1
+        && !game.didVetoOccurThisTurn();
 
     if (policies.get(0).getType() == policies.get(1).getType()) {
       // Both policies are the same.
@@ -529,20 +524,27 @@ public class CpuPlayer implements Serializable, Comparable<CpuPlayer> {
       // Otherwise, enact one of them because the order doesn't matter
       game.chancellorEnactPolicy(0);
     } else {
-      // One Liberal and one fascist policy, so decide based on role
-      if (myId == Identity.FASCIST) {
-        // Fascists should always try and pass more fascist policies
-        game.chancellorEnactPolicy(tryGetIndexOfPolicy(policies, Policy.Type.FASCIST));
+      if (myId == Identity.ANARCHIST) {
+        int anarchistIndex = tryGetIndexOfPolicy(policies, Policy.Type.ANARCHIST);
+        game.chancellorEnactPolicy(anarchistIndex >= 0 ? anarchistIndex : 0);
+      } else if (myId == Identity.FASCIST) {
+        int fascistIndex = tryGetIndexOfPolicy(policies, Policy.Type.FASCIST);
+        int anarchistIndex = tryGetIndexOfPolicy(policies, Policy.Type.ANARCHIST);
+        game.chancellorEnactPolicy(fascistIndex >= 0 ? fascistIndex : (anarchistIndex >= 0 ? anarchistIndex : 0));
       } else if (myId == Identity.HITLER) {
         if (isFascistInDanger(game)) {
-          // Don't pass liberal policies if fascists are in danger of losing from them
-          game.chancellorEnactPolicy(tryGetIndexOfPolicy(policies, Policy.Type.FASCIST));
+          int fascistIndex = tryGetIndexOfPolicy(policies, Policy.Type.FASCIST);
+          int anarchistIndex = tryGetIndexOfPolicy(policies, Policy.Type.ANARCHIST);
+          game.chancellorEnactPolicy(fascistIndex >= 0 ? fascistIndex : (anarchistIndex >= 0 ? anarchistIndex : 0));
         } else {
-          // preferentially choose liberal policies to gain trust
-          game.chancellorEnactPolicy(tryGetIndexOfPolicy(policies, Policy.Type.LIBERAL));
+          int liberalIndex = tryGetIndexOfPolicy(policies, Policy.Type.LIBERAL);
+          int anarchistIndex = tryGetIndexOfPolicy(policies, Policy.Type.ANARCHIST);
+          game.chancellorEnactPolicy(liberalIndex >= 0 ? liberalIndex : (anarchistIndex >= 0 ? anarchistIndex : 0));
         }
       } else { // Liberal
-        game.chancellorEnactPolicy(tryGetIndexOfPolicy(policies, Policy.Type.LIBERAL));
+        int liberalIndex = tryGetIndexOfPolicy(policies, Policy.Type.LIBERAL);
+        int anarchistIndex = tryGetIndexOfPolicy(policies, Policy.Type.ANARCHIST);
+        game.chancellorEnactPolicy(liberalIndex >= 0 ? liberalIndex : (anarchistIndex >= 0 ? anarchistIndex : 0));
       }
     }
     return true;
@@ -699,7 +701,7 @@ public class CpuPlayer implements Serializable, Comparable<CpuPlayer> {
       if (!myName.equals(currPlayerName) && currPlayer.isAlive()) {
         if (knownPlayerRoles.containsKey(currPlayerName)) { // Role is known
           Identity currId = knownPlayerRoles.get(currPlayerName);
-          if (currId == Identity.FASCIST) {
+          if (currId == Identity.FASCIST || currId == Identity.ANARCHIST) {
             currWeight = fascistWeight;
           } else if (currId == Identity.HITLER) {
             currWeight = hitlerWeight;

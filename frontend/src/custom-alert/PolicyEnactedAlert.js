@@ -4,12 +4,13 @@ import ButtonPrompt from "./ButtonPrompt";
 
 import LiberalPolicy from "../assets/policy-liberal.png";
 import FascistPolicy from "../assets/policy-fascist.png";
+import AnarchistPolicy from "../assets/policy-anarchist.svg";
 import FolderCoverFront from "../assets/policy-folder-cover-front.png";
 import FolderCoverBack from "../assets/policy-folder-cover-back.png";
 import FolderBack from "../assets/policy-folder-back.png";
 
 import "./PolicyEnactedAlert.css";
-import { LIBERAL } from "../constants";
+import { ANARCHIST, LIBERAL } from "../constants";
 
 class PolicyEnactedAlert extends Component {
   shiftAnimationTimeout;
@@ -57,7 +58,11 @@ class PolicyEnactedAlert extends Component {
             id={"policy-enacted-policy"}
             className={this.state.className}
             src={
-              this.props.policyType === LIBERAL ? LiberalPolicy : FascistPolicy
+              this.props.policyType === LIBERAL
+                ? LiberalPolicy
+                : this.props.policyType === ANARCHIST
+                  ? AnarchistPolicy
+                  : FascistPolicy
             }
             alt={
               "A " +

@@ -10,6 +10,7 @@ import PlayerBase from "../assets/player-base.png"
 import IconFascist from "../assets/player-icon-fascist.png";
 import IconHitler from "../assets/player-icon-hitler.png";
 import IconLiberal from "../assets/player-icon-liberal.png";
+import IconAnarchist from "../assets/policy-anarchist.svg";
 
 import IconBusy from "../assets/player-icon-busy.png";
 
@@ -20,6 +21,7 @@ import portraits, {portraitsAltText} from "../assets";
 const LIBERAL = "LIBERAL";
 const FASCIST = "FASCIST";
 const HITLER = "HITLER";
+const ANARCHIST = "ANARCHIST";
 
 /**
  * A visual representation of a player, including their name and (optionally) their role.
@@ -45,6 +47,9 @@ class Player extends Component {
             case FASCIST:
                 return IconFascist;
             case HITLER:
+                return IconHitler;
+            case ANARCHIST:
+                return IconAnarchist;
             default:
                 return IconHitler;
         }

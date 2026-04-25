@@ -1,6 +1,7 @@
 export const LIBERAL = "LIBERAL";
 export const FASCIST = "FASCIST";
 export const HITLER = "HITLER";
+export const ANARCHIST = "ANARCHIST";
 
 export enum PAGE {
   LOGIN = "login",
@@ -126,6 +127,7 @@ export const STATE_LIBERAL_VICTORY_POLICY = "LIBERAL_VICTORY_POLICY"; // Liberal
 export const STATE_LIBERAL_VICTORY_EXECUTION = "LIBERAL_VICTORY_EXECUTION"; // Liberal Party won through executing Hitler.
 export const STATE_FASCIST_VICTORY_POLICY = "FASCIST_VICTORY_POLICY"; // Fascist Party won through enacting Fascist policies.
 export const STATE_FASCIST_VICTORY_ELECTION = "FASCIST_VICTORY_ELECTION"; // Fascist Party won by successfully electing Hitler chancellor.
+export const STATE_ANARCHIST_VICTORY_POLICY = "ANARCHIST_VICTORY_POLICY"; // Anarchists won through policy chaos.
 
 // Params
 // <editor-fold desc="Params">

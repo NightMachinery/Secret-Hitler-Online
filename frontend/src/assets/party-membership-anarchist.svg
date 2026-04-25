@@ -1,0 +1,7 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 360 230" role="img" aria-label="Anarchist party membership card">
+  <rect width="360" height="230" rx="18" fill="#111"/>
+  <rect x="16" y="16" width="328" height="198" rx="12" fill="#251614" stroke="#eddca7" stroke-width="6"/>
+  <path d="M30 190 L330 40" stroke="#b4131a" stroke-width="38"/>
+  <text x="180" y="68" text-anchor="middle" fill="#f4e7bf" font-size="28" font-family="Georgia, serif" font-weight="700">PARTY MEMBERSHIP</text>
+  <text x="180" y="145" text-anchor="middle" fill="#f4e7bf" font-size="42" font-family="Georgia, serif" font-weight="700">ANARCHIST</text>
+</svg>

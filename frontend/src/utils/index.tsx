@@ -4,6 +4,7 @@ export const isVictoryState = (lobbyState: LobbyState): boolean => {
   return (
     lobbyState === LobbyState.FASCIST_VICTORY_ELECTION ||
     lobbyState === LobbyState.FASCIST_VICTORY_POLICY ||
+    lobbyState === LobbyState.ANARCHIST_VICTORY_POLICY ||
     lobbyState === LobbyState.LIBERAL_VICTORY_EXECUTION ||
     lobbyState === LobbyState.LIBERAL_VICTORY_POLICY
   );

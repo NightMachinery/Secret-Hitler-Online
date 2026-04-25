@@ -42,6 +42,7 @@ import {
   PARAM_TARGET,
   STATE_FASCIST_VICTORY_ELECTION,
   STATE_FASCIST_VICTORY_POLICY,
+  STATE_ANARCHIST_VICTORY_POLICY,
   STATE_LIBERAL_VICTORY_EXECUTION,
   STATE_LIBERAL_VICTORY_POLICY,
   WEBSOCKET_HEADER,
@@ -97,13 +98,19 @@ import {
   LobbyState,
   ObserverAssignableTargetType,
   PlayerState,
-  Role,
   ServerRequestPayload,
   UserType,
   WSCommand,
   WSCommandType,
 } from "./types";
 import { isVictoryState } from "./utils";
+import {
+  createAnarchistSetupConfig,
+  createStandardSetupConfig,
+  GameSetupConfig,
+  parseSetupConfigJson5,
+  validateSetupConfig,
+} from "./setup/GameSetupConfig";
 
 const EVENT_BAR_FADE_OUT_DURATION = 500;
 const CUSTOM_ALERT_FADE_DURATION = 1000;
@@ -121,6 +128,7 @@ const DEFAULT_DISCUSSION_REACTION_CONFIG: DiscussionReactionConfig = {
 const DEFAULT_GAME_STATE: GameState = {
   liberalPolicies: 0,
   fascistPolicies: 0,
+  anarchistPoliciesResolved: 0,
   discardSize: 0,
   drawSize: 17,
   players: {},
@@ -156,6 +164,7 @@ const DEFAULT_GAME_STATE: GameState = {
   observerAssignableTargets: {},
   icon: {},
   selfType: UserType.OBSERVER,
+  setupConfig: createStandardSetupConfig(5),
 };
 
 const COOKIE_NAME = "name";
@@ -213,6 +222,10 @@ type AppState = {
   lobbyCreator: string;
   lobbyModerators: string[];
   lobbyConnected: Record<string, boolean>;
+  lobbySetupConfig: GameSetupConfig;
+  lobbySetupExpanded: boolean;
+  lobbySetupImportText: string;
+  lobbySetupError: string;
   gameState: GameState;
   /* Stores the last gameState[PARAM_STATE] value to check for changes. */
   lastState: any;
@@ -252,6 +265,10 @@ const defaultAppState: AppState = {
   lobbyCreator: "",
   lobbyModerators: [],
   lobbyConnected: {},
+  lobbySetupConfig: createStandardSetupConfig(5),
+  lobbySetupExpanded: true,
+  lobbySetupImportText: "",
+  lobbySetupError: "",
   gameState: DEFAULT_GAME_STATE,
   lastState: {},
   liberalPolicies: 0,
@@ -589,12 +606,20 @@ class App extends Component<{}, AppState> {
         if (!message.connected || typeof message.connected !== "object") {
           message.connected = {};
         }
+        if (!message.setupConfig || typeof message.setupConfig !== "object") {
+          message.setupConfig = createStandardSetupConfig(
+            Math.max(5, Array.isArray(message[PARAM_USERNAMES]) ? message[PARAM_USERNAMES].length : 5)
+          );
+        }
         this.setState({
           usernames: message[PARAM_USERNAMES],
           icons: message[PARAM_ICON],
           lobbyCreator: message.creator,
           lobbyModerators: message.moderators,
           lobbyConnected: message.connected,
+          lobbySetupConfig: message.setupConfig,
+          lobbySetupImportText: JSON.stringify(message.setupConfig, null, 2),
+          lobbySetupError: "",
           page: PAGE.LOBBY,
         });
         if (message[PARAM_ICON][this.state.name] === defaultPortrait) {
@@ -674,6 +699,14 @@ class App extends Component<{}, AppState> {
         }
         if (!message.connected || typeof message.connected !== "object") {
           message.connected = {};
+        }
+        if (!message.setupConfig || typeof message.setupConfig !== "object") {
+          message.setupConfig = createStandardSetupConfig(
+            Math.max(5, Array.isArray(message.playerOrder) ? message.playerOrder.length : 5)
+          );
+        }
+        if (typeof message.anarchistPoliciesResolved !== "number") {
+          message.anarchistPoliciesResolved = 0;
         }
         if (message !== this.state.gameState) {
           this.onGameStateChanged(message);
@@ -1256,6 +1289,173 @@ class App extends Component<{}, AppState> {
     this.sendWSCommand({ command: WSCommandType.START_GAME });
   }
 
+  sendLobbySetupConfig(config: GameSetupConfig) {
+    const validation = validateSetupConfig(config);
+    if (!validation.valid) {
+      this.setState({ lobbySetupError: validation.error });
+      return;
+    }
+    this.setState({
+      lobbySetupConfig: config,
+      lobbySetupImportText: JSON.stringify(config, null, 2),
+      lobbySetupError: "",
+    });
+    this.sendWSCommand({ command: WSCommandType.SET_GAME_SETUP, setupConfig: config });
+  }
+
+  renderSetupNumberField(
+    label: string,
+    keyName: keyof GameSetupConfig,
+    disabled: boolean
+  ) {
+    const value = this.state.lobbySetupConfig[keyName];
+    if (typeof value !== "number") {
+      return null;
+    }
+    return (
+      <label className="setup-field" key={String(keyName)}>
+        <span>{label}</span>
+        <input
+          type="number"
+          min={0}
+          disabled={disabled}
+          value={value}
+          onChange={(event) => {
+            this.sendLobbySetupConfig({
+              ...this.state.lobbySetupConfig,
+              preset: "MANUAL",
+              [keyName]: Number(event.target.value),
+            } as GameSetupConfig);
+          }}
+        />
+      </label>
+    );
+  }
+
+  renderModeratorGameSetup() {
+    const isManager = this.isLobbyManager(this.state.name);
+    const config = this.state.lobbySetupConfig;
+    const canEdit = isManager;
+    return (
+      <section className="moderator-setup-panel">
+        <button
+          className="setup-collapse-button"
+          onClick={() =>
+            this.setState({ lobbySetupExpanded: !this.state.lobbySetupExpanded })
+          }
+        >
+          {this.state.lobbySetupExpanded ? "▼" : "▶"} MODERATOR GAME SETUP
+        </button>
+        {this.state.lobbySetupExpanded && (
+          <div className="setup-panel-body">
+            <p className="setup-help-text">
+              Visible to everyone. Editable by the creator and moderators. Standard games remain the default.
+            </p>
+            <div className="setup-preset-row">
+              <button
+                disabled={!canEdit}
+                onClick={() =>
+                  this.sendLobbySetupConfig(createStandardSetupConfig(Math.max(5, this.state.usernames.length)))
+                }
+              >
+                STANDARD
+              </button>
+              <button
+                disabled={!canEdit}
+                onClick={() =>
+                  this.sendLobbySetupConfig(createAnarchistSetupConfig(Math.max(5, this.state.usernames.length)))
+                }
+              >
+                ANARCHIST
+              </button>
+              <span className="setup-current-preset">Preset: {config.preset}</span>
+            </div>
+            <div className="setup-grid">
+              {this.renderSetupNumberField("Liberal roles", "liberalRoles", !canEdit)}
+              {this.renderSetupNumberField("Fascist roles", "fascistRoles", !canEdit)}
+              {this.renderSetupNumberField("Hitler roles", "hitlerRoles", !canEdit)}
+              {this.renderSetupNumberField("Anarchist roles", "anarchistRoles", !canEdit)}
+              {this.renderSetupNumberField("Liberal policies", "liberalPolicies", !canEdit)}
+              {this.renderSetupNumberField("Fascist policies", "fascistPolicies", !canEdit)}
+              {this.renderSetupNumberField("Anarchist policies", "anarchistPolicies", !canEdit)}
+              {this.renderSetupNumberField("Liberal win threshold", "liberalPoliciesToWin", !canEdit)}
+              {this.renderSetupNumberField("Fascist win threshold", "fascistPoliciesToWin", !canEdit)}
+              {this.renderSetupNumberField("Hitler election slot", "hitlerElectionFascistThreshold", !canEdit)}
+              {this.renderSetupNumberField("Hitlers to execute", "requiredExecutedHitlersForLiberalVictory", !canEdit)}
+              {this.renderSetupNumberField("Anarchist replacements", "anarchistReplacementCount", !canEdit)}
+            </div>
+            <div className="setup-toggle-row">
+              {[
+                ["Anarchists know each other", "anarchistsKnowEachOther"],
+                ["Investigations reveal Anarchist", "anarchistInvestigationsRevealAnarchist"],
+                ["Anarchist cascades activate powers", "anarchistPowersEnabled"],
+                ["Anarchist tracker resets", "anarchistTrackerResets"],
+              ].map(([label, keyName]) => (
+                <label key={keyName}>
+                  <input
+                    type="checkbox"
+                    disabled={!canEdit}
+                    checked={Boolean((config as any)[keyName])}
+                    onChange={(event) =>
+                      this.sendLobbySetupConfig({
+                        ...config,
+                        preset: "MANUAL",
+                        [keyName]: event.target.checked,
+                      } as GameSetupConfig)
+                    }
+                  />
+                  {label}
+                </label>
+              ))}
+            </div>
+            <div className="setup-json-row">
+              <textarea
+                aria-label="Setup JSON5 import export"
+                readOnly={!canEdit}
+                value={this.state.lobbySetupImportText || JSON.stringify(config, null, 2)}
+                onChange={(event) => this.setState({ lobbySetupImportText: event.target.value })}
+              />
+              <div>
+                <button
+                  disabled={!canEdit}
+                  onClick={() => {
+                    const result = parseSetupConfigJson5(
+                      this.state.lobbySetupImportText,
+                      this.state.lobbySetupConfig
+                    );
+                    if (result.error) {
+                      this.setState({ lobbySetupError: result.error });
+                    } else {
+                      this.sendLobbySetupConfig(result.config);
+                    }
+                  }}
+                >
+                  IMPORT JSON5
+                </button>
+                <button
+                  onClick={() =>
+                    this.setState({
+                      lobbySetupImportText: JSON.stringify(this.state.lobbySetupConfig, null, 2),
+                      lobbySetupError: "",
+                    })
+                  }
+                >
+                  EXPORT
+                </button>
+              </div>
+            </div>
+            <div className="setup-power-summary">
+              Fascist powers: {(config.fascistPowerSchedule || []).join(", ")}
+            </div>
+            {this.state.lobbySetupError && (
+              <p className="setup-error">{this.state.lobbySetupError}</p>
+            )}
+          </div>
+        )}
+      </section>
+    );
+  }
+
   onClickLeaveLobby() {
     this.reconnectOnConnectionClosed = false;
     if (this.websocket) {
@@ -1702,6 +1902,7 @@ class App extends Component<{}, AppState> {
               <div id={"lobby-player-container"}>
                 {this.renderLobbyPlayerList()}
               </div>
+              {this.renderModeratorGameSetup()}
             </div>
 
             <div id={"lobby-button-container"}>
@@ -1840,6 +2041,7 @@ class App extends Component<{}, AppState> {
       LobbyState.PP_ELECTION,
       LobbyState.PP_PEEK,
       LobbyState.FASCIST_VICTORY_POLICY,
+      LobbyState.ANARCHIST_VICTORY_POLICY,
       LobbyState.LIBERAL_VICTORY_POLICY,
     ];
     if (statesToShowPolicyFor.includes(state)) {
@@ -2160,6 +2362,7 @@ class App extends Component<{}, AppState> {
         case STATE_LIBERAL_VICTORY_EXECUTION:
         case STATE_FASCIST_VICTORY_ELECTION:
         case STATE_FASCIST_VICTORY_POLICY:
+        case STATE_ANARCHIST_VICTORY_POLICY:
         case STATE_LIBERAL_VICTORY_POLICY:
           // Show normal enactments when victory events happen.
           if (newState.state === STATE_LIBERAL_VICTORY_EXECUTION) {
@@ -2170,13 +2373,6 @@ class App extends Component<{}, AppState> {
           }
           // Policies will already be shown for policy-based victories.
           // If the game was won via election, show the votes.
-
-          let state = newState.state;
-          let fascistVictoryPolicy = state === STATE_FASCIST_VICTORY_POLICY;
-          let fascistVictoryElection = state === STATE_FASCIST_VICTORY_ELECTION;
-          let liberalVictoryPolicy = state === STATE_LIBERAL_VICTORY_POLICY;
-          let liberalVictoryExecution =
-            state === STATE_LIBERAL_VICTORY_EXECUTION;
 
           this.addAnimationToQueue(() => {
             this.setState({
@@ -2668,6 +2864,8 @@ class App extends Component<{}, AppState> {
               numPlayers={this.state.gameState.playerOrder.length}
               numFascistPolicies={this.state.fascistPolicies}
               numLiberalPolicies={this.state.liberalPolicies}
+              numAnarchistPoliciesResolved={this.state.gameState.anarchistPoliciesResolved || 0}
+              setupConfig={this.state.gameState.setupConfig}
               electionTracker={this.state.electionTracker}
             />
           </div>

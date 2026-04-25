@@ -15,5 +15,6 @@ public enum GameState {
     LIBERAL_VICTORY_POLICY,         // Liberal Party won through enacting Liberal policies.
     LIBERAL_VICTORY_EXECUTION,      // Liberal Party won through executing Hitler.
     FASCIST_VICTORY_POLICY,         // Fascist Party won through enacting Fascist policies.
-    FASCIST_VICTORY_ELECTION        // Fascist Party won by successfully electing Hitler chancellor.
+    FASCIST_VICTORY_ELECTION,       // Fascist Party won by successfully electing Hitler chancellor.
+    ANARCHIST_VICTORY_POLICY        // Anarchists won through tracker/cascade chaos.
 }

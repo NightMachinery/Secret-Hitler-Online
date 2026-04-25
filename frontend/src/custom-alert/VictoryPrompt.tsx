@@ -5,6 +5,7 @@ import PlayerDisplay, {
 } from "../player/PlayerDisplay";
 import VictoryFascistHeader from "../assets/victory-fascist-header.png";
 import VictoryLiberalHeader from "../assets/victory-liberal-header.png";
+import VictoryAnarchistHeader from "../assets/victory-anarchist-header.svg";
 import { GameState, LobbyState } from "../types";
 import "./VictoryPrompt.css";
 
@@ -51,6 +52,13 @@ const getVictoryDetails = (state: LobbyState): VictoryDetails => {
         messageClass: "highlight-blue",
         victoryMessage: "Liberals successfully executed Hitler!",
       };
+    case LobbyState.ANARCHIST_VICTORY_POLICY:
+      return {
+        headerImage: VictoryAnarchistHeader,
+        headerAlt: "Anarchist Victory, written on a black and red protest-poster banner.",
+        messageClass: "highlight",
+        victoryMessage: "Anarchist chaos resolved from the tracker or a replacement cascade!",
+      };
     default:
       return {
         headerImage: VictoryLiberalHeader,
@@ -85,6 +93,9 @@ export default function VictoryPrompt({
               </span>
               <span className={"victory-summary-count highlight"}>
                 Fascist {gameState.fascistPolicies}
+              </span>
+              <span className={"victory-summary-count highlight"}>
+                Anarchist {gameState.anarchistPoliciesResolved || 0}
               </span>
             </div>
           </>

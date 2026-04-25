@@ -12,9 +12,9 @@ class LoginPageContent extends Component {
     render() {
         let handleDragStart = (e) => e.preventDefault();
         let items = [
-            <img id={"login-page-gif"} src={placePolicyGif} onDragStart={handleDragStart} alt={"A policy tile being placed on the board."}/>,
-            <img id={"login-page-gif"} src={showPolicyGif} onDragStart={handleDragStart} alt={"An animated folder revealing a policy tile."}/>,
-            <img id={"login-page-gif"} src={showVotesGif} onDragStart={handleDragStart} alt={"An animation showing all the cast votes."}/>
+            <img key={"place-policy"} id={"login-page-gif"} src={placePolicyGif} onDragStart={handleDragStart} alt={"A policy tile being placed on the board."}/>,
+            <img key={"show-policy"} id={"login-page-gif"} src={showPolicyGif} onDragStart={handleDragStart} alt={"An animated folder revealing a policy tile."}/>,
+            <img key={"show-votes"} id={"login-page-gif"} src={showVotesGif} onDragStart={handleDragStart} alt={"An animation showing all the cast votes."}/>
         ];
         return (
             <>

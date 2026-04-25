@@ -9,6 +9,7 @@ import RoleLiberal6 from "../assets/role-liberal-6.png";
 import RoleFascist1 from "../assets/role-fascist-1.png";
 import RoleFascist2 from "../assets/role-fascist-2.png";
 import RoleFascist3 from "../assets/role-fascist-3.png";
+import RoleAnarchist from "../assets/role-anarchist.svg";
 
 import "./RoleAlert.css";
 import { GameState, Role } from "../types";
@@ -39,6 +40,10 @@ const FascistImagesAltText = [
   "Your secret role is FASCIST. The card shows an iguana in a German military hat and suit with fangs bared.",
   "Your secret role is FASCIST. The card shows an iguana in a German military hat and suit with fangs bared.",
 ];
+const AnarchistImages = [RoleAnarchist];
+const AnarchistImagesAltText = [
+  "Your secret role is ANARCHIST. The card shows a black and red street-poster collage with a circled A.",
+];
 
 const LiberalText = [
   "You win if the board fills with liberal policies, or if Hitler is executed.",
@@ -54,6 +59,11 @@ const HitlerText = [
   "You win if you are successfully elected chancellor once 3 fascist policies are on the board, or if the board fills with fascist policies.",
   "You lose if the board fills with liberal policies or if you are executed.",
   "Try to gain trust and rely on the other fascists to open opportunities for you.",
+];
+const AnarchistText = [
+  "You win if Anarchist chaos resolves from the election tracker or a replacement cascade.",
+  "Anarchist policies do not stay on the board; they trigger a top-deck replacement.",
+  "Preserve Anarchist policies and push the table toward risky tracker or cascade moments.",
 ];
 
 type RoleAlertProps = {
@@ -86,6 +96,10 @@ class RoleAlert extends Component<RoleAlertProps> {
         images = FascistImages;
         imageAlts = FascistImagesAltText;
         break;
+      case Role.ANARCHIST:
+        images = AnarchistImages;
+        imageAlts = AnarchistImagesAltText;
+        break;
       default: // Hitler
         images = HitlerImages;
         imageAlts = HitlerImagesAltText;
@@ -105,6 +119,8 @@ class RoleAlert extends Component<RoleAlertProps> {
     let roleText = HitlerText;
     if (this.props.role === Role.FASCIST) {
       roleText = FascistText;
+    } else if (this.props.role === Role.ANARCHIST) {
+      roleText = AnarchistText;
     } else if (this.props.role === Role.LIBERAL) {
       roleText = LiberalText;
     }

@@ -20,6 +20,8 @@ const getResultLabel = (result: RoundHistoryResult | null): string => {
       return "Fascist";
     case RoundHistoryResult.LIBERAL:
       return "Liberal";
+    case RoundHistoryResult.ANARCHIST:
+      return "Anarchist";
     case RoundHistoryResult.VOTE_FAILED:
       return "Vote failed";
     default:
@@ -33,6 +35,8 @@ const getResultClass = (result: RoundHistoryResult | null): string => {
       return "history-result-fascist";
     case RoundHistoryResult.LIBERAL:
       return "history-result-liberal";
+    case RoundHistoryResult.ANARCHIST:
+      return "history-result-fascist";
     case RoundHistoryResult.VOTE_FAILED:
       return "history-result-failed";
     default:

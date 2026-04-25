@@ -248,8 +248,8 @@ export default function PlayerDisplay(
       myRole === Role.FASCIST ||
       (myRole === Role.HITLER && doesHitlerKnowFascists(gameState))
     ) {
-      // Hide liberal roles, because they can be redundant otherwise.
-      return otherRole !== Role.LIBERAL;
+      // Fascist knowledge reveals only Fascists/Hitlers, not Anarchists.
+      return otherRole === Role.FASCIST || otherRole === Role.HITLER;
     } else {
       return otherRole !== undefined;
     }

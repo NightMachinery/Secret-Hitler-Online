@@ -64,3 +64,54 @@
     transition: 1.0s left;
     transition-timing-function: ease-in-out;
 }
+
+.dynamic-board-container {
+    width: 90vmin;
+    max-width: 90vw;
+    margin: 0 auto;
+    gap: 10px;
+}
+
+.dynamic-board-row {
+    position: relative;
+    min-height: 92px;
+    border: 5px solid #ead8a4;
+    border-radius: 12px;
+    overflow: hidden;
+    background: #111;
+}
+
+.dynamic-board-row.liberal-row {
+    background: linear-gradient(135deg, #0f3854, #102132);
+}
+
+.dynamic-board-row.fascist-row {
+    background: linear-gradient(135deg, #5b1418, #1d1111);
+}
+
+.dynamic-board-label {
+    position: absolute;
+    left: 18px;
+    top: 12px;
+    color: #f1dfaa;
+    font-family: var(--titleFont);
+    letter-spacing: .12em;
+}
+
+.dynamic-anarchist-summary {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 12px;
+    color: #f1dfaa;
+    background: #151515;
+    border: 3px solid #9d171d;
+    border-radius: 10px;
+    padding: 8px 12px;
+    font-family: var(--bodyFont);
+}
+
+.dynamic-anarchist-summary img {
+    width: 34px;
+    height: 48px;
+}

@@ -8,7 +8,8 @@ import java.io.Serializable;
 public class Policy implements Serializable {
     public enum Type {
         FASCIST,
-        LIBERAL
+        LIBERAL,
+        ANARCHIST
     }
     private final Type type;
 

@@ -105,7 +105,10 @@ public class GameToJSONConverter {
             playerObj.put("alive", player.isAlive());
 
             // Only include player role for self or under specific rules
-            if (player.getUsername().equals(perspectivePlayer) || showAllRoles) {
+            boolean showAnarchistAlly = role == Identity.ANARCHIST
+                    && game.getSetupConfig().doAnarchistsKnowEachOther()
+                    && player.getIdentity() == Identity.ANARCHIST;
+            if (player.getUsername().equals(perspectivePlayer) || showAllRoles || showAnarchistAlly) {
                 String id = player.getIdentity().toString();
                 playerObj.put("id", id);
             }
@@ -142,6 +145,8 @@ public class GameToJSONConverter {
         out.put("discardSize", game.getDiscardSize());
         out.put("fascistPolicies", game.getNumFascistPolicies());
         out.put("liberalPolicies", game.getNumLiberalPolicies());
+        out.put("anarchistPoliciesResolved", game.getNumAnarchistPoliciesResolved());
+        out.put("setupConfig", game.getSetupConfig().toJson());
         out.put("userVotes", game.getVotes());
         out.put("vetoOccurred", game.didVetoOccurThisTurn());
         out.put("history", convertHistory(game.getHistory(), effectiveHistoryConfig));
@@ -196,7 +201,7 @@ public class GameToJSONConverter {
      * 
      * @param list the list of policies.
      * @return a string array with the same length as the list, where each index is
-     *         either "FASCIST" or "LIBERAL"
+     *         "FASCIST", "LIBERAL", or "ANARCHIST"
      *         according to the type of the Policy at that index in the list.
      */
     public static String[] convertPolicyListToStringArray(List<Policy> list) {

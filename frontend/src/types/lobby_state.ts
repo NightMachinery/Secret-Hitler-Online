@@ -1,4 +1,5 @@
 import { PolicyType, Role } from "./game";
+import { GameSetupConfig } from "../setup/GameSetupConfig";
 
 export enum LobbyState {
   SETUP = "SETUP",
@@ -16,6 +17,7 @@ export enum LobbyState {
   LIBERAL_VICTORY_EXECUTION = "LIBERAL_VICTORY_EXECUTION", // Liberal Party won through executing Hitler.
   FASCIST_VICTORY_POLICY = "FASCIST_VICTORY_POLICY", // Fascist Party won through enacting Fascist policies.
   FASCIST_VICTORY_ELECTION = "FASCIST_VICTORY_ELECTION", // Fascist Party won by successfully electing Hitler chancellor.
+  ANARCHIST_VICTORY_POLICY = "ANARCHIST_VICTORY_POLICY", // Anarchists won through policy chaos.
 }
 
 export enum UserType {
@@ -40,6 +42,7 @@ export const enum RoundHistoryResult {
   VOTE_FAILED = "VOTE_FAILED",
   LIBERAL = "LIBERAL",
   FASCIST = "FASCIST",
+  ANARCHIST = "ANARCHIST",
 }
 
 export const enum PublicHistoryActionType {
@@ -109,6 +112,7 @@ export type GameState = {
   userVotes: Record<string, boolean>;
   liberalPolicies: number;
   fascistPolicies: number;
+  anarchistPoliciesResolved?: number;
   drawSize: number;
   discardSize: number;
   // TODO: Make GameState type more complex, correlating
@@ -137,6 +141,7 @@ export type GameState = {
   observerAssignments?: Record<string, string>;
   observerAssignableTargets?: Record<string, ObserverAssignableTargetType>;
   selfType: UserType;
+  setupConfig?: GameSetupConfig;
 
   usernames?: string[];
   /** Maps from usernames to icon keys */

@@ -6,6 +6,7 @@ import FascistBoard_5_6 from "../assets/board-fascist-5-6.png";
 import FascistBoard_7_8 from "../assets/board-fascist-7-8.png";
 import FascistBoard_9_10 from "../assets/board-fascist-9-10.png";
 import PolicyFascist from "../assets/board-policy-fascist.png";
+import AnarchistPolicy from "../assets/policy-anarchist.svg";
 
 import "./Board.css";
 
@@ -28,6 +29,16 @@ class Board extends Component {
         } else {
             return FascistBoard_9_10;
         }
+    }
+
+    isStandardBoard() {
+        const config = this.props.setupConfig;
+        return !config || (
+            config.liberalPoliciesToWin === 5 &&
+            config.fascistPoliciesToWin === 6 &&
+            (config.anarchistPolicies || 0) === 0 &&
+            (config.anarchistRoles || 0) === 0
+        );
     }
 
     /**
@@ -66,6 +77,27 @@ class Board extends Component {
     }
 
     render() {
+        if (!this.isStandardBoard()) {
+            const config = this.props.setupConfig || {};
+            const liberalTotal = config.liberalPoliciesToWin || 5;
+            const fascistTotal = config.fascistPoliciesToWin || 6;
+            return (
+                <div id="board-container" className="dynamic-board-container">
+                    <div className="dynamic-board-row liberal-row" aria-label={this.props.numLiberalPolicies + " liberal policies have been passed."}>
+                        <div className="dynamic-board-label">LIBERAL</div>
+                        {this.placeRepeating(this.props.numLiberalPolicies, liberalTotal, PolicyLiberal, "policy", "18.2%", "13.54%")}
+                    </div>
+                    <div className="dynamic-board-row fascist-row" aria-label={this.props.numFascistPolicies + " fascist policies have been passed."}>
+                        <div className="dynamic-board-label">FASCIST</div>
+                        {this.placeRepeating(this.props.numFascistPolicies, fascistTotal, PolicyFascist, "policy", "11%", "13.6%")}
+                    </div>
+                    <div className="dynamic-anarchist-summary">
+                        <img src={AnarchistPolicy} alt="" />
+                        <span>Anarchist policies resolved: {this.props.numAnarchistPoliciesResolved || 0}</span>
+                    </div>
+                </div>
+            );
+        }
         return (
             <div id="board-container" style={{display:"flex", flexDirection:"column"}}>
                 <div id="board-group" style ={{margin:"4px 10px", position:"relative"}}>
@@ -101,7 +133,9 @@ Board.defaultProps = {
     numFascistPolicies: 5,
     numLiberalPolicies: 6,
     electionTracker: 0,
-    numPlayers: 5
+    numPlayers: 5,
+    numAnarchistPoliciesResolved: 0,
+    setupConfig: null
 };
 
 export default Board;

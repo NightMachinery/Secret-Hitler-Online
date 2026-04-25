@@ -89,3 +89,76 @@
 .prompt-button-grid {
     justify-content: flex-start;
 }
+
+.moderator-setup-panel {
+    margin: 16px 0;
+    max-width: 760px;
+    border: 2px solid var(--textColorHighlight);
+    background: rgba(0, 0, 0, 0.22);
+    padding: 10px;
+}
+
+.setup-collapse-button {
+    width: 100%;
+    text-align: left;
+}
+
+.setup-panel-body {
+    margin-top: 10px;
+}
+
+.setup-help-text,
+.setup-current-preset,
+.setup-power-summary {
+    font-size: 0.9rem;
+    opacity: 0.9;
+}
+
+.setup-preset-row,
+.setup-toggle-row,
+.setup-json-row {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    align-items: center;
+    margin: 10px 0;
+}
+
+.setup-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+    gap: 8px;
+}
+
+.setup-field {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    font-size: 0.85rem;
+}
+
+.setup-field input {
+    max-width: 120px;
+}
+
+.setup-toggle-row label {
+    min-width: 220px;
+}
+
+.setup-json-row textarea {
+    min-width: 300px;
+    width: min(580px, 90vw);
+    min-height: 140px;
+    font-family: monospace;
+}
+
+.setup-json-row > div {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
+.setup-error {
+    color: #ffb0b0;
+    font-weight: 700;
+}
