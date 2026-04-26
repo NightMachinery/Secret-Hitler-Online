@@ -108,10 +108,49 @@
 }
 
 .history-result-pill {
-  display: inline-block;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
   padding: 3px 8px;
   border-radius: 999px;
   font-size: calc(7px + 0.6vmin);
+  font-weight: 700;
+}
+
+.history-result-trail {
+  white-space: nowrap;
+}
+
+.history-result-step {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 1.1rem;
+  height: 1.1rem;
+  border-radius: 999px;
+  background: rgba(0, 0, 0, 0.18);
+  font-size: 0.78rem;
+  line-height: 1;
+}
+
+.history-result-step-anarchy {
+  color: #ffc896;
+}
+
+.history-result-step-failed {
+  color: #ffe48d;
+}
+
+.history-result-step-random {
+  font-size: 0.76rem;
+}
+
+.history-result-arrow {
+  opacity: 0.68;
+  font-weight: 700;
+}
+
+.history-result-final {
   font-weight: 700;
 }
 

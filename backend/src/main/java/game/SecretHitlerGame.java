@@ -64,6 +64,11 @@ public class SecretHitlerGame implements Serializable {
         ANARCHIST
     }
 
+    public enum RoundHistoryResultStep {
+        FAILED_ELECTION_RANDOM,
+        ANARCHY_RANDOM
+    }
+
     private enum PolicyEnactmentSource {
         LEGISLATIVE,
         TRACKER,
@@ -145,12 +150,15 @@ public class SecretHitlerGame implements Serializable {
     }
 
     public static class RoundHistoryEntry implements Serializable {
+        private static final long serialVersionUID = -1191662309726127291L;
+
         private int round;
         private String president;
         private String chancellor;
         private Map<String, Boolean> votes;
         private boolean votePassed;
         private RoundHistoryResult result;
+        private List<RoundHistoryResultStep> resultTrail;
         private List<PublicAction> publicActions;
         private boolean policyClaimsRequired;
         private PolicyClaim presidentPolicyClaim;
@@ -163,6 +171,7 @@ public class SecretHitlerGame implements Serializable {
             this.votes = new LinkedHashMap<>(votes);
             this.votePassed = false;
             this.result = null;
+            this.resultTrail = new ArrayList<>();
             this.publicActions = new ArrayList<>();
             this.policyClaimsRequired = false;
             this.presidentPolicyClaim = null;
@@ -176,6 +185,7 @@ public class SecretHitlerGame implements Serializable {
             this.votes = new LinkedHashMap<>(other.votes);
             this.votePassed = other.votePassed;
             this.result = other.result;
+            this.resultTrail = new ArrayList<>(other.resultTrail);
             this.publicActions = new ArrayList<>();
             for (PublicAction action : other.publicActions) {
                 this.publicActions.add(new PublicAction(action));
@@ -209,6 +219,10 @@ public class SecretHitlerGame implements Serializable {
 
         public RoundHistoryResult getResult() {
             return result;
+        }
+
+        public List<RoundHistoryResultStep> getResultTrail() {
+            return new ArrayList<>(resultTrail);
         }
 
         public List<PublicAction> getPublicActions() {
@@ -245,6 +259,10 @@ public class SecretHitlerGame implements Serializable {
 
         private void setResult(RoundHistoryResult result) {
             this.result = result;
+        }
+
+        private void addResultTrailStep(RoundHistoryResultStep step) {
+            this.resultTrail.add(step);
         }
 
         private void addPublicAction(PublicAction action) {
@@ -828,6 +846,9 @@ public class SecretHitlerGame implements Serializable {
             }
             Policy newPolicy = draw.remove();
             // Note that the newPolicy is NOT added back to the discard pile.
+            if (currentRoundHistory != null) {
+                currentRoundHistory.addResultTrailStep(RoundHistoryResultStep.FAILED_ELECTION_RANDOM);
+            }
             if (setupConfig.doesAnarchistTrackerReset()) {
                 electionTracker = 0; // Reset
             }
@@ -1167,6 +1188,9 @@ public class SecretHitlerGame implements Serializable {
                 finalizeCurrentRoundHistory(RoundHistoryResult.ANARCHIST);
                 concludePresidentialActions();
                 return;
+            }
+            if (currentRoundHistory != null) {
+                currentRoundHistory.addResultTrailStep(RoundHistoryResultStep.ANARCHY_RANDOM);
             }
             enactAndResolvePolicy(draw.remove(), PolicyEnactmentSource.ANARCHIST_REPLACEMENT, requirePolicyClaims);
             return;

@@ -239,6 +239,50 @@ public class testSecretHitlerGame {
     }
 
     @Test
+    public void testElectionTrackerTopDeckRecordsRandomCardHistoryTrail() throws Exception {
+        SecretHitlerGame game = new SecretHitlerGame(makePlayers(6));
+        replaceDrawDeck(game, Policy.Type.FASCIST, Policy.Type.LIBERAL, Policy.Type.FASCIST);
+
+        failVote(game, "2");
+        game.endPresidentialTerm();
+        failVote(game, "3");
+        game.endPresidentialTerm();
+        failVote(game, "4");
+
+        List<SecretHitlerGame.RoundHistoryResultStep> resultTrail = game.getHistory().get(2).getResultTrail();
+        assertEquals(1, resultTrail.size());
+        assertEquals(SecretHitlerGame.RoundHistoryResultStep.FAILED_ELECTION_RANDOM, resultTrail.get(0));
+    }
+
+    @Test
+    public void testAnarchistCascadeRecordsRepeatedRandomCardHistoryTrail() throws Exception {
+        SecretHitlerGame game = new SecretHitlerGame(makePlayers(6),
+                GameSetupConfig.builder(6)
+                        .policies(6, 11, 5)
+                        .build());
+        replaceDrawDeck(game,
+                Policy.Type.FASCIST,
+                Policy.Type.ANARCHIST,
+                Policy.Type.ANARCHIST,
+                Policy.Type.ANARCHIST,
+                Policy.Type.ANARCHIST,
+                Policy.Type.LIBERAL,
+                Policy.Type.LIBERAL,
+                Policy.Type.LIBERAL);
+
+        passVote(game, "2");
+        game.presidentDiscardPolicy(0);
+        game.chancellorEnactPolicy(0);
+
+        List<SecretHitlerGame.RoundHistoryResultStep> resultTrail = game.getHistory().get(0).getResultTrail();
+        assertEquals(3, resultTrail.size());
+        assertEquals(SecretHitlerGame.RoundHistoryResultStep.ANARCHY_RANDOM, resultTrail.get(0));
+        assertEquals(SecretHitlerGame.RoundHistoryResultStep.ANARCHY_RANDOM, resultTrail.get(1));
+        assertEquals(SecretHitlerGame.RoundHistoryResultStep.ANARCHY_RANDOM, resultTrail.get(2));
+        assertNotNull(game.getHistory().get(0).getResult());
+    }
+
+    @Test
     public void testCpuPresidentAndChancellorAutoRefusePolicyClaims() throws Exception {
         SecretHitlerGame game = new SecretHitlerGame(makePlayers(6));
         game.getPlayer("0").markAsCpu();

@@ -8,6 +8,7 @@ This project supports a configurable Anarchist variant in addition to the standa
 - **Anarchist policies** never remain on either policy board.
 - When an Anarchist policy is chosen or top-decked, it is counted as a resolved Anarchist policy and then replaced by exactly one top-deck policy.
 - The replacement count is not configurable. If the replacement is another Anarchist policy, it may cascade under the same one-card replacement rule.
+- Cascades are shown in vote history with compact Anarchist/random-card symbols, including repeated Anarchist steps.
 - If an Anarchist policy is resolved by the election tracker or by an Anarchist replacement cascade, Anarchists win only when at least one Anarchist player exists.
 - If there are no Anarchist players, Anarchist policies are “chaos” policies: they resolve and replace, but they do not produce an Anarchist victory.
 
@@ -71,3 +72,5 @@ Anarchist-specific frontend art follows the same raster PNG asset convention as 
 - `frontend/src/assets/victory-anarchist-header.png`
 
 Keep Anarchist imports pointed at these PNGs so the extension art matches the prior card, policy, role, and victory-header assets.
+
+Player cards use `role-anarchist.png` for the on-card Anarchist identity emblem, and the role label is fitted to avoid overflowing the original card frame.

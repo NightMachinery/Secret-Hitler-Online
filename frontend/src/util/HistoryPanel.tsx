@@ -7,6 +7,7 @@ import {
   PublicHistoryActionType,
   RoundHistoryEntry,
   RoundHistoryResult,
+  RoundHistoryResultStep,
 } from "../types";
 import LiberalPolicy from "../assets/policy-liberal.png";
 import FascistPolicy from "../assets/policy-fascist.png";
@@ -48,6 +49,66 @@ const getResultClass = (result: RoundHistoryResult | null): string => {
     default:
       return "history-result-pending";
   }
+};
+
+const getResultTrailLabel = (entry: RoundHistoryEntry): string => {
+  const labels: string[] = (entry.resultTrail || []).map((step, index) => {
+    switch (step) {
+      case RoundHistoryResultStep.FAILED_ELECTION_RANDOM:
+        return "Failed election";
+      case RoundHistoryResultStep.ANARCHY_RANDOM:
+        return index === 0 ? "Anarchy" : "anarchy";
+      default:
+        return "random card";
+    }
+  });
+  if (labels.length > 0) {
+    labels.push("random card");
+  }
+  labels.push(getResultLabel(entry.result));
+  return labels.join(", ");
+};
+
+const renderResultTrailStep = (
+  step: RoundHistoryResultStep,
+  index: number
+): React.JSX.Element => {
+  const isFailedElection = step === RoundHistoryResultStep.FAILED_ELECTION_RANDOM;
+  return (
+    <React.Fragment key={`${step}-${index}`}>
+      <span
+        className={`history-result-step ${
+          isFailedElection ? "history-result-step-failed" : "history-result-step-anarchy"
+        }`}
+        title={isFailedElection ? "Failed election" : "Anarchy"}
+      >
+        {isFailedElection ? "✗" : "Ⓐ"}
+      </span>
+      <span className="history-result-arrow">→</span>
+    </React.Fragment>
+  );
+};
+
+const renderHistoryResult = (entry: RoundHistoryEntry): React.JSX.Element => {
+  const resultTrail = entry.resultTrail || [];
+  return (
+    <span
+      className={`history-result-pill history-result-trail ${getResultClass(entry.result)}`}
+      aria-label={getResultTrailLabel(entry)}
+      title={getResultTrailLabel(entry)}
+    >
+      {resultTrail.map(renderResultTrailStep)}
+      {resultTrail.length > 0 && (
+        <>
+          <span className="history-result-step history-result-step-random" title="Random card">
+            🎲
+          </span>
+          <span className="history-result-arrow">→</span>
+        </>
+      )}
+      <span className="history-result-final">{getResultLabel(entry.result)}</span>
+    </span>
+  );
 };
 
 const getActionLabel = (action: PublicHistoryAction): string => {
@@ -303,9 +364,7 @@ const HistoryPanel = ({
                     </td>
                   )}
                   <td>
-                    <span className={`history-result-pill ${getResultClass(entry.result)}`}>
-                      {getResultLabel(entry.result)}
-                    </span>
+                    {renderHistoryResult(entry)}
                   </td>
                   {shouldShowPolicyClaims && (
                     <td className="history-claims">

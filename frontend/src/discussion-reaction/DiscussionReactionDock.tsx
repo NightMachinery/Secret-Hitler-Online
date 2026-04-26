@@ -12,8 +12,10 @@ type DiscussionReactionDockProps = {
   canReact: boolean;
   isModerator: boolean;
   isViewerDead: boolean;
+  soundMuted?: boolean;
   onReact: (reaction: DiscussionReactionType) => void;
   onSaveConfig: (durationSeconds: number, allowDeadPlayers: boolean) => void;
+  onSoundMutedChange?: (muted: boolean) => void;
 };
 
 const ReactionIcon = ({
@@ -96,10 +98,13 @@ const DiscussionReactionDock = ({
   canReact,
   isModerator,
   isViewerDead,
+  soundMuted = false,
   onReact,
   onSaveConfig,
+  onSoundMutedChange = () => {},
 }: DiscussionReactionDockProps) => {
   const [showSettings, setShowSettings] = useState(false);
+  const [isCollapsed, setIsCollapsed] = useState(false);
   const [durationInput, setDurationInput] = useState(
     config.durationSeconds.toString()
   );
@@ -133,12 +138,38 @@ const DiscussionReactionDock = ({
         : "No active cue";
 
   return (
-    <div id="discussion-reaction-dock-wrap" className="discussion-reaction-dock-inline">
-      {showSettings && isModerator && (
+    <div id="discussion-reaction-dock-wrap" className="discussion-reaction-dock-side-rail">
+      {isCollapsed ? (
+        <button
+          type="button"
+          id="discussion-reaction-dock-tab"
+          onClick={() => setIsCollapsed(false)}
+          aria-label="Expand reaction dock"
+          title="Expand reaction dock"
+        >
+          CUES
+        </button>
+      ) : (
+        <>
+          <button
+            type="button"
+            id="discussion-reaction-collapse-button"
+            onClick={() => setIsCollapsed(true)}
+            aria-label="Collapse reaction dock"
+            title="Collapse reaction dock"
+          >
+            ×
+          </button>
+
+      {showSettings && (
         <div id="discussion-reaction-settings-panel">
-          <div className="discussion-reaction-settings-eyebrow">
-            Moderator controls
-          </div>
+          {isModerator && (
+            <div className="discussion-reaction-settings-eyebrow">
+              Moderator controls
+            </div>
+          )}
+          {isModerator && (
+            <>
           <div className="discussion-reaction-settings-title">Reaction settings</div>
           <p className="discussion-reaction-settings-copy">
             Tune how long each cue lingers on a player card.
@@ -162,6 +193,21 @@ const DiscussionReactionDock = ({
             <span className="discussion-reaction-settings-switch" />
             <span>Allow dead players to react</span>
           </label>
+            </>
+          )}
+          <div className="discussion-reaction-settings-eyebrow discussion-reaction-local-eyebrow">
+            Your settings
+          </div>
+          <label className="discussion-reaction-settings-toggle">
+            <input
+              type="checkbox"
+              checked={soundMuted}
+              onChange={(event) => onSoundMutedChange(event.target.checked)}
+              aria-label="Mute reaction sounds"
+            />
+            <span className="discussion-reaction-settings-switch" />
+            <span>Mute reaction sounds</span>
+          </label>
           <div className="discussion-reaction-settings-actions">
             <button
               type="button"
@@ -173,6 +219,7 @@ const DiscussionReactionDock = ({
             <button
               type="button"
               className="discussion-reaction-mini-button discussion-reaction-mini-button-primary"
+              hidden={!isModerator}
               onClick={applySettings}
             >
               Apply
@@ -242,7 +289,7 @@ const DiscussionReactionDock = ({
               </span>
             </button>
           </div>
-          {isModerator && (
+          {(isModerator || onSoundMutedChange) && (
             <>
               <div className="discussion-reaction-button-divider" />
               <button
@@ -265,6 +312,8 @@ const DiscussionReactionDock = ({
 
       {disabledMessage !== "" && (
         <div id="discussion-reaction-disabled-note">{disabledMessage}</div>
+      )}
+        </>
       )}
     </div>
   );

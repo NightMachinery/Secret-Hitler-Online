@@ -46,6 +46,11 @@ export const enum RoundHistoryResult {
   ANARCHIST = "ANARCHIST",
 }
 
+export const enum RoundHistoryResultStep {
+  FAILED_ELECTION_RANDOM = "FAILED_ELECTION_RANDOM",
+  ANARCHY_RANDOM = "ANARCHY_RANDOM",
+}
+
 export const enum PublicHistoryActionType {
   PEEK_USED = "PEEK_USED",
   INVESTIGATED = "INVESTIGATED",
@@ -73,6 +78,7 @@ export type RoundHistoryEntry = {
   votes: Record<string, boolean>;
   votePassed: boolean;
   result: RoundHistoryResult | null;
+  resultTrail?: RoundHistoryResultStep[];
   publicActions: PublicHistoryAction[];
   isCurrentRound?: boolean;
   policyClaimsRequired?: boolean;

@@ -6,6 +6,7 @@ import {
   PublicHistoryActionType,
   RoundHistoryEntry,
   RoundHistoryResult,
+  RoundHistoryResultStep,
 } from "../types";
 
 const historyEntry: RoundHistoryEntry = {
@@ -109,5 +110,57 @@ describe("HistoryPanel private investigation results", () => {
     );
 
     expect(screen.getByText("Alice investigated Bob")).toBeInTheDocument();
+  });
+});
+
+describe("HistoryPanel result trails", () => {
+  test("shows failed election random-card trail compactly", () => {
+    render(
+      <HistoryPanel
+        history={[
+          {
+            ...historyEntry,
+            votePassed: false,
+            result: RoundHistoryResult.FASCIST,
+            resultTrail: [RoundHistoryResultStep.FAILED_ELECTION_RANDOM],
+            policyClaimsRequired: false,
+            presidentPolicyClaim: null,
+            chancellorPolicyClaim: null,
+          },
+        ]}
+        playerOrder={["Alice", "Bob"]}
+        showVoteBreakdown={false}
+        showPublicActions={false}
+        showPolicyClaims={false}
+      />
+    );
+
+    expect(screen.getByLabelText("Failed election, random card, Fascist")).toBeInTheDocument();
+  });
+
+  test("shows repeated anarchy random-card trail compactly", () => {
+    render(
+      <HistoryPanel
+        history={[
+          {
+            ...historyEntry,
+            result: RoundHistoryResult.LIBERAL,
+            resultTrail: [
+              RoundHistoryResultStep.ANARCHY_RANDOM,
+              RoundHistoryResultStep.ANARCHY_RANDOM,
+            ],
+            policyClaimsRequired: false,
+            presidentPolicyClaim: null,
+            chancellorPolicyClaim: null,
+          },
+        ]}
+        playerOrder={["Alice", "Bob"]}
+        showVoteBreakdown={false}
+        showPublicActions={false}
+        showPolicyClaims={false}
+      />
+    );
+
+    expect(screen.getByLabelText("Anarchy, anarchy, random card, Liberal")).toBeInTheDocument();
   });
 });

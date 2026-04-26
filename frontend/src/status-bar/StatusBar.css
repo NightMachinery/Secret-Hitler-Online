@@ -1,14 +1,35 @@
 @import '../variables.css';
 
 #status-bar {
-    background-color: var(--alertFill);
-    min-height: 8vmin;
+    position: sticky;
+    top: 0;
+    z-index: 30;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.65rem;
+    background:
+        linear-gradient(180deg, rgba(41, 33, 27, 0.98), rgba(27, 22, 18, 0.98));
+    border-top: 1px solid rgba(255, 236, 203, 0.1);
+    border-bottom: 2px solid var(--buttonShadowFill);
+    min-height: 3.1rem;
+    box-shadow: 0 8px 18px rgba(0, 0, 0, 0.24);
+}
+
+#status-bar-kicker {
+    color: var(--textColorHighlight);
+    font-family: var(--headerFont);
+    font-size: calc(7px + 0.55vmin);
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
 }
 
 #status-bar-text {
     margin: 0;
-    padding: 2vmin 5px;
+    padding: 0.7rem 5px;
     color: var(--textColorWhite);
+    font-family: var(--textFont);
+    font-size: calc(10px + 0.75vmin);
     -webkit-animation: show 0.25s;
     animation: show 0.25s;
 }

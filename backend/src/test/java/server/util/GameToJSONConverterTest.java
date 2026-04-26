@@ -232,6 +232,26 @@ public class GameToJSONConverterTest {
         assertTrue(pastEntry.isNull("chancellorPolicyClaim"));
     }
 
+    @Test
+    public void testHistorySerializesResultTrail() throws Exception {
+        SecretHitlerGame game = new SecretHitlerGame(makePlayers(6));
+        replaceDrawDeck(game, Policy.Type.FASCIST, Policy.Type.LIBERAL, Policy.Type.FASCIST);
+
+        game.nominateChancellor("2");
+        voteNoForAllLiving(game);
+        game.endPresidentialTerm();
+        game.nominateChancellor("3");
+        voteNoForAllLiving(game);
+        game.endPresidentialTerm();
+        game.nominateChancellor("4");
+        voteNoForAllLiving(game);
+
+        JSONObject out = GameToJSONConverter.convert(game, "0", Lobby.HistoryDisplayConfig.defaultConfig());
+        JSONArray resultTrail = out.getJSONArray("history").getJSONObject(2).getJSONArray("resultTrail");
+        assertEquals(1, resultTrail.length());
+        assertEquals("FAILED_ELECTION_RANDOM", resultTrail.getString(0));
+    }
+
 
     @Test
     public void testGamePacketIncludesCreatorAndBotControlledMetadata() throws Exception {

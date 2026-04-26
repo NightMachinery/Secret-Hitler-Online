@@ -92,6 +92,11 @@ import AnnouncementBox from "./util/AnnouncementBox";
 import VictoryPrompt from "./custom-alert/VictoryPrompt";
 import DiscussionReactionDock from "./discussion-reaction/DiscussionReactionDock";
 import {
+  getReactionSoundMuted,
+  playDiscussionReactionSound,
+  setReactionSoundMuted,
+} from "./discussion-reaction/reactionSound";
+import {
   DiscussionReactionConfig,
   DiscussionReactionType,
   GameState,
@@ -109,7 +114,6 @@ import {
 import { isVictoryState } from "./utils";
 import {
   applySetupPresetAutomation,
-  createAnarchistSetupConfig,
   createStandardSetupConfig,
   DEFAULT_SETUP_AUTOMATION,
   GameSetupConfig,
@@ -257,6 +261,7 @@ type AppState = {
   showEventBar: boolean;
   eventBarMessage: string;
   statusBarText: string;
+  reactionSoundsMuted: boolean;
   allAnimationsFinished: boolean;
 };
 
@@ -301,6 +306,7 @@ const defaultAppState: AppState = {
   showEventBar: false,
   eventBarMessage: "",
   statusBarText: "---",
+  reactionSoundsMuted: false,
   allAnimationsFinished: true,
 };
 
@@ -315,6 +321,7 @@ class App extends Component<{}, AppState> {
   allAnimationsFinished: boolean = true;
   gameOver: boolean = false;
   authToken: string = "";
+  hasHydratedDiscussionReactions: boolean = false;
 
   getOrCreateAuthToken(): string {
     if (this.authToken) {
@@ -366,6 +373,7 @@ class App extends Component<{}, AppState> {
       joinName: name || "",
       joinLobby: lobby || "",
       createLobbyName: name || "",
+      reactionSoundsMuted: getReactionSoundMuted(name || ""),
     };
     this.getOrCreateAuthToken();
 
@@ -485,6 +493,7 @@ class App extends Component<{}, AppState> {
         joinError: "",
         createLobbyName: "",
         createLobbyError: "",
+        reactionSoundsMuted: getReactionSoundMuted(name),
       });
       ws.onmessage = (msg) => this.onWebSocketMessage(msg);
       ws.onclose = (event) => this.onWebSocketClose(event);
@@ -749,6 +758,7 @@ class App extends Component<{}, AppState> {
         if (typeof message.anarchistPoliciesResolved !== "number") {
           message.anarchistPoliciesResolved = 0;
         }
+        this.handleDiscussionReactionUpdates(message);
         if (message !== this.state.gameState) {
           this.onGameStateChanged(message);
         }
@@ -1657,6 +1667,43 @@ class App extends Component<{}, AppState> {
     });
   }
 
+  onClickSetReactionSoundsMuted(muted: boolean) {
+    setReactionSoundMuted(this.state.name, muted);
+    this.setState({ reactionSoundsMuted: muted });
+  }
+
+  handleDiscussionReactionUpdates(nextGameState: GameState) {
+    const previousReactions = this.state.gameState.discussionReactions || {};
+    const nextReactions = nextGameState.discussionReactions || {};
+    const now = Date.now();
+
+    if (!this.hasHydratedDiscussionReactions) {
+      this.hasHydratedDiscussionReactions = true;
+      return;
+    }
+
+    Object.entries(nextReactions).forEach(([playerName, reaction]) => {
+      if (!reaction || reaction.expiresAt <= now) {
+        return;
+      }
+      const previousReaction = previousReactions[playerName];
+      const isNewReaction =
+        !previousReaction ||
+        previousReaction.type !== reaction.type ||
+        previousReaction.expiresAt !== reaction.expiresAt;
+      if (!isNewReaction) {
+        return;
+      }
+
+      const message =
+        reaction.type === DiscussionReactionType.LIKE
+          ? `${playerName} liked the discussion cue.`
+          : `${playerName} disliked the discussion cue.`;
+      this.setState({ statusBarText: message });
+      playDiscussionReactionSound(reaction.type, this.state.reactionSoundsMuted);
+    });
+  }
+
   showLobbyManageUserPrompt(target: string) {
     const isCreator = target === this.state.lobbyCreator;
     const isModerator = this.isLobbyModerator(target);
@@ -2289,7 +2336,6 @@ class App extends Component<{}, AppState> {
           break;
 
         case STATE_CHANCELLOR_VOTING:
-          this.setState({ statusBarText: "" });
           this.queueEventUpdate("VOTING");
           this.queueStatusMessage("Waiting for all players to vote.");
           // Check if the player is dead or has already voted-- if so, do not show the voting prompt.
@@ -2719,7 +2765,6 @@ class App extends Component<{}, AppState> {
         alertContent: <div />,
         alertMinimized: false,
         showVotes: false,
-        statusBarText: "",
       });
       this.showSnackBar("Bot control was enabled for you. Reclaim to act.");
     } else if (wasSelfBotControlled && !isSelfBotControlled) {
@@ -2818,10 +2863,7 @@ class App extends Component<{}, AppState> {
         });
       }
     }, 2000);
-    setTimeout(
-      () => this.setState({ showVotes: false, statusBarText: "" }),
-      6000
-    );
+    setTimeout(() => this.setState({ showVotes: false }), 6000);
     setTimeout(() => {
       this.onAnimationFinish();
     }, 6500);
@@ -2984,12 +3026,16 @@ class App extends Component<{}, AppState> {
                   !this.state.gameState.players[this.getViewerSeat()].alive
               )
             }
+            soundMuted={this.state.reactionSoundsMuted}
             onReact={(reaction) => this.onClickSetDiscussionReaction(reaction)}
             onSaveConfig={(durationSeconds, allowDeadPlayers) =>
               this.onClickUpdateDiscussionReactionConfig(
                 durationSeconds,
                 allowDeadPlayers
               )
+            }
+            onSoundMutedChange={(muted) =>
+              this.onClickSetReactionSoundsMuted(muted)
             }
           />
         )}

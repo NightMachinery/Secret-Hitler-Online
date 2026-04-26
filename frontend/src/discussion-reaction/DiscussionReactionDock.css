@@ -1,14 +1,19 @@
 @import "../variables.css";
 
 #discussion-reaction-dock-wrap {
-  position: relative;
+  position: sticky;
+  top: 92px;
   z-index: 20;
   display: flex;
   flex-direction: column;
-  align-items: center;
+  align-items: flex-end;
   gap: 10px;
-  margin: 12px auto;
-  width: min(94vw, 520px);
+  float: right;
+  clear: right;
+  margin: 12px 12px 12px 8px;
+  width: min(32vw, 360px);
+  max-width: 360px;
+  pointer-events: none;
 }
 
 #discussion-reaction-dock-frame {
@@ -22,6 +27,34 @@
   border: 2px solid var(--buttonShadowFill);
   box-shadow: 0 12px 24px rgba(0, 0, 0, 0.28);
   box-sizing: border-box;
+  pointer-events: auto;
+}
+
+#discussion-reaction-collapse-button,
+#discussion-reaction-dock-tab {
+  pointer-events: auto;
+  margin: 0;
+  border: 1px solid rgba(52, 37, 23, 0.9);
+  background: var(--backgroundDark);
+  color: var(--textColorWhite);
+  font-family: var(--headerFont);
+  box-shadow: 0 4px 0 #201913;
+}
+
+#discussion-reaction-collapse-button {
+  width: 1.8rem;
+  height: 1.8rem;
+  padding: 0;
+  border-radius: 999px;
+  font-size: 1.05rem;
+  line-height: 1;
+}
+
+#discussion-reaction-dock-tab {
+  padding: 9px 10px;
+  border-radius: 8px 0 0 8px;
+  writing-mode: vertical-rl;
+  letter-spacing: 0.08em;
 }
 
 .discussion-reaction-dock-summary {
@@ -172,6 +205,7 @@
   box-shadow: 0 14px 28px rgba(0, 0, 0, 0.34);
   color: var(--textColorWhite);
   box-sizing: border-box;
+  pointer-events: auto;
 }
 
 .discussion-reaction-settings-eyebrow {
@@ -182,6 +216,10 @@
   text-transform: uppercase;
   text-align: left;
   margin-bottom: 4px;
+}
+
+.discussion-reaction-local-eyebrow {
+  margin-top: 10px;
 }
 
 .discussion-reaction-settings-title {
@@ -345,20 +383,23 @@
   font-size: calc(8px + 0.5vmin);
   text-align: left;
   box-sizing: border-box;
+  pointer-events: auto;
 }
 
 @media (max-width: 700px) {
+  #discussion-reaction-dock-wrap {
+    position: sticky;
+    top: 76px;
+    float: none;
+    clear: none;
+    width: min(96vw, 420px);
+    margin: 10px auto;
+    align-items: stretch;
+  }
+
   #discussion-reaction-dock-frame {
     min-width: 0;
     width: 100%;
-  }
-
-  #discussion-reaction-dock-wrap {
-    width: min(96vw, 420px);
-  }
-
-  #discussion-reaction-dock-wrap {
-    align-items: stretch;
   }
 
   #discussion-reaction-dock-frame {
@@ -390,5 +431,11 @@
   #discussion-reaction-disabled-note {
     width: 100%;
     max-width: none;
+  }
+
+  #discussion-reaction-dock-tab {
+    align-self: flex-end;
+    writing-mode: horizontal-tb;
+    border-radius: 8px;
   }
 }

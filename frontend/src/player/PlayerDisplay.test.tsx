@@ -13,7 +13,19 @@ import {
 } from "../types";
 
 jest.mock("react-textfit", () => ({
-  Textfit: ({ children }: { children: React.ReactNode }) => <div>{children}</div>,
+  Textfit: ({
+    children,
+    id,
+    className,
+  }: {
+    children: React.ReactNode;
+    id?: string;
+    className?: string;
+  }) => (
+    <div id={id} className={className}>
+      {children}
+    </div>
+  ),
 }));
 
 const buildGameState = (playerOrder: string[]): GameState => ({
@@ -126,12 +138,11 @@ describe("PlayerDisplay", () => {
       />
     );
 
-    expect(screen.getByText("OFFLINE").closest(".player-utility-chrome")).not.toBeNull();
+    expect(screen.getByText("OFFLINE").closest(".player-status-badges")).not.toBeNull();
     expect(
-      screen.getByTitle("Promote Bob to moderator").closest(".player-card-actions")
+      screen.getByTitle("Promote Bob to moderator").closest(".player-corner-actions")
     ).not.toBeNull();
-    expect(container.querySelector(".player-status-badges")).toBeNull();
-    expect(container.querySelector(".player-corner-actions")).toBeNull();
+    expect(container.querySelector(".player-utility-chrome")).toBeNull();
   });
 
   test("shows observer badge and observer action for assignable seats", () => {
@@ -166,11 +177,31 @@ describe("PlayerDisplay", () => {
       },
     };
 
-    render(
+    const { container } = render(
       <PlayerDisplay user={"Alice"} gameState={gameState} showLabels={false} />
     );
 
     expect(screen.getByLabelText("Like reaction")).toBeInTheDocument();
-    expect(screen.getByText("LIKE").closest(".player-discussion-reaction-cue")).not.toBeNull();
+    expect(container.querySelector(".player-discussion-reaction-badge")).not.toBeNull();
+    expect(container.querySelector(".player-discussion-reaction-medallion")).not.toBeNull();
+    expect(screen.queryByText("LIKE")).toBeNull();
+  });
+
+  test("shows anarchist role with dedicated emblem and fitted label", () => {
+    const gameState = buildGameState(["Alice", "Bob"]);
+    gameState.players.Alice.id = Role.ANARCHIST;
+    gameState.players.Bob.id = Role.ANARCHIST;
+
+    const { container } = render(
+      <PlayerDisplay
+        user={"Alice"}
+        gameState={gameState}
+        showLabels={false}
+        showRoles={true}
+      />
+    );
+
+    expect(container.querySelector(".player-identity-label-fit")).not.toBeNull();
+    expect(container.querySelector(".player-identity-anarchist")).not.toBeNull();
   });
 });

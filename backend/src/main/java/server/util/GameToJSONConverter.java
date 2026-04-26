@@ -282,6 +282,11 @@ public class GameToJSONConverter {
             jsonEntry.put("chancellor", entry.getChancellor());
             jsonEntry.put("votePassed", entry.didVotePass());
             jsonEntry.put("result", entry.getResult() == null ? JSONObject.NULL : entry.getResult().toString());
+            JSONArray resultTrail = new JSONArray();
+            for (SecretHitlerGame.RoundHistoryResultStep step : entry.getResultTrail()) {
+                resultTrail.put(step.toString());
+            }
+            jsonEntry.put("resultTrail", resultTrail);
             jsonEntry.put("isCurrentRound", entry.getRound() == currentRound);
 
             JSONObject voteData = new JSONObject();

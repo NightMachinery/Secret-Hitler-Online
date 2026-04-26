@@ -37,7 +37,8 @@ class StatusBar extends Component {
 
     render() {
         return (
-            <div id="status-bar">
+            <div id="status-bar" className="status-bar-sticky-ticker">
+                <span id="status-bar-kicker">Latest</span>
                 <p id="status-bar-text" className={this.getClass()}>{this.state.text}</p>
             </div>
         );

@@ -5,7 +5,13 @@ import { act } from 'react-dom/test-utils';
 import App from './App';
 import { PAGE } from './constants';
 import { createAnarchistSetupConfig } from './setup/GameSetupConfig';
-import { HistoryRoundsToShow } from './types';
+import {
+  DiscussionReactionType,
+  HistoryRoundsToShow,
+  LobbyState,
+  Role,
+  UserType,
+} from './types';
 
 beforeEach(() => {
   global.fetch = jest.fn(() =>
@@ -73,6 +79,52 @@ test('lobby setup panel renders preset dropdown automation and history controls'
   expect(screen.getByLabelText('Auto powers')).toBeChecked();
   expect(screen.getByLabelText('Show history panel')).toBeChecked();
   expect(screen.getByLabelText('Rounds to show')).toBeInTheDocument();
+
+  ReactDOM.unmountComponentAtNode(container);
+  container.remove();
+});
+
+test('game page renders sticky status ticker and reaction side rail', () => {
+  const container = document.createElement('div');
+  document.body.appendChild(container);
+  let app;
+
+  act(() => {
+    app = ReactDOM.render(<App />, container);
+  });
+
+  act(() => {
+    app.setState({
+      page: PAGE.GAME,
+      name: 'Alice',
+      lobby: 'TEST',
+      gameState: {
+        ...app.state.gameState,
+        state: LobbyState.CHANCELLOR_NOMINATION,
+        playerOrder: ['Alice', 'Bob'],
+        players: {
+          Alice: { id: Role.LIBERAL, alive: true, investigated: false, type: UserType.HUMAN },
+          Bob: { id: Role.FASCIST, alive: true, investigated: false, type: UserType.HUMAN },
+        },
+        president: 'Alice',
+        chancellor: '',
+        controlledPlayer: 'Alice',
+        canAct: true,
+        selfType: UserType.HUMAN,
+        discussionReactions: {
+          Bob: { type: DiscussionReactionType.DISLIKE, expiresAt: Date.now() + 5000 },
+        },
+        discussionReactionConfig: { durationSeconds: 15, allowDeadPlayers: true },
+        connected: { Alice: true, Bob: true },
+        icon: { Alice: 'p_default', Bob: 'p_default' },
+      },
+      statusBarText: 'Bob disliked the discussion cue.',
+    });
+  });
+
+  expect(container.querySelector('#status-bar')).toHaveClass('status-bar-sticky-ticker');
+  expect(screen.getByText('Bob disliked the discussion cue.')).toBeInTheDocument();
+  expect(container.querySelector('#discussion-reaction-dock-wrap')).toHaveClass('discussion-reaction-dock-side-rail');
 
   ReactDOM.unmountComponentAtNode(container);
   container.remove();
