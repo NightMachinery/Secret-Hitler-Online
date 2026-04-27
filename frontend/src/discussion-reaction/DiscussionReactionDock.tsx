@@ -138,7 +138,7 @@ const DiscussionReactionDock = ({
         : "No active cue";
 
   return (
-    <div id="discussion-reaction-dock-wrap" className="discussion-reaction-dock-side-rail">
+    <div id="discussion-reaction-dock-wrap" className="discussion-reaction-dock-side-rail discussion-reaction-dock-fixed-overlay">
       {isCollapsed ? (
         <button
           type="button"

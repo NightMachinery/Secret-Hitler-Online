@@ -26,6 +26,9 @@ describe("DiscussionReactionDock", () => {
     expect(container.querySelector("#discussion-reaction-dock-wrap")).toHaveClass(
       "discussion-reaction-dock-side-rail"
     );
+    expect(container.querySelector("#discussion-reaction-dock-wrap")).toHaveClass(
+      "discussion-reaction-dock-fixed-overlay"
+    );
     expect(screen.getByLabelText("Collapse reaction dock")).toBeInTheDocument();
   });
 

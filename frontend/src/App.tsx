@@ -2724,7 +2724,7 @@ class App extends Component<{}, AppState> {
       this.state.page === PAGE.GAME &&
       gameState.state !== LobbyState.SETUP &&
       !isVictoryState(gameState.state) &&
-      !this.state.showAlert &&
+      (!this.state.showAlert || this.state.alertMinimized) &&
       ((viewerHasSeat && this.canViewerAct(gameState)) ||
         this.isViewerGameModerator(gameState))
     );
@@ -2980,6 +2980,8 @@ class App extends Component<{}, AppState> {
       <div className="App" style={{ textAlign: "center" }}>
         <header className="App-header">{APP_HEADER_TEXT}</header>
 
+        <StatusBar>{this.state.statusBarText}</StatusBar>
+
         <CustomAlert
           show={this.state.showAlert}
           allowMinimize={true}
@@ -3056,8 +3058,6 @@ class App extends Component<{}, AppState> {
         )}
 
         {this.renderObserversPanel()}
-
-        <StatusBar>{this.state.statusBarText}</StatusBar>
 
         <div style={{ display: "inline-block" }}>
           <div

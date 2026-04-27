@@ -1,27 +1,28 @@
 @import "../variables.css";
 
 #discussion-reaction-dock-wrap {
-  position: sticky;
-  top: 92px;
-  z-index: 20;
+  position: fixed;
+  top: clamp(6rem, 13vh, 8.5rem);
+  right: max(10px, env(safe-area-inset-right));
+  z-index: 55;
   display: flex;
   flex-direction: column;
   align-items: flex-end;
   gap: 10px;
-  float: right;
-  clear: right;
-  margin: 12px 12px 12px 8px;
-  width: min(32vw, 360px);
-  max-width: 360px;
+  width: min(14.5rem, calc(100vw - 22px));
+  max-width: 14.5rem;
+  margin: 0;
   pointer-events: none;
 }
 
 #discussion-reaction-dock-frame {
   display: inline-flex;
+  flex-direction: column;
   align-items: stretch;
-  gap: 10px;
-  min-width: min(92vw, 332px);
-  padding: 10px 12px;
+  gap: 8px;
+  width: 100%;
+  min-width: 0;
+  padding: 10px;
   border-radius: 8px;
   background: var(--backgroundDark);
   border: 2px solid var(--buttonShadowFill);
@@ -85,19 +86,22 @@
 
 .discussion-reaction-dock-summary-divider,
 .discussion-reaction-button-divider {
-  width: 1px;
+  height: 1px;
+  width: 100%;
   align-self: stretch;
   background: rgba(255, 255, 255, 0.12);
 }
 
 #discussion-reaction-dock {
   display: flex;
-  align-items: center;
+  flex-direction: column;
+  align-items: stretch;
   gap: 8px;
 }
 
 .discussion-reaction-button-cluster {
-  display: flex;
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
   align-items: center;
   gap: 8px;
 }
@@ -388,48 +392,21 @@
 
 @media (max-width: 700px) {
   #discussion-reaction-dock-wrap {
-    position: sticky;
-    top: 76px;
-    float: none;
-    clear: none;
-    width: min(96vw, 420px);
-    margin: 10px auto;
-    align-items: stretch;
+    top: auto;
+    right: max(8px, env(safe-area-inset-right));
+    bottom: max(8px, env(safe-area-inset-bottom));
+    width: min(18rem, calc(100vw - 16px));
+    max-width: calc(100vw - 16px);
+    align-items: flex-end;
   }
 
   #discussion-reaction-dock-frame {
-    min-width: 0;
-    width: 100%;
-  }
-
-  #discussion-reaction-dock-frame {
-    width: 100%;
-    min-width: 0;
-    flex-wrap: wrap;
-    gap: 8px;
-  }
-
-  .discussion-reaction-dock-summary {
-    width: 100%;
-  }
-
-  .discussion-reaction-dock-summary-divider {
-    display: none;
-  }
-
-  #discussion-reaction-dock {
-    width: 100%;
-    justify-content: space-between;
-  }
-
-  .discussion-reaction-button-cluster {
-    flex: 1;
-    justify-content: flex-start;
+    width: min(100%, 18rem);
   }
 
   #discussion-reaction-settings-panel,
   #discussion-reaction-disabled-note {
-    width: 100%;
+    width: min(100%, 18rem);
     max-width: none;
   }
 

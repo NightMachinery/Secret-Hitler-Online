@@ -2,7 +2,7 @@
 
 ## Discussion reactions
 
-During an active game, eligible players can send short discussion cues from the sticky reaction side rail. The rail can be collapsed so it stays available without covering the history log.
+During an active game, eligible players can send short discussion cues from the fixed reaction side rail on the right edge of the game. The rail overlays the board instead of taking layout space and can be collapsed so it stays available without covering the history log. If a game popup is minimized, the rail is still available; it is hidden only while the popup is expanded.
 
 Reaction cues appear in three places:
 
@@ -14,7 +14,7 @@ Reaction sounds are local to each browser/player. Open the reaction settings gea
 
 ## Sticky status ticker
 
-The top status bar stays visible as a news-style subtitle for the most recent game event. Vote prompts, turn-state updates, and discussion reactions can all update this ticker.
+The top status bar sits immediately under the app header and stays visible as a news-style subtitle for the most recent game event. Vote prompts, turn-state updates, and discussion reactions can all update this ticker.
 
 ## History result trails
 

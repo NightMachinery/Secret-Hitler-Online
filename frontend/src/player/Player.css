@@ -136,32 +136,35 @@
 
 .player-status-badges {
     position: absolute;
-    top: 3.2%;
-    left: 4%;
+    top: 4%;
+    left: 5%;
     display: flex;
     flex-direction: column;
     align-items: flex-start;
-    gap: 0.18rem;
+    gap: 0.12rem;
     z-index: 5;
-    max-width: 34%;
+    max-width: 38%;
     pointer-events: none;
 }
 
 .player-status-badge {
     position: relative;
-    min-width: 2.25rem;
-    padding: 0.14rem 0.38rem 0.14rem 0.58rem;
+    min-width: 0;
+    max-width: 100%;
+    padding: 0.11rem 0.28rem 0.11rem 0.46rem;
     border: 1px solid rgba(187, 155, 108, 0.42);
     border-radius: 4px;
     background:
         linear-gradient(180deg, rgba(31, 26, 21, 0.98), rgba(18, 15, 12, 0.98));
     color: rgba(245, 237, 221, 0.96);
-    font-size: min(1.2vh, 1.5vmin);
+    font-size: min(0.95vh, 1.18vmin);
     font-family: var(--headerFont);
-    letter-spacing: 0.08em;
+    letter-spacing: 0.045em;
     line-height: 1;
     text-align: left;
     white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
     box-shadow:
         inset 0 1px 0 rgba(255, 245, 223, 0.08),
         0 1px 0 rgba(0, 0, 0, 0.36);
@@ -200,13 +203,14 @@
 
 .player-corner-actions {
     position: absolute;
-    top: 3%;
-    right: 4%;
+    top: 4%;
+    right: 5%;
     display: flex;
     flex-direction: column;
     align-items: flex-end;
-    gap: 0.18rem;
+    gap: 0.12rem;
     z-index: 6;
+    max-width: 34%;
 }
 
 .player-corner-action {
@@ -214,22 +218,26 @@
     --player-action-hover: #47413a;
     --player-action-shadow: #211c17;
     margin: 0;
-    min-width: 2.08rem;
-    height: 1.22rem;
-    padding: 0.08rem 0.34rem 0.1rem;
+    min-width: 0;
+    max-width: 100%;
+    height: 1.05rem;
+    padding: 0.06rem 0.24rem 0.08rem;
     border: 1px solid rgba(28, 23, 19, 0.76);
     border-radius: 3px;
     background: var(--player-action-fill);
     color: rgba(243, 236, 225, 0.9);
     font-family: var(--headerFont);
-    font-size: min(0.96vh, 1.16vmin);
-    letter-spacing: 0.045em;
+    font-size: min(0.78vh, 0.98vmin);
+    letter-spacing: 0.028em;
     line-height: 1;
     box-shadow:
         0 1px 0 var(--player-action-shadow),
         inset 0 1px 0 rgba(255, 244, 229, 0.06);
     cursor: pointer;
     top: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
 }
 
 .player-corner-action:hover,

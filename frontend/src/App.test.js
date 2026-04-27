@@ -122,9 +122,64 @@ test('game page renders sticky status ticker and reaction side rail', () => {
     });
   });
 
-  expect(container.querySelector('#status-bar')).toHaveClass('status-bar-sticky-ticker');
+  const statusBar = container.querySelector('#status-bar');
+  expect(statusBar).toHaveClass('status-bar-sticky-ticker');
+  expect(statusBar.previousElementSibling).toHaveClass('App-header');
   expect(screen.getByText('Bob disliked the discussion cue.')).toBeInTheDocument();
-  expect(container.querySelector('#discussion-reaction-dock-wrap')).toHaveClass('discussion-reaction-dock-side-rail');
+  expect(container.querySelector('#discussion-reaction-dock-wrap')).toHaveClass('discussion-reaction-dock-fixed-overlay');
+
+  ReactDOM.unmountComponentAtNode(container);
+  container.remove();
+});
+
+test('reaction dock is hidden only while popup is expanded, not minimized', () => {
+  const container = document.createElement('div');
+  document.body.appendChild(container);
+  let app;
+
+  act(() => {
+    app = ReactDOM.render(<App />, container);
+  });
+
+  const baseGameState = {
+    ...app.state.gameState,
+    state: LobbyState.CHANCELLOR_NOMINATION,
+    playerOrder: ['Alice', 'Bob'],
+    players: {
+      Alice: { id: Role.LIBERAL, alive: true, investigated: false, type: UserType.HUMAN },
+      Bob: { id: Role.FASCIST, alive: true, investigated: false, type: UserType.HUMAN },
+    },
+    president: 'Alice',
+    chancellor: '',
+    controlledPlayer: 'Alice',
+    canAct: true,
+    selfType: UserType.HUMAN,
+    discussionReactions: {},
+    discussionReactionConfig: { durationSeconds: 15, allowDeadPlayers: true },
+    connected: { Alice: true, Bob: true },
+    icon: { Alice: 'p_default', Bob: 'p_default' },
+  };
+
+  act(() => {
+    app.setState({
+      page: PAGE.GAME,
+      name: 'Alice',
+      lobby: 'TEST',
+      gameState: baseGameState,
+      showAlert: true,
+      alertMinimized: false,
+      alertContent: <div>Prompt content</div>,
+    });
+  });
+
+  expect(container.querySelector('#discussion-reaction-dock-wrap')).toBeNull();
+
+  act(() => {
+    app.setState({ alertMinimized: true });
+  });
+
+  expect(container.querySelector('#discussion-reaction-dock-wrap')).toBeInTheDocument();
+  expect(screen.getByText('RETURN TO POPUP')).toBeInTheDocument();
 
   ReactDOM.unmountComponentAtNode(container);
   container.remove();
