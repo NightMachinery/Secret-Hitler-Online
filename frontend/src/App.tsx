@@ -3128,6 +3128,8 @@ class App extends Component<{}, AppState> {
                   numFascistPolicies={this.state.fascistPolicies}
                   numLiberalPolicies={this.state.liberalPolicies}
                   playerCount={this.state.gameState.playerOrder.length}
+                  setupConfig={this.state.gameState.setupConfig}
+                  anarchistPoliciesResolved={this.state.gameState.anarchistPoliciesResolved || 0}
                 />
               </div>
 

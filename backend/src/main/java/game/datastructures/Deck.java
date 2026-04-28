@@ -4,6 +4,7 @@ import java.io.Serializable;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
+import java.util.Random;
 
 /**
  * A deck holds an ordered list of Policies and can be shuffled, added to, or removed from.
@@ -75,5 +76,13 @@ public class Deck implements Serializable {
      */
     public void shuffle() {
         Collections.shuffle(deck);
+    }
+
+    /**
+     * Shuffles the deck with the provided random source.
+     * @param random the random source to use for deterministic callers/tests.
+     */
+    public void shuffle(Random random) {
+        Collections.shuffle(deck, random);
     }
 }

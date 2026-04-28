@@ -6,7 +6,6 @@ import FascistBoard_5_6 from "../assets/board-fascist-5-6.png";
 import FascistBoard_7_8 from "../assets/board-fascist-7-8.png";
 import FascistBoard_9_10 from "../assets/board-fascist-9-10.png";
 import PolicyFascist from "../assets/board-policy-fascist.png";
-import AnarchistPolicy from "../assets/policy-anarchist.png";
 import { getDefaultPowerSchedule } from "../setup/GameSetupConfig";
 
 import "./Board.css";
@@ -44,23 +43,6 @@ class Board extends Component {
             config.liberalPoliciesToWin === 5 &&
             config.fascistPoliciesToWin === 6 &&
             hasStandardPowerSchedule
-        );
-    }
-
-    shouldShowAnarchistSummary() {
-        const config = this.props.setupConfig || {};
-        return (config.anarchistPolicies || 0) > 0 || (this.props.numAnarchistPoliciesResolved || 0) > 0;
-    }
-
-    renderAnarchistSummary() {
-        if (!this.shouldShowAnarchistSummary()) {
-            return null;
-        }
-        return (
-            <div className="board-anarchist-summary">
-                <img src={AnarchistPolicy} alt="" />
-                <span>Anarchist policies resolved: {this.props.numAnarchistPoliciesResolved || 0}</span>
-            </div>
         );
     }
 
@@ -183,7 +165,6 @@ class Board extends Component {
                         {this.renderDynamicPolicySlots(this.props.numFascistPolicies, fascistTotal, PolicyFascist, "fascist")}
                         {this.renderDynamicPowerMarkers(fascistTotal)}
                     </div>
-                    {this.renderAnarchistSummary()}
                 </div>
             );
         }
@@ -212,7 +193,6 @@ class Board extends Component {
                     />
                     {this.placeRepeating(this.props.numFascistPolicies, 6, PolicyFascist, "policy", "11%", "13.6%")}
                 </div>
-                {this.renderAnarchistSummary()}
             </div>
         );
     }
@@ -224,7 +204,6 @@ Board.defaultProps = {
     numLiberalPolicies: 6,
     electionTracker: 0,
     numPlayers: 5,
-    numAnarchistPoliciesResolved: 0,
     setupConfig: null
 };
 

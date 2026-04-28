@@ -581,7 +581,7 @@ public class SecretHitlerGame implements Serializable {
             draw.add(new Policy(Policy.Type.ANARCHIST));
         }
 
-        draw.shuffle();
+        draw.shuffle(random);
     }
 
     /**
@@ -682,7 +682,7 @@ public class SecretHitlerGame implements Serializable {
         while (!discard.isEmpty()) {
             draw.add(discard.remove());
         }
-        draw.shuffle();
+        draw.shuffle(random);
     }
 
     // </editor-fold>
@@ -1172,6 +1172,9 @@ public class SecretHitlerGame implements Serializable {
         if (newPolicy.getType() == Policy.Type.ANARCHIST) {
             numAnarchistPoliciesResolved++;
             lastEnactedPolicy = Policy.Type.ANARCHIST;
+            discard.add(newPolicy);
+            draw.add(new Policy(Policy.Type.ANARCHIST));
+            draw.shuffle(random);
 
             if (hasAnarchistPlayers() && (source == PolicyEnactmentSource.TRACKER
                     || source == PolicyEnactmentSource.ANARCHIST_REPLACEMENT)) {
@@ -1181,23 +1184,32 @@ public class SecretHitlerGame implements Serializable {
                 return;
             }
 
-            if (draw.getSize() < MIN_DRAW_DECK_SIZE) {
-                shuffleDiscardIntoDraw();
-            }
-            if (draw.isEmpty()) {
-                finalizeCurrentRoundHistory(RoundHistoryResult.ANARCHIST);
-                concludePresidentialActions();
-                return;
-            }
-            if (currentRoundHistory != null) {
-                currentRoundHistory.addResultTrailStep(RoundHistoryResultStep.ANARCHY_RANDOM);
-            }
-            enactAndResolvePolicy(draw.remove(), PolicyEnactmentSource.ANARCHIST_REPLACEMENT, requirePolicyClaims);
+            forceAnarchistTrackerTopDeck();
             return;
         }
 
         board.enactPolicy(newPolicy);
         onEnactPolicy(newPolicy.getType(), source, requirePolicyClaims);
+    }
+
+    private void forceAnarchistTrackerTopDeck() {
+        if (draw.getSize() < MIN_DRAW_DECK_SIZE) {
+            shuffleDiscardIntoDraw();
+        }
+        if (draw.isEmpty()) {
+            finalizeCurrentRoundHistory(RoundHistoryResult.ANARCHIST);
+            concludePresidentialActions();
+            return;
+        }
+        if (currentRoundHistory != null) {
+            currentRoundHistory.addResultTrailStep(RoundHistoryResultStep.ANARCHY_RANDOM);
+        }
+        didElectionTrackerAdvance = true;
+        electionTracker = MAX_FAILED_ELECTIONS;
+        if (setupConfig.doesAnarchistTrackerReset()) {
+            electionTracker = 0;
+        }
+        enactAndResolvePolicy(draw.remove(), PolicyEnactmentSource.ANARCHIST_REPLACEMENT, false);
     }
 
     private boolean hasAnarchistPlayers() {
@@ -1210,7 +1222,9 @@ public class SecretHitlerGame implements Serializable {
     }
 
     private void onEnactPolicy(Policy.Type policyType, PolicyEnactmentSource source, boolean requirePolicyClaims) {
-        electionTracker = 0;
+        if (!didElectionTrackerAdvance() || setupConfig.doesAnarchistTrackerReset()) {
+            electionTracker = 0;
+        }
         lastEnactedPolicy = policyType;
         finalizeCurrentRoundHistory(policyType == Policy.Type.FASCIST
                 ? RoundHistoryResult.FASCIST

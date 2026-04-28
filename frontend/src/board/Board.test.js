@@ -48,7 +48,7 @@ describe("Board", () => {
     expect(screen.getByText("EXECUTION")).toBeInTheDocument();
   });
 
-  test("uses fixed board art for the default Anarchist preset and adds the Anarchist summary strip", () => {
+  test("uses fixed board art for the default Anarchist preset without adding an Anarchist summary strip", () => {
     const { container } = render(
       <Board
         numPlayers={7}
@@ -61,7 +61,7 @@ describe("Board", () => {
     );
 
     expect(container.querySelector(".dynamic-board-container")).not.toBeInTheDocument();
-    expect(screen.getByText("Anarchist policies resolved: 1")).toBeInTheDocument();
-    expect(container.querySelector(".board-anarchist-summary")).toBeInTheDocument();
+    expect(screen.queryByText("Anarchist policies resolved: 1")).not.toBeInTheDocument();
+    expect(container.querySelector(".board-anarchist-summary")).not.toBeInTheDocument();
   });
 });

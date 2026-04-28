@@ -34,6 +34,12 @@ public class testSecretHitlerGame {
         drawField.set(game, deck);
     }
 
+    private void forceRandom(SecretHitlerGame game, java.util.Random random) throws Exception {
+        Field randomField = SecretHitlerGame.class.getDeclaredField("random");
+        randomField.setAccessible(true);
+        randomField.set(game, random);
+    }
+
     private void passVote(SecretHitlerGame game, String chancellor) {
         game.nominateChancellor(chancellor);
         for (Player player : game.getPlayerList()) {
@@ -260,6 +266,7 @@ public class testSecretHitlerGame {
                 GameSetupConfig.builder(6)
                         .policies(6, 11, 5)
                         .build());
+        forceRandom(game, new java.util.Random(13));
         replaceDrawDeck(game,
                 Policy.Type.FASCIST,
                 Policy.Type.ANARCHIST,

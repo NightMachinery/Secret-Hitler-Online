@@ -6,8 +6,9 @@ This project supports a configurable Anarchist variant in addition to the standa
 
 - **Anarchist roles** are a third non-Liberal/non-Fascist faction.
 - **Anarchist policies** never remain on either policy board.
-- When an Anarchist policy is chosen or top-decked, it is counted as a resolved Anarchist policy and then replaced by exactly one top-deck policy.
-- The replacement count is not configurable. If the replacement is another Anarchist policy, it may cascade under the same one-card replacement rule.
+- When an Anarchist policy is chosen or top-decked, it is counted as an enacted Anarchy policy and the enacted Anarchy card enters the discard pile.
+- A fresh Anarchist policy is shuffled into the draw deck, then the election tracker is moved to its top-deck point and the top draw-pile policy is enacted.
+- If the forced top-deck is another Anarchist policy, the same rule repeats. Existing tracker-reset setup controls whether the tracker resets after this forced top-deck.
 - Cascades are shown in vote history with compact Anarchist/random-card symbols, including repeated Anarchist steps.
 - If an Anarchist policy is resolved by the election tracker or by an Anarchist replacement cascade, Anarchists win only when at least one Anarchist player exists.
 - If there are no Anarchist players, Anarchist policies are “chaos” policies: they resolve and replace, but they do not produce an Anarchist victory.
@@ -60,7 +61,7 @@ Custom setup can change Hitler count.
 
 The setup config can provide a per-Fascist-policy-slot power schedule. Custom thresholds or non-standard Fascist powers render with a generated board on the frontend. Standard-equivalent Liberal/Fascist thresholds and Fascist powers keep the original fixed board art, even when Anarchist roles or Anarchist policies are enabled.
 
-When Anarchist policies are in the setup, the frontend shows a compact Anarchist resolved-policy strip below either board style. This strip reports resolved Anarchist policies without forcing the board into custom/dynamic mode.
+When Anarchist roles or policies are in the setup, the frontend main info panel shows the Anarchist role count, configured Anarchy card count, and a concise `Anarchy Enacted: N` line. The board itself does not show a separate Anarchist summary strip, and standard games hide Anarchy details.
 
 ## Frontend art assets
 

@@ -187,24 +187,3 @@
     width: min(76%, 76px);
     image-rendering: pixelated;
 }
-
-.board-anarchist-summary {
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    gap: 12px;
-    color: #f1dfaa;
-    background: #151515;
-    border: 3px solid #9d171d;
-    border-radius: 10px;
-    padding: 8px 12px;
-    font-family: var(--headerFont);
-    margin: 10px auto 0;
-    width: 100%;
-    box-sizing: border-box;
-}
-
-.board-anarchist-summary img {
-    width: 34px;
-    height: 48px;
-}

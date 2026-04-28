@@ -50,6 +50,12 @@ public class testAnarchistVariant {
         stateField.set(game, state);
     }
 
+    private void forceRandom(SecretHitlerGame game, java.util.Random random) throws Exception {
+        Field randomField = SecretHitlerGame.class.getDeclaredField("random");
+        randomField.setAccessible(true);
+        randomField.set(game, random);
+    }
+
     private void failVote(SecretHitlerGame game, String chancellor) {
         game.nominateChancellor(chancellor);
         for (Player player : game.getPlayerList()) {
@@ -190,6 +196,7 @@ public class testAnarchistVariant {
     @Test
     public void testAnarchistPolicyChosenByChancellorResolvesReplacementWithoutBoardTile() throws Exception {
         SecretHitlerGame game = new SecretHitlerGame(makePlayers(7), GameSetupConfig.anarchist(7));
+        forceRandom(game, new java.util.Random(3));
         replaceDrawDeck(game,
                 Policy.Type.LIBERAL, Policy.Type.ANARCHIST, Policy.Type.FASCIST,
                 Policy.Type.FASCIST, Policy.Type.LIBERAL, Policy.Type.LIBERAL);
@@ -212,6 +219,51 @@ public class testAnarchistVariant {
     }
 
     @Test
+    public void testAnarchistPolicyEntersDiscardAddsFreshAnarchyAndForcesTrackerTopDeck() throws Exception {
+        SecretHitlerGame game = new SecretHitlerGame(makePlayers(7), GameSetupConfig.anarchist(7));
+        forceRandom(game, new java.util.Random(2));
+        replaceDrawDeck(game,
+                Policy.Type.ANARCHIST, Policy.Type.FASCIST, Policy.Type.LIBERAL,
+                Policy.Type.LIBERAL, Policy.Type.FASCIST, Policy.Type.LIBERAL,
+                Policy.Type.FASCIST, Policy.Type.LIBERAL);
+
+        passVote(game, "1");
+        game.presidentDiscardPolicy(1);
+        game.chancellorEnactPolicy(0);
+
+        assertEquals(1, game.getNumAnarchistPoliciesResolved());
+        assertEquals(1, game.getNumLiberalPolicies());
+        assertEquals(0, game.getNumFascistPolicies());
+        assertEquals(Policy.Type.LIBERAL, game.getLastEnactedPolicy());
+        assertEquals(3, game.getDiscardSize());
+        assertEquals(5, game.getDrawSize());
+        assertEquals(0, game.getElectionTracker());
+    }
+
+    @Test
+    public void testAnarchistForcedTopDeckLeavesTrackerAtEndWhenResetDisabled() throws Exception {
+        SecretHitlerGame game = new SecretHitlerGame(makePlayers(7),
+                GameSetupConfig.builder(7)
+                        .roles(3, 2, 1, 1)
+                        .policies(SecretHitlerGame.NUM_LIBERAL_POLICIES, SecretHitlerGame.NUM_FASCIST_POLICIES, 3)
+                        .anarchistTrackerResets(false)
+                        .build());
+        forceRandom(game, new java.util.Random(2));
+        replaceDrawDeck(game,
+                Policy.Type.ANARCHIST, Policy.Type.FASCIST, Policy.Type.LIBERAL,
+                Policy.Type.LIBERAL, Policy.Type.FASCIST, Policy.Type.LIBERAL,
+                Policy.Type.FASCIST, Policy.Type.LIBERAL);
+
+        passVote(game, "1");
+        game.presidentDiscardPolicy(1);
+        game.chancellorEnactPolicy(0);
+
+        assertEquals(1, game.getNumAnarchistPoliciesResolved());
+        assertEquals(1, game.getNumLiberalPolicies());
+        assertEquals(3, game.getElectionTracker());
+    }
+
+    @Test
     public void testElectionTrackerAnarchistPolicyWinsOnlyWhenAnarchistsExist() throws Exception {
         SecretHitlerGame withAnarchist = new SecretHitlerGame(makePlayers(7), GameSetupConfig.anarchist(7));
         replaceDrawDeck(withAnarchist, Policy.Type.ANARCHIST, Policy.Type.LIBERAL, Policy.Type.FASCIST);
@@ -230,6 +282,7 @@ public class testAnarchistVariant {
                         .roles(4, 2, 1, 0)
                         .policies(SecretHitlerGame.NUM_LIBERAL_POLICIES, SecretHitlerGame.NUM_FASCIST_POLICIES, 3)
                         .build());
+        forceRandom(withoutAnarchist, new java.util.Random(1));
         replaceDrawDeck(withoutAnarchist, Policy.Type.ANARCHIST, Policy.Type.LIBERAL, Policy.Type.FASCIST);
 
         failVote(withoutAnarchist, "1");
