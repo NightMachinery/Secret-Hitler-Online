@@ -49,10 +49,11 @@
     position: absolute;
     color: var(--backgroundDark);
     font-family: var(--textFont);
-    top: 64%;
+    top: 63%;
     left: 10%;
     width: 80%;
-    height: 16%;
+    height: 12%;
+    line-height: 1;
     -webkit-user-select: none;
     -moz-user-select: none;
     -ms-user-select: none;
@@ -65,9 +66,9 @@
 
 #player-identity-icon {
     position: absolute;
-    top: 75%;
-    left: 8%;
-    width: 28%;
+    top: 77%;
+    left: 9%;
+    width: 22%;
     -webkit-user-select: none;
     -moz-user-select: none;
     -ms-user-select: none;
@@ -92,11 +93,11 @@
 
 #player-identity-label {
     position: absolute;
-    top: 69%;
-    left: 36%;
-    width: 50%;
-    height: 12%;
-    font-size: min(2.3vh, 3vmin);
+    top: 75%;
+    left: 32%;
+    width: 58%;
+    height: 9%;
+    font-size: min(1.65vh, 2.15vmin);
     color: var(--textColorHighlight);
     -webkit-user-select: none;
     -moz-user-select: none;
@@ -109,7 +110,7 @@
 }
 
 #player-identity-label.player-identity-anarchist {
-    font-size: min(1.9vh, 2.35vmin);
+    font-size: min(1.45vh, 1.9vmin);
 }
 
 #player-identity-label.liberal-text {

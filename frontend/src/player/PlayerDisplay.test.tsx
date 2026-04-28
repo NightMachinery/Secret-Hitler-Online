@@ -205,3 +205,15 @@ describe("PlayerDisplay", () => {
     expect(container.querySelector(".player-identity-anarchist")).not.toBeNull();
   });
 });
+
+
+test("keeps role identity art in a compact bottom slot below the name", () => {
+  const fs = require("fs");
+  const path = require("path");
+  const css = fs.readFileSync(path.join(__dirname, "Player.css"), "utf8");
+
+  expect(css).toMatch(/#player-name\s*\{[\s\S]*?height:\s*12%;/);
+  expect(css).toMatch(/#player-identity-label\s*\{[\s\S]*?top:\s*75%;/);
+  expect(css).toMatch(/#player-identity-label\s*\{[\s\S]*?height:\s*9%;/);
+  expect(css).toMatch(/#player-identity-icon\s*\{[\s\S]*?top:\s*77%;/);
+});

@@ -49,6 +49,7 @@ import {
   WEBSOCKET_HEADER,
   DEBUG,
   PACKET_PONG,
+  PARAM_COMMAND,
   PING_INTERVAL,
   SERVER_PING,
   PARAM_ICON,
@@ -318,6 +319,7 @@ class App extends Component<{}, AppState> {
   snackbarMessages: number = 0;
   animationQueue: (() => void)[] = [];
   okMessageListeners: (() => void)[] = [];
+  okResponsePassthroughCommands: WSCommandType[] = [];
   allAnimationsFinished: boolean = true;
   gameOver: boolean = false;
   authToken: string = "";
@@ -766,6 +768,9 @@ class App extends Component<{}, AppState> {
         break;
 
       case PACKET_OK: // Traverse all listeners and call the functions.
+        if (this.shouldPassThroughOkResponse(message)) {
+          break;
+        }
         let i = 0;
         for (i; i < this.okMessageListeners.length && i < 1; i++) {
           this.okMessageListeners[i]();
@@ -806,6 +811,27 @@ class App extends Component<{}, AppState> {
    *          {@code PARAM_NAME}: {@code this.state.name}
    *          and each (key, value) pair in {@code params}.
    */
+  shouldPassThroughOkResponse(message: Record<string, unknown>): boolean {
+    const command = message[PARAM_COMMAND] as WSCommandType | undefined;
+    if (command) {
+      const queuedCommandIndex = this.okResponsePassthroughCommands.indexOf(command);
+      if (queuedCommandIndex >= 0) {
+        this.okResponsePassthroughCommands.splice(queuedCommandIndex, 1);
+      }
+      return this.isOkPassthroughCommand(command);
+    }
+
+    const queuedCommand = this.okResponsePassthroughCommands.shift();
+    return Boolean(queuedCommand);
+  }
+
+  isOkPassthroughCommand(command: WSCommandType): boolean {
+    return (
+      command === WSCommandType.SET_DISCUSSION_REACTION ||
+      command === WSCommandType.SET_DISCUSSION_REACTION_CONFIG
+    );
+  }
+
   sendWSCommand(request: ServerRequestPayload) {
     // Do not need to encode name + lobby because this is sent through websocket
     const data: WSCommand = {
@@ -818,6 +844,9 @@ class App extends Component<{}, AppState> {
       console.log(JSON.stringify(data));
     }
     if (this.websocket !== undefined) {
+      if (this.isOkPassthroughCommand(request.command)) {
+        this.okResponsePassthroughCommands.push(request.command);
+      }
       this.websocket.send(JSON.stringify(data));
     } else {
       this.showSnackBar(

@@ -184,3 +184,45 @@ test('reaction dock is hidden only while popup is expanded, not minimized', () =
   ReactDOM.unmountComponentAtNode(container);
   container.remove();
 });
+
+
+test('discussion reaction OK does not consume minimized action popup listener', async () => {
+  const container = document.createElement('div');
+  document.body.appendChild(container);
+  let app;
+
+  act(() => {
+    app = ReactDOM.render(<App />, container);
+  });
+
+  const closeActionPrompt = jest.fn();
+  app.websocket = { send: jest.fn() };
+
+  act(() => {
+    app.setState({
+      page: PAGE.GAME,
+      name: 'Alice',
+      lobby: 'TEST',
+      showAlert: true,
+      alertMinimized: true,
+      alertContent: <div>Choose a chancellor</div>,
+    });
+    app.addServerOKListener(closeActionPrompt);
+  });
+
+  act(() => {
+    app.onClickSetDiscussionReaction(DiscussionReactionType.LIKE);
+  });
+
+  await act(async () => {
+    await app.onWebSocketMessage({ data: JSON.stringify({ type: 'ok' }) });
+  });
+
+  expect(closeActionPrompt).not.toHaveBeenCalled();
+  expect(app.state.showAlert).toBe(true);
+  expect(app.state.alertMinimized).toBe(true);
+  expect(screen.getByText('RETURN TO POPUP')).toBeInTheDocument();
+
+  ReactDOM.unmountComponentAtNode(container);
+  container.remove();
+});

@@ -1049,6 +1049,7 @@ public class SecretHitlerServer {
                     logger.debug(logMessage + " SUCCESS");
                     JSONObject msg = new JSONObject();
                     msg.put(PARAM_PACKET_TYPE, PACKET_OK);
+                    msg.put(PARAM_COMMAND, command);
                     ctx.send(msg.toString());
                 }
 
