@@ -17,12 +17,18 @@ jest.mock("react-textfit", () => ({
     children,
     id,
     className,
+    forceSingleModeWidth,
   }: {
     children: React.ReactNode;
     id?: string;
     className?: string;
+    forceSingleModeWidth?: boolean;
   }) => (
-    <div id={id} className={className}>
+    <div
+      id={id}
+      className={className}
+      data-force-single-mode-width={String(forceSingleModeWidth)}
+    >
       {children}
     </div>
   ),
@@ -203,6 +209,26 @@ describe("PlayerDisplay", () => {
 
     expect(container.querySelector(".player-identity-label-fit")).not.toBeNull();
     expect(container.querySelector(".player-identity-anarchist")).not.toBeNull();
+  });
+
+  test("fits role identity labels to both the card slot width and height", () => {
+    const gameState = buildGameState(["Alice"]);
+    gameState.players.Alice.id = Role.HITLER;
+
+    const { container } = render(
+      <PlayerDisplay
+        user={"Alice"}
+        gameState={gameState}
+        showLabels={false}
+        showRoles={true}
+      />
+    );
+
+    expect(
+      container
+        .querySelector(".player-identity-label-fit")
+        ?.getAttribute("data-force-single-mode-width")
+    ).toBe("false");
   });
 });
 

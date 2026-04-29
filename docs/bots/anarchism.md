@@ -74,4 +74,4 @@ Anarchist-specific frontend art follows the same raster PNG asset convention as 
 
 Keep Anarchist imports pointed at these PNGs so the extension art matches the prior card, policy, role, and victory-header assets.
 
-Player cards use `role-anarchist.png` for the on-card Anarchist identity emblem, and the role label is fitted to avoid overflowing the original card frame.
+Player cards use `role-anarchist.png` for the on-card Anarchist identity emblem, and all role labels are fitted to the compact bottom identity slot so they stay inside the original card frame.

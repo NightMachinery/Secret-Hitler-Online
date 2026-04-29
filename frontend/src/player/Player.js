@@ -202,7 +202,7 @@ class Player extends Component {
                            (this.props.role === ANARCHIST ? " player-identity-anarchist" : "")
                        }
                        mode="single"
-                       forceSingleModeWidth={true}
+                       forceSingleModeWidth={false}
                        alignVertWithFlexbox={true}
                        throttle={1000}
                     >
