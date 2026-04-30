@@ -238,8 +238,14 @@ test("keeps role identity art in a compact bottom slot below the name", () => {
   const path = require("path");
   const css = fs.readFileSync(path.join(__dirname, "Player.css"), "utf8");
 
+  expect(css).toMatch(/#player-name\s*\{[\s\S]*?top:\s*66%;/);
   expect(css).toMatch(/#player-name\s*\{[\s\S]*?height:\s*12%;/);
-  expect(css).toMatch(/#player-identity-label\s*\{[\s\S]*?top:\s*75%;/);
-  expect(css).toMatch(/#player-identity-label\s*\{[\s\S]*?height:\s*9%;/);
-  expect(css).toMatch(/#player-identity-icon\s*\{[\s\S]*?top:\s*77%;/);
+  expect(css).toMatch(/#player-identity-label\s*\{[\s\S]*?top:\s*80%;/);
+  expect(css).toMatch(/#player-identity-label\s*\{[\s\S]*?height:\s*13%;/);
+  expect(css).toMatch(/#player-identity-label\s*\{[\s\S]*?font-weight:\s*700;/);
+  expect(css).toMatch(/#player-identity-label\s*\{[\s\S]*?display:\s*flex;/);
+  expect(css).toMatch(/#player-identity-label\s*\{[\s\S]*?align-items:\s*center;/);
+  expect(css).toMatch(/#player-identity-label\s*\{[\s\S]*?justify-content:\s*center;/);
+  expect(css).toMatch(/#player-identity-label\s*\{[\s\S]*?text-align:\s*center;/);
+  expect(css).toMatch(/#player-identity-icon\s*\{[\s\S]*?top:\s*80%;/);
 });
