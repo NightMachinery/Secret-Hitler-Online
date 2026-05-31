@@ -927,7 +927,16 @@ write_caddy_block () {
     : > "$backup_file"
   fi
 
-  if ! caddy_status="$(python3 - "$CADDYFILE" "$PUBLIC_HOSTPORT" "$BEGIN_MARKER" "$END_MARKER" "$BACKEND_PORT" "$FRONTEND_PORT" <<'PY2'
+  # The Caddy site address carries the scheme so an http:// origin is served as
+  # plain HTTP. A bare hostname makes Caddy enable automatic HTTPS and redirect
+  # HTTP->HTTPS, which breaks http-only origins (e.g. *.local names with no
+  # public certificate).
+  local caddy_site_address="$PUBLIC_HOSTPORT"
+  if [[ "$PUBLIC_SCHEME" == "http" ]]; then
+    caddy_site_address="http://$PUBLIC_HOSTPORT"
+  fi
+
+  if ! caddy_status="$(python3 - "$CADDYFILE" "$PUBLIC_HOSTPORT" "$BEGIN_MARKER" "$END_MARKER" "$BACKEND_PORT" "$FRONTEND_PORT" "$caddy_site_address" <<'PY2'
 import pathlib
 import re
 import sys
@@ -938,8 +947,9 @@ begin_marker = sys.argv[3]
 end_marker = sys.argv[4]
 backend_port = sys.argv[5]
 frontend_port = sys.argv[6]
+site_address = sys.argv[7]
 
-managed_block = f"""{begin_marker}\n{host} {{\n\tencode zstd gzip\n\n\t@secret_hitler_backend path /check-login /new-lobby /ping /game /game/*\n\thandle @secret_hitler_backend {{\n\t\treverse_proxy 127.0.0.1:{backend_port}\n\t}}\n\n\thandle {{\n\t\treverse_proxy 127.0.0.1:{frontend_port}\n\t}}\n}}\n{end_marker}\n"""
+managed_block = f"""{begin_marker}\n{site_address} {{\n\tencode zstd gzip\n\n\t@secret_hitler_backend path /check-login /new-lobby /ping /game /game/*\n\thandle @secret_hitler_backend {{\n\t\treverse_proxy 127.0.0.1:{backend_port}\n\t}}\n\n\thandle {{\n\t\treverse_proxy 127.0.0.1:{frontend_port}\n\t}}\n}}\n{end_marker}\n"""
 
 text = caddyfile.read_text() if caddyfile.exists() else ""
 status = "appended"
