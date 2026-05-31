@@ -728,15 +728,16 @@ EOF
 : "${PUBLIC_ORIGIN:?PUBLIC_ORIGIN is required}"
 
 cd "$BACKEND_DIR"
-if [[ -z "${JAVA_HOME:-}" ]]; then
-  if command -v /usr/libexec/java_home >/dev/null 2>&1; then
-    JAVA_HOME="$(/usr/libexec/java_home -v 17)"
-  elif command -v java >/dev/null 2>&1; then
-    java_bin="$(readlink -f "$(command -v java)" 2>/dev/null || command -v java)"
-    candidate_java_home="$(dirname "$(dirname "$java_bin")")"
-    if [[ -x "$candidate_java_home/bin/java" ]]; then
-      JAVA_HOME="$candidate_java_home"
-    fi
+# Gradle 7.4.2 only supports Java <= 17, so prefer a JDK 17 toolchain even when
+# the environment already exports a newer JAVA_HOME (e.g. JDK 23 from a user's
+# shell). A too-new JDK makes Gradle fail to compile build.gradle.
+if command -v /usr/libexec/java_home >/dev/null 2>&1 && /usr/libexec/java_home -v 17 >/dev/null 2>&1; then
+  JAVA_HOME="$(/usr/libexec/java_home -v 17)"
+elif [[ -z "${JAVA_HOME:-}" ]] && command -v java >/dev/null 2>&1; then
+  java_bin="$(readlink -f "$(command -v java)" 2>/dev/null || command -v java)"
+  candidate_java_home="$(dirname "$(dirname "$java_bin")")"
+  if [[ -x "$candidate_java_home/bin/java" ]]; then
+    JAVA_HOME="$candidate_java_home"
   fi
 fi
 if [[ -n "${JAVA_HOME:-}" ]]; then
