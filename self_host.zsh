@@ -1,6 +1,18 @@
 #!/usr/bin/env zsh
 
-set -euo pipefail
+# Use zsh-native options rather than `set -euo pipefail`. The bash-style
+# `nounset` breaks interactive dotfile helpers (custom `mv`, ZERR traps, etc.)
+# that this script and its tmux boot scripts inherit from ~/.zshenv, while still
+# wanting dotfile helpers like `nvm-load`. ERR_RETURN + PIPE_FAIL give
+# equivalent fail-fast behavior without nounset.
+export PS4='> '
+setopt LOCAL_OPTIONS PIPE_FAIL PRINT_EXIT_VALUE ERR_RETURN SOURCE_TRACE XTRACE
+setopt TYPESET_SILENT NO_CASE_GLOB multios re_match_pcre extendedglob pipefail interactivecomments hash_executables_only
+setopt NO_BANG_HIST 2>/dev/null || true
+
+# Option preamble emitted into generated zsh tmux boot scripts so they get the
+# same nounset-free, dotfile-compatible behavior as this parent script.
+ZSH_BOOT_SETOPT=$'export PS4=\'> \'\nsetopt LOCAL_OPTIONS PIPE_FAIL PRINT_EXIT_VALUE ERR_RETURN SOURCE_TRACE XTRACE\nsetopt TYPESET_SILENT NO_CASE_GLOB multios re_match_pcre extendedglob pipefail interactivecomments hash_executables_only\nsetopt NO_BANG_HIST 2>/dev/null || true'
 
 ROOT_DIR="${ROOT_DIR:-$(cd -- "$(dirname -- "$0")" && pwd -P)}"
 BACKEND_DIR="$ROOT_DIR/backend"
@@ -781,7 +793,7 @@ EOF
 
   {
     print '#!/usr/bin/env zsh'
-    print 'set -euo pipefail'
+    print -r -- "$ZSH_BOOT_SETOPT"
     [[ -n "$PROXY_EXPORTS" ]] && print -r -- "$PROXY_EXPORTS"
     cat <<'EOF'
 : "${FRONTEND_DIR:?FRONTEND_DIR is required}"
@@ -817,7 +829,7 @@ EOF
 
   {
     print '#!/usr/bin/env zsh'
-    print 'set -euo pipefail'
+    print -r -- "$ZSH_BOOT_SETOPT"
     [[ -n "$PROXY_EXPORTS" ]] && print -r -- "$PROXY_EXPORTS"
     cat <<'EOF'
 : "${FRONTEND_DIR:?FRONTEND_DIR is required}"
@@ -850,7 +862,7 @@ EOF
 
   {
     print '#!/usr/bin/env zsh'
-    print 'set -euo pipefail'
+    print -r -- "$ZSH_BOOT_SETOPT"
     [[ -n "$PROXY_EXPORTS" ]] && print -r -- "$PROXY_EXPORTS"
     cat <<'EOF'
 : "${FRONTEND_DIR:?FRONTEND_DIR is required}"
