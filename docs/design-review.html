@@ -1,0 +1,576 @@
+<!doctype html>
+<html lang="en">
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>At the Table | Secret Hitler Online Design Review</title>
+<style>
+:root{color-scheme:light;--paper:#f3ead9;--ink:#241e19;--rule:#bcb09b;--muted:#63584a;--accent:#a4331b;--fire:#ea774d;--gold:#e5b66a;--dark:#231f1b;--serif:Georgia,'Times New Roman',serif;--sans:system-ui,sans-serif}
+*{box-sizing:border-box}html{scroll-behavior:smooth}body{margin:0;background:var(--paper);color:var(--ink);font:16px/1.5 var(--sans)}[hidden]{display:none!important}a{color:inherit;text-underline-offset:.2em}a:focus-visible,button:focus-visible,input:focus-visible,select:focus-visible,textarea:focus-visible,summary:focus-visible{outline:3px solid #2387a0;outline-offset:4px}
+.shell{width:min(1120px,calc(100% - 48px));margin:auto}.mast{display:flex;justify-content:space-between;align-items:center;gap:12px;padding:15px 0;border-bottom:1px solid var(--ink)}.mast strong{font:700 .96rem var(--serif);letter-spacing:.08em;text-transform:uppercase}.mast nav{display:flex;gap:20px}.mast nav a{font-size:.8rem;font-weight:650}
+h1,h2,h3{font-family:var(--serif);line-height:1.04;margin:0}h1{font-size:clamp(3.1rem,9vw,8rem);letter-spacing:-.07em}h2{font-size:clamp(2.25rem,5vw,4rem);letter-spacing:-.047em}h3{font-size:clamp(1.95rem,4vw,3.3rem);letter-spacing:-.045em}p{margin:.55em 0 0}.plate-title{display:flex;flex-wrap:wrap;align-items:baseline;justify-content:space-between;gap:8px 25px;margin:24px 0 17px}.plate-title p{font:italic 1.12rem var(--serif);color:var(--muted)}
+.board{color:var(--paper);background:radial-gradient(ellipse at 49% 36%,#4a3c30,var(--dark) 66%);padding:clamp(14px,3vw,32px);position:relative;border:1px solid #111;box-shadow:inset 0 0 0 5px #332a23}.table-head{display:flex;justify-content:space-between;gap:10px;align-items:baseline;border-bottom:1px solid #786b5b;padding:0 0 10px}.label{font-size:.72rem;font-weight:750;letter-spacing:.115em;text-transform:uppercase}.table-head span:last-child{color:#e2d5bb;font-size:.8rem}.pieces{display:grid;grid-template-columns:repeat(3,1fr);gap:clamp(6px,3vw,34px);max-width:730px;margin:0 auto;padding:10px 0 13px;list-style:none}.piece{position:relative;min-width:0;text-align:center}.cue{display:block;height:25px;line-height:25px;color:var(--gold);font-weight:700;font-size:.75rem}.block{margin:auto;width:min(100%,135px);aspect-ratio:1.12;display:grid;place-items:center;background:linear-gradient(125deg,#37302a,#211d19);border:1px solid #75604b;clip-path:polygon(7% 0,93% 0,100% 9%,100% 93%,93% 100%,7% 100%,0 93%,0 9%);box-shadow:inset 5px 0 #30261d,inset 0 5px #4a3d30;position:relative}.block::before{content:'';width:55%;height:68%;background:currentColor}.slate{color:var(--fire)}.slate::before{clip-path:polygon(45% 0,100% 0,67% 49%,94% 49%,22% 100%,47% 54%,0 54%)}.reed{color:var(--gold)}.reed::before{background:radial-gradient(circle at 0 43%,currentColor 54%,transparent 55%),linear-gradient(135deg,transparent 70%,currentColor 70%)}.lark{color:#e9d7ae}.lark::before{clip-path:polygon(0 78%,24% 53%,24% 77%,0 100%,0 78%,36% 66%,36% 40%,62% 17%,62% 42%,36% 66%,74% 31%,74% 8%,100% 0,100% 29%,74% 54%,74% 31%)}.piece strong{display:block;font:700 clamp(1.1rem,3vw,1.45rem) var(--serif);margin-top:7px}.piece small{font-size:.75rem;color:#e3d5bd;display:block}
+button,input,select,textarea{font:inherit}button,select{min-height:44px;border:1px solid currentColor;border-radius:0;padding:8px 13px;font-weight:690}button{cursor:pointer;background:var(--paper);color:var(--ink)}button:hover{background:#ebd4b2}button[disabled]{opacity:.7;cursor:default}button[aria-pressed=true]{background:var(--gold);color:var(--ink)}.table-tools,.tools,.vote-buttons{display:flex;gap:8px;flex-wrap:wrap;align-items:center}.table-tools button,.ghost{background:transparent;color:inherit}.table-tools button:hover{background:#4f4132}.table-tools{margin-bottom:12px}.table-tools span{font-size:.78rem;color:#e3d5bd}
+.phase{background:#171512;border:1px solid #786b5b;display:flex;align-items:center;justify-content:space-between;gap:12px;padding:12px 15px;min-height:79px;position:sticky;bottom:0;z-index:2}.phase strong{font:700 1.2rem var(--serif)}.phase small{display:block;color:#e2d5bb}.vote-buttons{flex-wrap:nowrap}.vote-buttons button{min-width:85px}
+.review-heading{padding:44px 0 17px}.review-heading p{max-width:62ch;color:var(--muted)}.decision{border-top:1px solid var(--ink);padding:29px 0 42px;scroll-margin-top:12px}.decision-title{display:grid;grid-template-columns:74px 1fr;gap:20px;align-items:start;margin-bottom:19px}.number{color:var(--accent);font:italic 2rem var(--serif);border-bottom:2px solid var(--accent);width:max-content;padding-bottom:4px}.decision-grid{display:grid;grid-template-columns:1fr 1.16fr;gap:clamp(22px,5vw,65px);align-items:start}.research{margin:0;display:grid;gap:12px}.research dt{font-size:.72rem;letter-spacing:.11em;text-transform:uppercase;font-weight:800;color:var(--accent)}.research dd{margin:4px 0 0}.commits{display:flex;flex-wrap:wrap;gap:5px 10px;font: .78rem/1.7 ui-monospace,monospace;margin-top:5px;color:var(--muted)}
+fieldset{border:0;padding:0;margin:0 0 18px;min-width:0}legend{padding:0 0 5px}.pick{display:flex;align-items:flex-start;gap:10px;padding:11px 0;border-top:1px solid var(--rule);cursor:pointer}.pick:last-child{border-bottom:1px solid var(--rule)}.pick input{width:20px;height:20px;accent-color:var(--accent);margin:2px 0 0;flex:none}.pick strong,.pick small{display:block}.pick small{font-size:.87rem;color:var(--muted);margin-top:2px}
+.demo{padding:15px 0 0;margin-top:15px;border-top:1px solid var(--rule)}.demo h4{font:700 1.25rem/1.15 var(--serif);margin:0 0 9px}.demo label{display:block;font-size:.9rem;font-weight:670}.demo select{background:transparent;color:var(--ink);max-width:100%}.ledger{margin:12px 0;padding:0;list-style:none;border-top:1px solid var(--rule)}.ledger li{padding:8px 0;border-bottom:1px solid var(--rule)}.ledger small,.help{display:block;color:var(--muted);font-size:.83rem}.private{color:var(--accent);font-weight:700}.trail{padding:8px 0;font-weight:670}.trail b{color:var(--accent)}.setting{display:flex;flex-wrap:wrap;gap:8px 12px;align-items:end;margin-bottom:9px}.setting label span{display:block}.receipt{border:1px solid var(--rule);padding:10px 12px}.receipt p{margin:.3em 0}.setting-row{display:grid;grid-template-columns:3.5rem 1fr;align-items:center;gap:9px;margin:7px 0}.setting-row label{display:flex;gap:8px;align-items:center;min-height:39px}.setting-row input{width:17px;height:17px;accent-color:var(--accent)}.roster{display:grid;grid-template-columns:repeat(4,1fr);gap:0 10px;padding:0;list-style:none;margin:10px 0}.roster li{border-top:1px solid var(--rule);min-width:0;padding:6px 0;overflow-wrap:anywhere}.roster small{display:block;color:var(--muted)}.roster li:first-child{border-top:2px solid var(--accent)}.summary{border-top:1px solid var(--ink);padding:32px 0 58px}.summary label{display:block;margin:10px 0 5px}.summary textarea{width:100%;resize:vertical;border:1px solid var(--rule);background:#faf3e7;color:var(--ink);padding:12px;min-height:132px}.summary .tools{margin-top:9px}.footnote{color:var(--muted);font-size:.85rem}
+@media(max-width:700px){.shell{width:calc(100% - 24px)}.mast nav{gap:12px}.mast strong{font-size:.77rem}.plate-title{margin-top:16px}.decision-grid{grid-template-columns:1fr;gap:18px}.decision-title{grid-template-columns:39px 1fr;gap:14px}.phase{display:grid;grid-template-columns:1fr;min-height:0}.vote-buttons button{flex:1}.table-tools span{flex-basis:100%}.roster{grid-template-columns:repeat(2,1fr)}.board{padding:13px}}
+@media(prefers-reduced-motion:reduce){html{scroll-behavior:auto}}
+/* Flat printed table, with cobalt reserved for interaction. */
+:root{--paper:#f5eee1;--accent:#a33122;--fire:#bf3d27;--blue:#2547ad;--dark:#211d19}
+.board{color:var(--ink);background:radial-gradient(ellipse at 50% 98%,#e0d4be 66%,transparent 66.2%),#eee5d4;border-color:var(--ink);box-shadow:none}
+.table-head span:last-child,.piece small,.table-tools span{color:var(--muted)}
+.block{background:#24211d;border:0;clip-path:none;box-shadow:none;transform:rotate(-2deg)}.block.reed{transform:rotate(1deg)}.block.lark{transform:rotate(2deg)}
+.reed{color:#f2dba7}.lark{color:#f1eddd}.cue{color:var(--accent)}
+.table-tools button,.ghost{background:var(--paper);color:var(--blue);border-color:var(--blue)}.table-tools button:hover{background:#e4e6f9}
+.phase{color:var(--paper);border:0;bottom:0;padding-bottom:max(12px,env(safe-area-inset-bottom))}
+.vote-buttons button[aria-pressed=true],#copy{background:var(--blue);color:white;border-color:var(--blue)}.vote-buttons button[aria-pressed=true]:hover,#copy:hover{background:#17327f}
+.pick input,.setting-row input{accent-color:var(--blue)}.receipt{border:0;border-top:2px solid var(--ink);border-bottom:1px solid var(--rule);padding:10px 0;margin-bottom:12px}
+.archive-note{font-size:.9rem;border-left:2px solid var(--accent);padding-left:12px;margin:12px 0 20px;color:var(--muted)}
+@media(max-width:700px){.vote-buttons button{flex:1}}
+.visually-hidden {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+}
+.reopen {
+  padding: 7px 11px;
+  color: var(--blue);
+  font-size: .83rem;
+}
+.rules-preview {
+  display: grid;
+  grid-template-columns: minmax(0, .8fr) minmax(0, 1.2fr);
+  gap: 16px;
+  margin: 12px 0;
+}
+.rules-preview .receipt { margin: 0; }
+.track-preview {
+  border-top: 2px solid var(--ink);
+  border-bottom: 1px solid var(--rule);
+  padding: 10px 0;
+}
+.track-preview h5 {
+  font: 700 1rem/1.1 var(--serif);
+  margin: 0;
+}
+.policy-group { margin-top: 9px; }
+.policy-group > strong { font-size: .78rem; }
+.policy-slots {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(57px, 1fr));
+  gap: 3px;
+  list-style: none;
+  margin: 3px 0 0;
+  padding: 0;
+}
+.policy-slots li {
+  min-width: 0;
+  padding: 4px;
+  border: 1px solid var(--rule);
+  overflow-wrap: anywhere;
+  font-size: .67rem;
+  line-height: 1.25;
+}
+.policy-slots b { display: block; }
+.policy-group:last-child .policy-slots li {
+  border-color: var(--accent);
+  background: #f5e0d3;
+}
+.visual-gallery {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+  margin-top: 10px;
+}
+.scene-proof { margin: 0; }
+.scene-proof figcaption {
+  margin-bottom: 5px;
+  font: 700 1rem/1.2 var(--serif);
+}
+.scene-table {
+  padding: 8px;
+  border: 1px solid var(--ink);
+  background: #e8ddc7;
+}
+.scene-proof ol {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 4px;
+  min-height: 108px;
+  list-style: none;
+  padding: 0;
+  margin: 0 0 8px;
+  text-align: center;
+}
+.scene-proof li {
+  min-width: 0;
+  align-content: start;
+  padding: 7px 2px;
+  font-size: .8rem;
+}
+.scene-proof li small {
+  display: block;
+  font-size: .65rem;
+  line-height: 1.2;
+}
+.scene-proof .block { width: min(100%, 41px); }
+.scene-vote {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 4px 8px;
+  justify-content: space-between;
+  padding: 7px;
+  background: #171512;
+  color: var(--paper);
+  font-size: .72rem;
+}
+.scene-vote span { display: flex; gap: 4px; }
+.scene-vote b { padding: 2px 5px; background: var(--blue); color: white; }
+.proof-compact .scene-table {
+  color: var(--paper);
+  background: #292c2a;
+  border: 5px ridge #63685d;
+  box-shadow: inset 0 0 0 1px #c6b18c;
+}
+.proof-compact ol {
+  gap: 2px;
+  background: radial-gradient(ellipse at center, #5e4b35, #32291f);
+  border: 1px solid #b99965;
+}
+.proof-compact .block {
+  width: min(100%, 33px);
+  border: 1px solid #a68357;
+  transform: none;
+}
+.proof-compact .scene-vote { border: 1px solid #a68357; }
+.proof-compact .scene-vote b { background: #e5b66a; color: var(--ink); }
+@media (max-width: 740px) {
+  .rules-preview { grid-template-columns: 1fr; }
+}
+@media (max-width: 360px) {
+  .visual-gallery { grid-template-columns: 1fr; }
+  .mast { padding: 9px 0; }
+  .mast strong { max-width: 130px; }
+  .plate-title { margin: 12px 0; }
+  .plate-title h1 { font-size: 2.75rem; }
+  .board .block { width: min(100%, 66px); }
+  .board .pieces { padding: 2px 0 8px; }
+  .table-tools button { padding: 6px 8px; }
+  .phase { padding: 8px 10px; gap: 8px; }
+}
+</style>
+<header class="shell mast">
+<strong>Secret Hitler Online</strong>
+<nav aria-label="Review sections"><a href="#decisions">Decisions</a><a href="#summary">Review notes</a></nav>
+</header>
+<main class="shell">
+<div class="plate-title"><h1>At the table</h1><p>A phone-first design review</p></div>
+<section class="board" id="play-board" aria-label="Playable vote prototype">
+<div class="table-head"><span class="label">Round 4 · Election</span><span>Simulated table · Slate’s seat</span></div>
+<ul class="pieces">
+<li class="piece"><span class="cue"></span><div class="block slate" aria-hidden="true"></div><strong>Slate</strong><small>You</small></li>
+<li class="piece"><span class="cue" id="reed-cue" role="status"></span><div class="block reed" aria-hidden="true"></div><strong>Reed</strong><small>President</small></li>
+<li class="piece"><span class="cue"></span><div class="block lark" aria-hidden="true"></div><strong>Lark</strong><small>Chancellor nominee</small></li>
+</ul>
+<div class="table-tools"><button type="button" id="reaction">Trigger Reed’s cue</button><button type="button" id="reset-vote">Reset vote</button><span>Try the reaction while your vote is pending.</span></div>
+<div class="phase" aria-label="Voting action">
+<div role="status"><strong id="phase-title">Vote on this government</strong><small id="phase-detail">Reed nominates Lark. Your vote is pending.</small></div>
+<div class="vote-buttons"><button type="button" data-vote="Ja">Ja · Yes</button><button type="button" data-vote="Nein">Nein · No</button></div>
+</div>
+</section>
+<section aria-labelledby="decisions">
+<div class="review-heading"><h2 id="decisions">Five table decisions</h2><p>Use the same fictional table to compare interface choices. Record one choice per decision or leave it open. This prototype proposes interface changes only.</p></div>
+<p class="archive-note">The archived global reskin was marked rejected. Its notes cite cramped seat controls and abbreviated moderator actions. The commit gives no reason for rejection. <a href="https://github.com/NightMachinery/Secret-Hitler-Online/commit/7f89cbf">7f89cbf</a></p>
+<div id="decision-list"></div>
+<p class="visually-hidden" id="review-status" role="status"></p>
+</section>
+<section class="summary" aria-labelledby="summary">
+<h2 id="summary">Review notes</h2>
+<label for="output">Plain-text decision summary</label>
+<textarea id="output" readonly rows="6"></textarea>
+<div class="tools"><button id="copy" type="button">Copy summary</button><span class="footnote" role="status" id="copy-status"></span></div>
+<p id="storage-status" class="footnote"></p>
+</section>
+</main>
+<template id="round-demo">
+<div class="demo">
+<h4>Reed and Lark’s round sheet</h4>
+<p class="help">Sample snapshots from the same table. The receipt shows statements made by the officeholders.</p>
+<div class="setting">
+<label><span>Sample stage</span><select id="round-stage"><option value="claims">Before the presidential power</option><option value="investigation">After the investigation</option><option value="anarchy">Later round with a replacement</option><option value="failed">Later failed election</option></select></label>
+<label><span>Simulated viewer</span><select id="viewer"><option value="slate">Slate · public view</option><option value="reed">Reed · investigating president</option><option value="lark">Lark · investigation target</option><option value="observer">Observer controlling Reed</option></select></label>
+</div>
+<div id="legislature">
+<label><input type="checkbox" id="refuse-reed"> Simulate Reed refusing to report</label>
+<label><input type="checkbox" id="refuse"> Simulate Lark refusing to report</label>
+<ol class="ledger">
+<li><small>Round 4 · Enactment</small>Fascist policy enacted. Investigation scheduled.</li>
+<li><small>Reed · President’s reply</small><span id="reed-claim">Claimed 3 cards: Liberal, Fascist, Fascist</span></li>
+<li><small>Lark · Chancellor’s reply</small><span id="claim">Claimed 2 cards: Liberal, Fascist</span></li>
+</ol>
+<p id="investigation" class="trail" hidden>Reed investigated Lark. <span id="party-result" class="private"></span></p>
+<p id="power-pending" class="help">The power stays pending while Reed and Lark report or refuse. This snapshot shows both replies on the sheet just before resolution.</p>
+</div>
+<div id="cascade" hidden><p class="trail">Round 5 · <b>Anarchist</b> → <b>Anarchist</b> → random draw → Liberal</p><p class="help">This lobby has Anarchist policies and zero Anarchist roles. Two Anarchist cards resolve and are replaced before the Liberal card enters its policy track.</p></div>
+<p class="trail" id="failed" hidden>Round 6 · Failed election → tracker fills → random draw → Fascist</p>
+<p class="help">Past claims require the policy-claim history setting. Current claims stay visible while the round is active. History shows the investigation only when presidential-action history is enabled. The live private result belongs to the investigator, including an observer controlling that seat.</p>
+</div>
+</template>
+<template id="setup-demo">
+<div class="demo">
+<h4>Before this table starts</h4>
+<p class="help">Sample controls illustrate preview and edit permissions.</p>
+<div class="setting">
+<label><span>Simulated viewer</span><select id="lobby-viewer"><option value="guest">Slate · player</option><option value="mod">Reed · moderator</option></select></label>
+</div>
+<div class="rules-preview">
+  <div class="receipt" aria-live="polite" id="receipt"></div>
+  <section class="track-preview" aria-labelledby="track-title">
+    <h5 id="track-title">Policy track preview</h5>
+    <p id="board-mode" class="help" aria-live="polite"></p>
+    <div id="policy-tracks"></div>
+    <p id="anarchy-count" class="help"></p>
+  </section>
+</div>
+<fieldset id="setup-controls" disabled>
+<legend class="label">Moderator setup</legend>
+<div class="setting">
+<label><span>Configured seats</span><select id="seats"><option>8</option><option>12</option><option selected>20</option></select></label>
+<label><span>Preset</span><select id="preset"><option>Standard</option><option selected>Anarchist</option></select></label>
+</div>
+<div class="setting-row"><strong>Roles</strong><label><input type="checkbox" data-auto="roles"> Automatic roles</label></div>
+<div class="setting" id="manual-roles"><label><span>Manual Anarchist roles</span><select id="anarchist-count"><option>0</option><option>1</option><option>2</option></select></label></div>
+<div class="setting-row"><strong>Policies</strong><label><input type="checkbox" data-auto="policies" checked> Automatic policies</label></div>
+<div class="setting" id="manual-policies" hidden>
+  <label><span>Liberal policies to win</span><select id="liberal-win"><option>4</option><option selected>5</option><option>6</option></select></label>
+  <label><span>Fascist policies to win</span><select id="fascist-win"><option>5</option><option selected>6</option><option>7</option></select></label>
+  <label><span>Anarchist policies in deck</span><select id="anarchy-policies"><option>0</option><option>1</option><option>2</option><option selected>3</option></select></label>
+</div>
+<div class="setting-row"><strong>Powers</strong><label><input type="checkbox" data-auto="powers" checked> Automatic powers</label></div>
+<div class="setting" id="manual-powers" hidden>
+  <label><span>Power at Fascist slot 2</span><select id="slot-two"><option>No power</option><option selected>Investigate</option><option>Special election</option><option>Policy peek</option><option>Execute</option></select></label>
+</div>
+</fieldset>
+<p class="help" id="lobby-help">Players can inspect the public rules receipt. Moderators can edit setup before play.</p>
+</div>
+</template>
+<template id="roster-demo">
+<div class="demo">
+<h4>Who’s at the table?</h4>
+<p class="help">Round 4 · Reed has the presidential investigation.</p>
+<div class="setting">
+<label><span>Roster order</span><select id="order"><option value="actor">Current actor first</option><option value="seating">Full seating order</option></select></label>
+<label><span>Simulated viewer</span><select id="roster-viewer"><option value="public">Public view</option><option value="own">Slate’s own seat</option></select></label>
+</div>
+<ul class="roster" id="roster" aria-label="Twenty seats"></ul>
+<p class="help">Seat number preserves the seating order. A player’s own identity is shown in their seat view. The public roster shows offices and status in words.</p>
+</div>
+</template>
+<template id="visual-demo">
+<div class="demo">
+  <h4>One vote, two visual treatments</h4>
+  <p class="help">Both previews show Slate, Reed, and Lark at the same pending vote. They use original artwork and the same labels.</p>
+  <div class="visual-gallery" id="visual-gallery"></div>
+  <p><a href="#play-board">Return to the interactive table</a></p>
+</div>
+</template>
+<script>
+const decisions = [
+  {
+    title: 'Keep the vote in reach',
+    evidence: 'Discussion reactions appear on seats and also feed a sticky ticker shared with vote prompts. Minimized prompts keep reactions available.',
+    commits: ['38df6be','30298c2','1bbdb26'],
+    intent: 'Players should be able to react during discussion while keeping track of the task they owe the table.',
+    recommended: 'Anchor the phase and pending action',
+    recommendWhy: 'A reaction appears beside Reed while the vote stays in place. A pinned strip costs some vertical space on a phone.',
+    alternative: 'Use a shared event ticker',
+    alternateWhy: 'One familiar feed shows the newest event. A cue can replace the vote sentence while the decision is still pending.',
+    demo: '<p class="demo"><a href="#reaction">Return to the playable vote</a> and trigger Reed’s cue before choosing Ja or Nein.</p>'
+  },
+  {
+    title: 'Put the story in the round',
+    evidence: 'The game records policy claims after enactment, keeps investigation results private, and captures random replacement trails in history.',
+    commits: ['5ca21aa','3470d96','0843f6e','b03a885'],
+    intent: 'Players need shared evidence for discussion while preserving the distinction between an officeholder’s claim and a private result.',
+    recommended: 'Use a public round sheet',
+    recommendWhy: 'Each round groups election, enactment, claims, and power in the order they happened. Re-reading many rounds takes more scrolling.',
+    alternative: 'Keep a separate history table',
+    alternateWhy: 'Compact columns make cross-round comparison easier. Claims, powers, and replacements compete for width on a phone.',
+    template: 'round-demo'
+  },
+  {
+    title: 'Show the rules before the editors',
+    evidence: 'Lobby setup supports presets and automatic roles, policies, and powers. Creator and moderators can edit while everyone can inspect the setup.',
+    commits: ['45925e5','442a874','3a3a83a'],
+    intent: 'Everyone should understand the game they are joining, including a preset’s visible overrides.',
+    recommended: 'Lead with a public rules receipt',
+    recommendWhy: 'Players see seat count, preset, and which groups follow it before opening controls. Moderators look below the receipt to edit.',
+    alternative: 'Lead with the full setup form',
+    alternateWhy: 'Moderators can inspect and change fields in one place. Other players have to interpret the same editing vocabulary to learn the rules.',
+    template: 'setup-demo'
+  },
+  {
+    title: 'Find the current actor at twenty seats',
+    evidence: 'The project raised capacity to 20, refined role labels, added moderator observer seat assignment, and hardened bot handoff.',
+    commits: ['8c19215','0be9d12','29561ef','bc01d71'],
+    intent: 'Players should be able to identify who acts next and distinguish public status from seat-authorized identity.',
+    recommended: 'Lead with the current actor on phones',
+    recommendWhy: 'The next actor is visible quickly while seat numbers preserve position. Moving the actor above the seating sequence can interrupt spatial memory.',
+    alternative: 'Lead with a full seating map',
+    alternateWhy: 'A stable map supports position and table talk. Twenty players can push the current actor below the fold on a small screen.',
+    template: 'roster-demo'
+  },
+  {
+    title: 'Choose how the table should look',
+    evidence: 'The archived redesign reported cramped seat controls and abbreviated moderator actions. The live client keeps fixed board art for standard-equivalent rules and generates a track for custom thresholds or powers.',
+    commits: ['7f89cbf','442a874','b03a885'],
+    intent: 'Players should recognize the social table at a glance and read the next action comfortably when their screen is narrow.',
+    recommended: 'Use a flat editorial table',
+    recommendWhy: 'Large names, strong contrast, and a single cobalt action strip give the vote visual priority. More open space means fewer seats fit in the first view.',
+    alternative: 'Use a compact board-game scene',
+    alternateWhy: 'An inset table and compact pieces make the space feel like a game and support scanning more seats at once. The denser framing gives the same action less room.',
+    template: 'visual-demo'
+  }
+];
+const decisionList = document.getElementById('decision-list');
+const commitBase = 'https://github.com/NightMachinery/Secret-Hitler-Online/commit/';
+decisions.forEach((item, index) => {
+  const article = document.createElement('article');
+  article.className = 'decision';
+  article.innerHTML = `<div class="decision-title"><span class="number" aria-hidden="true">0${index + 1}</span><h3 id="decision-${index}">${item.title}</h3></div>
+    <div class="decision-grid"><dl class="research">
+    <div><dt>Observed in the repository</dt><dd>${item.evidence}<span class="commits">${item.commits.map(hash => `<a href="${commitBase}${hash}">${hash}</a>`).join('')}</span></dd></div>
+    <div><dt>Inferred intent</dt><dd>${item.intent}</dd></div></dl>
+    <div class="proposal"><fieldset><legend class="label">Proposed design · Your choice</legend>
+    <label class="pick"><input type="radio" name="decision-${index}" value="recommended"><span><strong>${item.recommended}</strong><small>Recommended. ${item.recommendWhy}</small></span></label>
+    <label class="pick"><input type="radio" name="decision-${index}" value="alternative"><span><strong>${item.alternative}</strong><small>Alternative. ${item.alternateWhy}</small></span></label>
+    </fieldset><button type="button" class="reopen" data-reopen="${index}" aria-label="Reopen decision ${index + 1}">Reopen decision</button>${item.demo || ''}</div></div>`;
+  article.setAttribute('aria-labelledby', 'decision-' + index);
+  if (item.template) article.querySelector('.proposal').append(document.getElementById(item.template).content.cloneNode(true));
+  decisionList.append(article);
+});
+const get = id => document.getElementById(id);
+let cueTimer;
+get('reaction').addEventListener('click', () => {
+  clearTimeout(cueTimer);
+  get('reed-cue').textContent = 'Wants to speak';
+  cueTimer = setTimeout(() => { get('reed-cue').textContent = ''; }, 5500);
+});
+const voteButtons = [...document.querySelectorAll('[data-vote]')];
+function setVote(vote) {
+  get('phase-title').textContent = vote ? 'Vote recorded' : 'Vote on this government';
+  get('phase-detail').textContent = vote ? 'You chose ' + vote + '. Waiting for the table.' : 'Reed nominates Lark. Your vote is pending.';
+  voteButtons.forEach(button => {
+    button.setAttribute('aria-pressed', button.dataset.vote === vote);
+  });
+}
+voteButtons.forEach(button => button.addEventListener('click', () => setVote(button.dataset.vote)));
+get('reset-vote').addEventListener('click', () => { setVote(''); });
+setVote('');
+
+function renderRound() {
+  const stage = get('round-stage').value;
+  const investigated = stage === 'investigation';
+  get('legislature').hidden = stage === 'anarchy' || stage === 'failed';
+  get('cascade').hidden = stage !== 'anarchy';
+  get('failed').hidden = stage !== 'failed';
+  get('investigation').hidden = !investigated;
+  get('power-pending').hidden = investigated;
+  get('reed-claim').textContent = get('refuse-reed').checked ? 'Refused to tell' : 'Claimed 3 cards: Liberal, Fascist, Fascist';
+  get('claim').textContent = get('refuse').checked ? 'Refused to tell' : 'Claimed 2 cards: Liberal, Fascist';
+  get('party-result').textContent = investigated && ['reed','observer'].includes(get('viewer').value) ? 'Private result · Lark’s party membership is Fascist.' : '';
+}
+['round-stage','viewer','refuse','refuse-reed'].forEach(id => get(id).addEventListener('change', renderRound));
+renderRound();
+
+const setupGroups = [...document.querySelectorAll('[data-auto]')];
+const [autoRoles, autoPolicies, autoPowers] = setupGroups;
+const liberalWin = get('liberal-win');
+const fascistWin = get('fascist-win');
+const anarchyPolicies = get('anarchy-policies');
+const slotTwo = get('slot-two');
+
+function renderTracks(liberalThreshold, fascistThreshold, powers, custom, anarchyCount) {
+  get('board-mode').textContent = custom
+    ? 'Custom rules use a generated track in the live game.'
+    : 'Standard-equivalent rules use fixed board art in the live game.';
+  get('anarchy-count').textContent = 'Anarchist policies in deck: ' + anarchyCount + '. Anarchy resolves as a replacement, outside the two tracks.';
+  const tracks = [
+    ['Liberal', liberalThreshold, []],
+    ['Fascist', fascistThreshold, powers]
+  ].map(([faction, threshold, schedule]) => {
+    const group = document.createElement('div');
+    group.className = 'policy-group';
+    const heading = document.createElement('strong');
+    heading.textContent = faction + ' · ' + threshold + ' to win';
+    const slots = document.createElement('ol');
+    slots.className = 'policy-slots';
+    for (let i = 0; i < threshold; i++) {
+      const slot = document.createElement('li');
+      const number = document.createElement('b');
+      number.textContent = 'Slot ' + (i + 1);
+      slot.append(number);
+      if (schedule.length) slot.append(schedule[i] ?? 'No power');
+      slots.append(slot);
+    }
+    group.append(heading, slots);
+    return group;
+  });
+  get('policy-tracks').replaceChildren(...tracks);
+}
+function renderSetup() {
+  get('setup-controls').disabled = get('lobby-viewer').value !== 'mod';
+  const preset = get('preset').value;
+  const seats = Number(get('seats').value);
+  const isAnarchist = preset === 'Anarchist';
+  const schedule = [seats <= 8 ? 'No power' : 'Investigate', 'Investigate', 'Special election', 'Execute', 'Execute', 'No power'];
+  get('manual-roles').hidden = autoRoles.checked;
+  get('manual-policies').hidden = autoPolicies.checked;
+  get('manual-powers').hidden = autoPowers.checked;
+  if (autoPolicies.checked) {
+    liberalWin.value = '5';
+    fascistWin.value = '6';
+    anarchyPolicies.value = isAnarchist ? '3' : '0';
+  }
+  if (autoPowers.checked) slotTwo.value = schedule[1];
+  const liberalThreshold = Number(liberalWin.value);
+  const fascistThreshold = Number(fascistWin.value);
+  const anarchyCount = Number(anarchyPolicies.value);
+  const custom = liberalThreshold !== 5 || fascistThreshold !== 6 || slotTwo.value !== schedule[1];
+  schedule[1] = slotTwo.value;
+  const roleCount = autoRoles.checked ? Number(isAnarchist) : Number(get('anarchist-count').value);
+  const groups = [
+    ['Roles', autoRoles.checked, roleCount + ' Anarchist roles'],
+    ['Policies', autoPolicies.checked, liberalThreshold + ' Liberal / ' + fascistThreshold + ' Fascist to win'],
+    ['Powers', autoPowers.checked, 'Fascist slot 2: ' + slotTwo.value]
+  ];
+  const title = document.createElement('strong');
+  title.textContent = seats + ' seats · ' + preset + ' preset';
+  get('receipt').replaceChildren(title, ...groups.map(([name, auto, detail]) => {
+    const row = document.createElement('p');
+    row.textContent = name + ' · ' + (auto ? 'Automatic' : 'Manual') + ' · ' + detail;
+    return row;
+  }));
+  renderTracks(liberalThreshold, fascistThreshold, schedule, custom, anarchyCount);
+}
+get('setup-controls').addEventListener('change', renderSetup);
+get('lobby-viewer').addEventListener('change', renderSetup);
+renderSetup();
+
+const seatData = [
+  ['Slate','Connected'], ['Reed','President · current actor'], ['Lark','Chancellor nominee'],
+  ['Flint','Bot-controlled'], ['Cedar','Disconnected'], ['Ash','Connected'], ['Dune','Connected'], ['Vale','Connected'],
+  ['Birch','Connected'], ['Moss','Connected'], ['Thorn','Connected'], ['Finch','Connected'], ['Elm','Connected'],
+  ['Rook','Connected'], ['Frost','Connected'], ['Wren','Connected'], ['Fern','Connected'], ['Iris','Connected'],
+  ['Briar','Connected'], ['Pine','Connected']
+].map(([name,status], index) => ({number:index + 1,name,status}));
+function renderRoster() {
+  const actorFirst = get('order').value === 'actor';
+  const own = get('roster-viewer').value === 'own';
+  const seats = actorFirst ? [seatData[1],seatData[0],...seatData.slice(2)] : seatData;
+  get('roster').replaceChildren(...seats.map(seat => {
+    const row = document.createElement('li');
+    const name = document.createElement('strong');
+    name.textContent = seat.number + ' · ' + seat.name;
+    const status = document.createElement('small');
+    status.textContent = seat.status;
+    row.append(name,status);
+    if (own && seat.number === 1) {
+      const identity = document.createElement('small');
+      identity.className = 'private';
+      identity.textContent = 'Your identity · Liberal';
+      row.append(identity);
+    }
+    return row;
+  }));
+}
+['order','roster-viewer'].forEach(id => get(id).addEventListener('change', renderRoster));
+renderRoster();
+
+const storageKey = 'sho-interface-review-v1';
+let votes = {};
+try {
+  votes = JSON.parse(localStorage.getItem(storageKey) || '{}') || {};
+  get('storage-status').textContent = 'Choices are saved in this browser when local storage is available.';
+} catch {
+  get('storage-status').textContent = 'Choices are kept for this session.';
+}
+function renderSummary() {
+  get('output').value = ['Secret Hitler Online · At the table', ...decisions.map((item,i) => {
+    const vote = votes[i];
+    const choice = vote === 'recommended' || vote === 'alternative' ? item[vote] : 'Open';
+    return (i + 1) + '. ' + item.title + ' / ' + choice;
+  })].join('\n');
+}
+function saveChoices() {
+  try { localStorage.setItem(storageKey, JSON.stringify(votes)); }
+  catch { get('storage-status').textContent = 'Choices are kept for this session.'; }
+  renderSummary();
+}
+decisionList.querySelectorAll('input[type=radio]').forEach(radio => {
+  const index = Number(radio.name.slice('decision-'.length));
+  radio.checked = votes[index] === radio.value;
+  radio.addEventListener('change', () => {
+    votes[index] = radio.value;
+    saveChoices();
+  });
+});
+decisionList.querySelectorAll('[data-reopen]').forEach(button => {
+  button.addEventListener('click', () => {
+    const index = button.dataset.reopen;
+    delete votes[index];
+    decisionList.querySelectorAll('input[name="decision-' + index + '"]').forEach(radio => { radio.checked = false; });
+    saveChoices();
+    get('review-status').textContent = 'Decision ' + (Number(index) + 1) + ' reopened.';
+  });
+});
+renderSummary();
+get('copy').addEventListener('click', async () => {
+  const output = get('output');
+  const status = get('copy-status');
+  if (navigator.clipboard?.writeText) {
+    try {
+      await navigator.clipboard.writeText(output.value);
+      status.textContent = 'Summary copied.';
+      return;
+    } catch {
+      // Continue to selection when permission is unavailable.
+    }
+  }
+  output.focus();
+  output.select();
+  output.setSelectionRange(0, output.value.length);
+  try {
+    if (document.execCommand?.('copy')) {
+      status.textContent = 'Summary copied.';
+      return;
+    }
+  } catch {
+    // Leave the selected text ready for the device’s copy command.
+  }
+  status.textContent = 'Summary selected. Use your device’s copy command.';
+});
+
+const visualGallery = get('visual-gallery');
+[
+  ['Flat editorial', 'proof-editorial'],
+  ['Compact game scene', 'proof-compact']
+].forEach(([title, style]) => {
+  const figure = document.createElement('figure');
+  figure.className = 'scene-proof ' + style;
+  figure.innerHTML = '<figcaption>' + title + '</figcaption>' +
+    '<div class="scene-table"><ol>' +
+    '<li><i class="block slate" aria-hidden="true"></i><b>Slate</b><small>You</small></li>' +
+    '<li><i class="block reed" aria-hidden="true"></i><b>Reed</b><small>President</small></li>' +
+    '<li><i class="block lark" aria-hidden="true"></i><b>Lark</b><small>Chancellor nominee</small></li>' +
+    '</ol><div class="scene-vote"><strong>Vote on this government</strong>' +
+    '<span aria-hidden="true"><b>Ja</b><b>Nein</b></span></div></div>';
+  visualGallery.append(figure);
+});
+</script>
+</html>
